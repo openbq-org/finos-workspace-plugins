@@ -52,21 +52,93 @@ function useStored(model: Model) {
 const finite = (value: unknown): value is number =>
   typeof value === "number" && Number.isFinite(value);
 
-function useTarget(model: Model): MapTarget | null {
-  const latitude = useTrait<unknown>(model, "viewLatitude");
-  const longitude = useTrait<unknown>(model, "viewLongitude");
-  const zoom = useTrait<unknown>(model, "viewZoom");
-  const bearing = useTrait<unknown>(model, "viewBearing");
-  const pitch = useTrait<unknown>(model, "viewPitch");
-  return useMemo(() => {
-    const target: MapTarget = {
-      ...(finite(latitude) && finite(longitude) ? { center: [longitude, latitude] as [number, number] } : {}),
-      ...(finite(zoom) ? { zoom } : {}),
-      ...(finite(bearing) ? { bearing } : {}),
-      ...(finite(pitch) ? { pitch } : {}),
-    };
-    return Object.keys(target).length ? target : null;
-  }, [latitude, longitude, zoom, bearing, pitch]);
+const VIEW_TRAITS = {
+  latitude: "viewLatitude",
+  longitude: "viewLongitude",
+  zoom: "viewZoom",
+  bearing: "viewBearing",
+  pitch: "viewPitch",
+} as const;
+type ViewKey = keyof typeof VIEW_TRAITS;
+type ViewValues = Partial<Record<ViewKey, number>>;
+const REFUSAL_WINDOW_MS = 5000;
+
+const round = (value: number, places: number) => Number(value.toFixed(places));
+
+function viewOfCamera(camera: MapViewState["camera"]): ViewValues | null {
+  if (!camera) return null;
+  const [longitude, latitude] = camera.center;
+  return {
+    latitude: round(Math.max(-90, Math.min(90, latitude)), 5),
+    longitude: round(Math.max(-180, Math.min(180, longitude)), 5),
+    zoom: round(Math.max(0, Math.min(24, camera.zoom)), 2),
+    bearing: round(camera.bearing ?? 0, 1),
+    pitch: round(Math.max(0, Math.min(85, camera.pitch ?? 0)), 1),
+  };
+}
+
+function targetOf(view: ViewValues): MapTarget | null {
+  const { latitude, longitude, zoom, bearing, pitch } = view;
+  const target: MapTarget = {
+    ...(finite(latitude) && finite(longitude)
+      ? { center: [longitude, latitude] as [number, number] }
+      : {}),
+    ...(finite(zoom) ? { zoom } : {}),
+    ...(finite(bearing) ? { bearing } : {}),
+    ...(finite(pitch) ? { pitch } : {}),
+  };
+  return Object.keys(target).length ? target : null;
+}
+
+function useViewSync(model: Model) {
+  const latitude = useTrait<unknown>(model, VIEW_TRAITS.latitude);
+  const longitude = useTrait<unknown>(model, VIEW_TRAITS.longitude);
+  const zoom = useTrait<unknown>(model, VIEW_TRAITS.zoom);
+  const bearing = useTrait<unknown>(model, VIEW_TRAITS.bearing);
+  const pitch = useTrait<unknown>(model, VIEW_TRAITS.pitch);
+  const view = useMemo(
+    () =>
+      Object.fromEntries(
+        Object.entries({ latitude, longitude, zoom, bearing, pitch }).filter(([, value]) =>
+          finite(value),
+        ),
+      ) as ViewValues,
+    [latitude, longitude, zoom, bearing, pitch],
+  );
+  const key = JSON.stringify(view);
+  const [target, setTarget] = useState<MapTarget | null>(null);
+  const first = useRef(true);
+  const own = useRef<{ written: string; before: string; at: number } | null>(null);
+  useEffect(() => {
+    if (first.current) {
+      first.current = false;
+      return;
+    }
+    const mine = own.current;
+    if (mine) {
+      if (key === mine.written) return;
+      own.current = null;
+      if (key === mine.before && Date.now() - mine.at < REFUSAL_WINDOW_MS) return;
+    }
+    setTarget(targetOf(view));
+  }, [key]);
+  const latest = useRef(view);
+  latest.current = view;
+  const writeView = useCallback(
+    (camera: MapViewState["camera"]) => {
+      const next = viewOfCamera(camera);
+      if (!next) return false;
+      const written = JSON.stringify(next);
+      const before = JSON.stringify(latest.current);
+      if (written === before) return false;
+      own.current = { written, before, at: Date.now() };
+      for (const name of Object.keys(next) as ViewKey[])
+        model.set(VIEW_TRAITS[name], next[name]);
+      return true;
+    },
+    [model],
+  );
+  return { target, writeView };
 }
 
 const payloadOf = (data: unknown): unknown =>
@@ -117,7 +189,7 @@ export default function MapWidget({ model }: { model: Model }) {
   >(model, "theme");
   const meta = useTrait<{ name?: string; title?: string } | undefined>(model, "meta");
   const { stored, keep } = useStored(model);
-  const target = useTarget(model);
+  const { target, writeView } = useViewSync(model);
   const tilesUrl = useTrait<unknown>(model, "mapTilesUrl");
   const tilesProvider = useTrait<unknown>(model, "mapTilesProvider");
   const adminSources = useTrait<unknown>(model, "mapSources");
@@ -161,8 +233,12 @@ export default function MapWidget({ model }: { model: Model }) {
     [keep],
   );
   const onViewChange = useCallback(
-    (next: MapViewState) => keep("mapView", mapViewState(next)),
-    [keep],
+    (next: MapViewState) => {
+      const kept = mapViewState(next);
+      writeView(kept.camera);
+      keep("mapView", kept);
+    },
+    [keep, writeView],
   );
   if (emptyRows)
     return (

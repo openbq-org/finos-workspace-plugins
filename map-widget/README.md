@@ -65,7 +65,7 @@ Limits: 20,000 points, 4,000 regions, 3,500 lines and areas, 2 MB of JSON, 4 MB 
 - **Export:** KML, KMZ and GeoJSON, with the user's tags, drawn shapes and region names.
 - **Agent context:** counts, value range, categories, what is in view (`shows`) and the first 300 rows (place, label, value, tag). No shape geometry.
 - **State:** tags, drawn shapes, layer visibility, opacity, boundaries and camera, kept in the widget `state` (64 KiB at most).
-- **View settings:** `latitude`, `longitude`, `zoom`, `bearing`, `pitch`, bound as `config` traits. A change from the settings form or from the agent (`update_widget`) moves the map.
+- **View settings:** `latitude`, `longitude`, `zoom`, `bearing`, `pitch`, bound as readwrite `config` traits. They follow the map as the reader moves it. A change from the settings form or from the agent (`update_widget`) moves the map. The agent reads them with `read_widget` (`ui_args.config`).
 - **Chat:** an `artifact` for points by latitude and longitude, or US states or countries with a value. `view` sets where it opens. The card can be added to a dashboard as a widget.
 - **Skill:** `maps` (`src/skills/maps.md`).
 - **Boundaries:** US states, counties, countries, first-level regions, metro areas, congressional districts, ZIP codes and cities, carried in `assets/geo/` (10 MB) and loaded on demand. Sources: [`vendor/geo/README.md`](vendor/geo/README.md).
@@ -88,7 +88,9 @@ Map sources are extra layers: raster tiles, vector tiles, PMTiles, GeoJSON, imag
 
 ## Permissions
 
-`core:data:read`, `core:export:provide`, `core:copilot:context`, `core:state:write`, `core:clipboard:write`, `core:download:save`, `core:ui:notify`.
+`core:data:read`, `core:export:provide`, `core:copilot:context`, `core:state:write`, `core:config:write`, `core:clipboard:write`, `core:download:save`, `core:ui:notify`.
+
+`core:config:write` requires a FINOS Workspace host that accepts it.
 
 The frame reaches only the tile service.
 
