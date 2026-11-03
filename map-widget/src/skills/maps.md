@@ -40,7 +40,7 @@ Set `view` to open the map where the question is. `view.center` is `{ "lat", "lo
 
 ## Move a map that is on the dashboard
 
-A map widget on the dashboard has the settings `latitude`, `longitude`, `zoom`, `bearing` and `pitch`. Call `update_widget` with `ui_args_json` `{"config": {"latitude": 48.8566, "longitude": 2.3522, "zoom": 12}}` and the map moves there. Set `latitude` and `longitude` together; `zoom` alone zooms in place. Setting the same values again does nothing, so change at least one.
+A map widget on the dashboard keeps its view in the settings `latitude`, `longitude`, `zoom`, `bearing` and `pitch`, and they follow the map as the user moves it. `read_widget` gives them as `ui_args.config`. To move the map, call `update_widget` with `ui_args_json` such as `{"config": {"latitude": 48.8566, "longitude": 2.3522, "zoom": 12}}`; zoom is 0 (the world) to 24, 4 a country, 10 a city, 15 streets. Set `latitude` and `longitude` together; `zoom` alone zooms where the map is.
 
 ## Rules
 

@@ -446,6 +446,7 @@
           "core:export:provide",
           "core:copilot:context",
           "core:state:write",
+          "core:config:write",
           "core:clipboard:write",
           "core:download:save",
           "core:ui:notify"
@@ -482,23 +483,23 @@
             },
             "viewLatitude": {
               "bind": "config:latitude",
-              "access": "read"
+              "access": "readwrite"
             },
             "viewLongitude": {
               "bind": "config:longitude",
-              "access": "read"
+              "access": "readwrite"
             },
             "viewZoom": {
               "bind": "config:zoom",
-              "access": "read"
+              "access": "readwrite"
             },
             "viewBearing": {
               "bind": "config:bearing",
-              "access": "read"
+              "access": "readwrite"
             },
             "viewPitch": {
               "bind": "config:pitch",
-              "access": "read"
+              "access": "readwrite"
             }
           }
         },
@@ -515,7 +516,7 @@
               "latitude": {
                 "type": "number",
                 "title": "Latitude",
-                "description": "Latitude of the center of the view, from -90 to 90. Setting it moves the map there.",
+                "description": "Latitude of the center of the view, from -90 to 90. The map keeps it as the reader moves, and setting it moves the map there.",
                 "minimum": -90,
                 "maximum": 90
               },
@@ -529,9 +530,9 @@
               "zoom": {
                 "type": "number",
                 "title": "Zoom",
-                "description": "Zoom of the view, from 0 (the world) to 19 (a building): 4 is a country, 10 a city, 15 streets.",
+                "description": "Zoom of the view, from 0 (the world) to 24: 4 is a country, 10 a city, 15 streets.",
                 "minimum": 0,
-                "maximum": 19
+                "maximum": 24
               },
               "bearing": {
                 "type": "number",
@@ -543,9 +544,9 @@
               "pitch": {
                 "type": "number",
                 "title": "Pitch",
-                "description": "Tilt of the view in degrees, from 0 to 60.",
+                "description": "Tilt of the view in degrees, from 0 to 85.",
                 "minimum": 0,
-                "maximum": 60
+                "maximum": 85
               }
             }
           },

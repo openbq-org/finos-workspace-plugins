@@ -127,4 +127,55 @@ describe("the map widget", () => {
     act(() => seen.props?.onNotesChange({}));
     expect(traits.state).not.toHaveProperty("mapNotes");
   });
+
+  describe("the view it shares with the settings", () => {
+    const PARIS = { center: [2.3522, 48.8566] as [number, number], zoom: 12, bearing: 0, pitch: 0 };
+    const start = async (view: Record<string, unknown> = {}) => {
+      const fake = fakeModel({ data: ROWS, definition: MAPPING, state: {}, ...view });
+      render(<MapWidget model={fake.model} />);
+      await screen.findByTestId("map");
+      return fake;
+    };
+
+    it("does not move a map to the settings it opens with", async () => {
+      await start({ viewLatitude: 10, viewLongitude: 20, viewZoom: 5 });
+      expect(seen.props?.target).toBeNull();
+    });
+
+    it("moves the map when a setting changes", async () => {
+      const { model } = await start({ viewLatitude: 10, viewLongitude: 20, viewZoom: 5 });
+      act(() => {
+        model.set("viewLatitude", 48.8566);
+        model.set("viewLongitude", 2.3522);
+        model.set("viewZoom", 12);
+      });
+      expect(seen.props?.target).toEqual({ center: [2.3522, 48.8566], zoom: 12 });
+    });
+
+    it("writes where the reader moved the map, and does not move it there again", async () => {
+      const { traits } = await start();
+      act(() => seen.props?.onViewChange({ camera: PARIS }));
+      expect(traits).toMatchObject({
+        viewLatitude: 48.8566,
+        viewLongitude: 2.3522,
+        viewZoom: 12,
+        viewBearing: 0,
+        viewPitch: 0,
+      });
+      expect(seen.props?.target).toBeNull();
+    });
+
+    it("does not move the map back when the host refuses the write", async () => {
+      const { model } = await start({ viewLatitude: 10, viewLongitude: 20, viewZoom: 5 });
+      act(() => seen.props?.onViewChange({ camera: PARIS }));
+      act(() => {
+        model.set("viewLatitude", 10);
+        model.set("viewLongitude", 20);
+        model.set("viewZoom", 5);
+        model.set("viewBearing", undefined);
+        model.set("viewPitch", undefined);
+      });
+      expect(seen.props?.target).toBeNull();
+    });
+  });
 });

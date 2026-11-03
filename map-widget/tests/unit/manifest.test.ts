@@ -70,13 +70,19 @@ describe("the manifest", () => {
     );
   });
 
-  it("binds the view to settings, which the agent sets with update_widget", () => {
+  it("shares the view with the settings, which the agent reads and sets", () => {
     const keys = Object.keys(widget.settings.schema.properties);
     expect(keys).toEqual(["latitude", "longitude", "zoom", "bearing", "pitch"]);
     const bound = Object.values(widget.model.traits as Record<string, { bind: string }>)
       .map(({ bind }) => bind)
       .filter((bind) => bind.startsWith("config:"));
     expect(bound.sort()).toEqual(keys.map((key) => `config:${key}`).sort());
+    expect(
+      Object.values(widget.model.traits as Record<string, { bind: string; access: string }>)
+        .filter(({ bind }) => bind.startsWith("config:"))
+        .every(({ access }) => access === "readwrite"),
+    ).toBe(true);
+    expect(widget.permissions).toContain("core:config:write");
   });
 
   it("lists skill files that exist", () => {

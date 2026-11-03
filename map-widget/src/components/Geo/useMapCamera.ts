@@ -420,6 +420,16 @@ export function useMapCamera({
       return;
     }
     targeted.current = target;
+    const { lng, lat } = map.getCenter();
+    if (
+      (!target.center ||
+        (Math.abs(target.center[0] - lng) < 1e-4 &&
+          Math.abs(target.center[1] - lat) < 1e-4)) &&
+      (target.zoom === undefined || Math.abs(target.zoom - map.getZoom()) < 0.01) &&
+      (target.bearing === undefined || Math.abs(target.bearing - map.getBearing()) < 0.1) &&
+      (target.pitch === undefined || Math.abs(target.pitch - map.getPitch()) < 0.1)
+    )
+      return;
     moved.current = true;
     map.easeTo({
       center: target.center ?? map.getCenter(),
