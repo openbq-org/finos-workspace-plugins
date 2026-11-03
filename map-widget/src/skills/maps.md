@@ -30,6 +30,14 @@ Use the Map component (`map-widget/map`) to show where things are: places at a l
 }
 ```
 
+## Zoom and place
+
+Set `view` to open the map where the question is. `view.center` is `{ "lat", "lon" }` with `view.zoom` (0 to 19: 4 a country, 10 a city, 15 streets), or `view.bounds` is `[west, south, east, north]`, or `view.place` names a place. Without `view` the map fits its marks.
+
+```json
+{ "title": "Offices in Paris", "points": [{ "lat": 48.8566, "lon": 2.3522, "label": "Paris" }], "view": { "center": { "lat": 48.8566, "lon": 2.3522 }, "zoom": 12 } }
+```
+
 ## Rules
 
 - A map has at most 200 points, or 250 regions. When there are more rows, aggregate them first (by state, country or city) instead of sending every row.

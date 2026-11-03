@@ -62,6 +62,14 @@ describe("the manifest", () => {
     expect(widget.artifact.description.length).toBeLessThanOrEqual(300);
   });
 
+  it("lets the agent set where the map opens", () => {
+    const { view } = widget.artifact.data.properties;
+    expect(view.additionalProperties).toBe(false);
+    expect(Object.keys(view.properties)).toEqual(
+      expect.arrayContaining(["place", "center", "zoom", "bounds"]),
+    );
+  });
+
   it("lists skill files that exist", () => {
     for (const skill of manifest.contributes.skills) {
       expect(skill.slug).toMatch(/^[a-z0-9]+(-[a-z0-9]+)*$/);

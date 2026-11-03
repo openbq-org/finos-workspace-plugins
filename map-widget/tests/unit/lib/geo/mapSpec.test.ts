@@ -635,3 +635,21 @@ describe("mapSpec: context layers of the basemap", () => {
     expect(() => mapSpec({ points, context })).toThrow(/^output\.map: .*context/);
   });
 });
+
+describe("mapSpec: the view the agent asks for", () => {
+  it("opens at the center and zoom it names", () => {
+    const spec = mapSpec({
+      points: [{ ...NYC, label: "New York" }],
+      view: { center: { lat: 48.8566, lon: 2.3522 }, zoom: 12 },
+    }) as MapSpec;
+    expect(spec.view).toMatchObject({ center: [2.3522, 48.8566], zoom: 12 });
+  });
+
+  it("opens on the bounds it names", () => {
+    const spec = mapSpec({
+      points: [{ ...NYC }],
+      view: { bounds: [-80, 35, -70, 45] },
+    }) as MapSpec;
+    expect(spec.view?.bounds).toEqual([-80, 35, -70, 45]);
+  });
+});
