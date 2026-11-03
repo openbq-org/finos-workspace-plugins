@@ -320,12 +320,18 @@ export default {
     }
     container.appendChild(body);
 
+    /* The Columns panel shows and orders columns only: no row groups, values or pivot */
+    const columnsToolPanel = {
+      id: "columns",
+      labelDefault: "Columns",
+      labelKey: "columns",
+      iconKey: "columns",
+      toolPanel: "agColumnsToolPanel",
+      toolPanelParams: { suppressRowGroups: true, suppressValues: true, suppressPivots: true, suppressPivotMode: true },
+    };
     const enterpriseOptions = chartsAvailable
       ? {
-          sideBar: table.enableAdvanced === false ? false : { toolPanels: ["columns", "filters"], defaultToolPanel: table.enableAdvanced === true ? "columns" : "" },
-          rowGroupPanelShow: "onlyWhenGrouping",
-          pivotPanelShow: "onlyWhenPivoting",
-          suppressAggFuncInHeader: true,
+          sideBar: table.enableAdvanced === false ? false : { toolPanels: [columnsToolPanel, "filters"], defaultToolPanel: table.enableAdvanced === true ? "columns" : "" },
           cellSelection: true,
           enableCharts: chartsOn,
           chartThemes: chartThemesFor(mode),
@@ -333,7 +339,6 @@ export default {
           statusBar: {
             statusPanels: [
               { statusPanel: "agTotalAndFilteredRowCountComponent", align: "left" },
-              { statusPanel: "agAggregationComponent", align: "right" },
             ],
           },
         }
@@ -357,8 +362,6 @@ export default {
       animateRows: true,
       enableCellTextSelection: !chartsAvailable,
       suppressScrollOnNewData: true,
-      groupDefaultExpanded: 1,
-      autoGroupColumnDef: { headerName: "Group", minWidth: 160 },
       defaultColDef: {
         resizable: true,
         sortable: true,
@@ -367,7 +370,6 @@ export default {
         flex: 1,
         minWidth: 70,
         suppressHeaderFilterButton: true,
-        ...(chartsAvailable ? { enableRowGroup: true, enablePivot: true, enableValue: true } : {}),
         ...(gridOptions.defaultColDef || {}),
       },
     };

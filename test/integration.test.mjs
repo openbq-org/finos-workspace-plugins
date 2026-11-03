@@ -221,6 +221,16 @@ const changeCell = el2.querySelector('.ag-row[row-id="btc"] .ag-cell[col-id="cha
 assert(changeCell && changeCell.style.color !== "", `greenRed colours the cell (${changeCell?.style.color})`);
 assert(el2.querySelector('.ag-cell[col-id="history"]') !== null, "sparkline column rendered");
 
+// The Columns panel shows and orders columns only: no row grouping, values or pivot
+const columnsButton = [...el2.querySelectorAll(".ag-side-button")].find((b) => b.textContent.includes("Columns"));
+columnsButton?.querySelector("button")?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+await new Promise((r) => setTimeout(r, 50));
+assert(el2.querySelector(".ag-column-select") !== null, "Columns panel lists the columns");
+assert(el2.querySelector(".ag-pivot-mode-panel") === null, "no Pivot Mode switch");
+// AG Grid always builds the top row group and pivot bars, hidden; none may show
+const shownDrops = [...el2.querySelectorAll(".ag-column-drop")].filter((z) => z.closest(".ag-hidden") === null);
+assert(shownDrops.length === 0, `no row group, values or pivot drop zones (${shownDrops.map((z) => z.textContent.trim()).join("; ")})`);
+
 const buttons = [...el2.querySelectorAll(".ag-table-chart-toolbar-button")].map((b) => b.textContent);
 assert(buttons.join() === "Table,Chart", `ChartView toolbar shown (${buttons.join()})`);
 

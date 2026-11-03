@@ -1,6 +1,6 @@
 {
   "name": "workspace-plugin-ag-grid",
-  "version": "1.2.0",
+  "version": "2.0.0",
   "private": true,
   "description": "A FINOS Workspace widget plugin that renders AG Grid tables configured like OpenBB Workspace tables, with charts, sparklines, streaming updates and grid events",
   "author": "dlee-bq",

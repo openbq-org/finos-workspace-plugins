@@ -1,4 +1,4 @@
-# AgGrid table for Workspace (`bq-ag-grid` repository)
+# AgGrid table for Workspace
 
 A Workspace widget plugin that renders the `ag-grid` widget type with
 [AG Grid](https://www.ag-grid.com/), configured the way
@@ -18,14 +18,13 @@ The plugin renders tabular data returned by a backend as an ag-grid Community
 table, with:
 
 - **Column definitions**: `field`, `headerName`, `width`, `minWidth`, `maxWidth`,
-  `flex`, `resizable`, `sortable`, `filter`, `editable`, `pinned`, `rowGroup`,
-  `enablePivot`, `cellRenderer`, `cellEditor`, `valueGetter`, `valueSetter`,
-  `cellClass`, `cellStyle`, `tooltip`, and more.
+  `flex`, `resizable`, `sortable`, `filter`, `editable`, `pinned`, `cellRenderer`,
+  `cellEditor`, `valueGetter`, `valueSetter`, `cellClass`, `cellStyle`, `tooltip`, and more.
 - **Grid options**: `rowSelection` (`single`/`multiple`), `rowMultiSelectWithClick`,
   `rowDeselection`, `pagination` / `paginationPageSize`, `domLayout`
   (`autoHeight`), `editing` (`singleCell`/`fullRow`), `enableRangeSelection`,
   `suppressContextMenu`, `animateRows`, `enableCellTextSelection`, `rowHeight`,
-  `headerHeight`, `treeData`, `masterDetail`, and many others.
+  `headerHeight`, and many others.
 - **Streaming updates**: when the backend pushes new row data through the
   `data` trait, the widget computes an add/update/remove diff and applies it
   with `api.applyTransaction()` — efficient incremental updates without a full
@@ -40,13 +39,13 @@ table, with:
   `ag-theme-quartz` / `ag-theme-quartz-dark`, in a compact density: 26 px rows, a 30 px header,
   formatted and right-aligned numbers, columns that share the card's width, and pagination only
   above 100 rows, with as many rows per page as fit.
-- **Tool panels**: with `ag-grid-enterprise` loaded, a side bar with the Columns panel
-  (visibility, row groups, values and Pivot Mode) and the Filters panel, drop zones for row
-  groups and pivots, range selection and a status bar with the row count and the aggregate of
-  the selected cells. Every column can be grouped, pivoted and aggregated, and a selected range
-  is charted from the context menu (Chart Range: column, bar, pie, line, scatter, area, statistical
-  and combination charts) in a dark or light chart theme that follows the site. A backend's
-  `gridOptions` replace any of these defaults.
+- **Tool panels**: with `ag-grid-enterprise` loaded, a side bar with the Columns panel (column
+  visibility and order) and the Filters panel, range selection, and a status bar with the row
+  count. A selected range is charted from the context menu (Chart Range: column, bar, pie, line,
+  scatter, area, statistical and combination charts) in a dark or light chart theme that follows
+  the site. A backend's `gridOptions` replace any of these defaults. The plugin offers no row
+  grouping, aggregation or pivot of its own: the Columns panel has no row group, values or pivot
+  sections, and columns are not set up to be grouped, aggregated or pivoted.
 
 ## The contract
 
@@ -115,24 +114,6 @@ Column definitions and types are inferred automatically from the data.
   "columns": ["region", "sales", "date"],
   "index": [0, 1],
   "data": [["EMEA", 100, "2024-01-10"], ["APAC", 105, "2024-01-12"]]
-}
-```
-
-### 5. Grouping
-
-Column definitions in the ag-grid-ready object group rows. Here the `region` column is the row
-group and is hidden as a column of its own:
-
-```json
-{
-  "columnDefs": [
-    { "field": "region", "rowGroup": true, "hide": true },
-    { "field": "sales" }
-  ],
-  "rowData": [
-    { "region": "EMEA", "sales": 100 },
-    { "region": "APAC", "sales": 105 }
-  ]
 }
 ```
 
@@ -256,7 +237,7 @@ computes the checksum, and writes `plugin.json` with `version` and `checksum`.
 The package Workspace consumes is the folder `dist/ag-grid/<version>/`:
 
 ```
-dist/ag-grid/1.2.0/
+dist/ag-grid/2.0.0/
   plugin.json                     manifest; version and checksum written by the build
   entry.js                        the AFM module (entry.module)
   entry.css                       the styles (entry.styles)
@@ -343,7 +324,7 @@ repository's root). Without changing Workspace:
 ```bash
 npm ci && npm run build && npm run verify
 mkdir -p "$WORKSPACE_PLUGINS_DIR/ag-grid"
-cp -R dist/ag-grid/1.2.0 "$WORKSPACE_PLUGINS_DIR/ag-grid/"
+cp -R dist/ag-grid/2.0.0 "$WORKSPACE_PLUGINS_DIR/ag-grid/"
 ```
 
 Then Admin, Widgets, Deployment: Rescan, approve, enable and grant; add the data backend under
