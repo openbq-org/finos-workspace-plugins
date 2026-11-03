@@ -1,6 +1,6 @@
 # Map widget
 
-FINOS Workspace widget plugin for the `map` widget type, drawn with MapLibre GL JS. Package and manifest format: [Plugin package and manifest](https://github.com/openbq-org/workspace/blob/develop/docs/reference/plugins/package-and-manifest.mdx).
+FINOS Workspace widget plugin for the `map` widget type, drawn with MapLibre GL JS. Package and manifest format: [Plugin package and manifest](https://github.com/finos-labs/finos-workspace/blob/develop/docs/reference/plugins/package-and-manifest.mdx).
 
 ## Widget
 
