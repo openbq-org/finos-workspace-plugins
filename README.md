@@ -318,16 +318,29 @@ The demo backend that used to sit in `examples/` stays in the Workspace reposito
 ## Try it on a local Workspace
 
 A local Workspace stack (`local/` in the Workspace repository, `make up`) mounts the folder named by
-`WORKSPACE_PLUGINS_DIR` as its plugins directory (default: `widget-plugins/` at the Workspace
-repository's root). Without changing Workspace:
+`WORKSPACE_PLUGINS_DIR` (set in `workspace/local/.env`, default `widget-plugins/` at the Workspace
+repository's root) as its plugins directory. Fetching the plugin into it needs no change to
+Workspace:
 
 ```bash
-npm ci && npm run build && npm run verify
-mkdir -p "$WORKSPACE_PLUGINS_DIR/ag-grid"
-cp -R dist/ag-grid/2.0.0 "$WORKSPACE_PLUGINS_DIR/ag-grid/"
+npm ci && npm run build
+WORKSPACE_PLUGINS_DIR=<plugins directory> npm run install:workspace
 ```
 
-Then Admin, Widgets, Deployment: Rescan, approve, enable and grant; add the data backend under
-Connections (`MODE=local` accepts `http://localhost:<port>`); and put an `ag-grid` widget on a
-dashboard. A version that is already there with the same digest is the same package: nothing to
-approve again.
+`install:workspace` runs `verify`, then copies `dist/ag-grid/<version>/` to
+`<plugins directory>/ag-grid/<version>/`, next to the versions already there. It does nothing when
+that version is already there with the same files, and refuses when its files differ: raise the
+version instead.
+
+Then rescan and approve, in Admin, Widgets, Deployment, or from the backend container:
+
+```bash
+docker exec workspace-local-backend-1 python -m scripts.workspace_admin plugin rescan
+docker exec workspace-local-backend-1 python -m scripts.workspace_admin plugin show ag-grid
+docker exec workspace-local-backend-1 python -m scripts.workspace_admin plugin approve ag-grid <version> --digest <version digest> --acknowledge
+```
+
+The approved version replaces the active one for every organization that enabled the plugin.
+A first install also needs `plugin enable` and `plugin grant` (or the Admin pages). Add the data
+backend under Connections (`MODE=local` accepts `http://localhost:<port>`) and put an `ag-grid`
+widget on a dashboard.
