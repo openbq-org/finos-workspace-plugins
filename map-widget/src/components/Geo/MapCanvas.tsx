@@ -32,6 +32,7 @@ import {
   COLUMN_PITCH,
   type KeptCamera,
   type MapPlacement,
+  type MapTarget,
   useMapCamera,
 } from "./useMapCamera";
 import { useMapCard } from "./useMapCard";
@@ -72,6 +73,8 @@ export interface MapViewProps {
 
   expanded?: boolean;
 
+
+  target?: MapTarget | null;
 }
 
 const MapCanvas = memo(function MapCanvas({
@@ -88,6 +91,7 @@ const MapCanvas = memo(function MapCanvas({
   onContextLost,
   slot,
   keepsCamera = false,
+  target,
 }: Omit<MapViewProps, "spec"> & {
   spec: MapSpec;
 
@@ -298,6 +302,7 @@ const MapCanvas = memo(function MapCanvas({
       ? COLUMN_PITCH
       : (spec.pitch ?? (raised ? AREA_PITCH : COLUMN_PITCH)),
     bearing: columns ? COLUMN_BEARING : raised ? AREA_BEARING : 0,
+    target,
     pitchable: tall || standing,
     camera: slot?.camera,
     cameraOf: spec,

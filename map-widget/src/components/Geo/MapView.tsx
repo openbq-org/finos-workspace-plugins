@@ -43,6 +43,7 @@ const MapView = memo(function MapView({
   shapes,
   onShapesChange,
   expanded = false,
+  target,
 }: MapViewProps) {
   const checked = useMemo(() => {
     try {
@@ -176,6 +177,7 @@ const MapView = memo(function MapView({
             onContextLost={contextLost}
             slot={canvasSlot}
             keepsCamera={Boolean(onViewChange)}
+            target={target}
           />
         </ErrorBoundary>
       ) : still ? (

@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import MapView from "~/components/Geo/MapView";
+import type { MapTarget } from "~/components/Geo/useMapCamera";
 import { useMapSources } from "~/components/Geo/useMapSources";
 import { useCitiesWhenMoved } from "~/components/Geo/useCitiesWhenMoved";
 import type { WidgetMap } from "~/lib/geo/mapData";
@@ -46,6 +47,26 @@ function useStored(model: Model) {
     [model],
   );
   return { stored: stored ?? {}, keep };
+}
+
+const finite = (value: unknown): value is number =>
+  typeof value === "number" && Number.isFinite(value);
+
+function useTarget(model: Model): MapTarget | null {
+  const latitude = useTrait<unknown>(model, "viewLatitude");
+  const longitude = useTrait<unknown>(model, "viewLongitude");
+  const zoom = useTrait<unknown>(model, "viewZoom");
+  const bearing = useTrait<unknown>(model, "viewBearing");
+  const pitch = useTrait<unknown>(model, "viewPitch");
+  return useMemo(() => {
+    const target: MapTarget = {
+      ...(finite(latitude) && finite(longitude) ? { center: [longitude, latitude] as [number, number] } : {}),
+      ...(finite(zoom) ? { zoom } : {}),
+      ...(finite(bearing) ? { bearing } : {}),
+      ...(finite(pitch) ? { pitch } : {}),
+    };
+    return Object.keys(target).length ? target : null;
+  }, [latitude, longitude, zoom, bearing, pitch]);
 }
 
 const payloadOf = (data: unknown): unknown =>
@@ -96,6 +117,7 @@ export default function MapWidget({ model }: { model: Model }) {
   >(model, "theme");
   const meta = useTrait<{ name?: string; title?: string } | undefined>(model, "meta");
   const { stored, keep } = useStored(model);
+  const target = useTarget(model);
   const tilesUrl = useTrait<unknown>(model, "mapTilesUrl");
   const tilesProvider = useTrait<unknown>(model, "mapTilesProvider");
   const adminSources = useTrait<unknown>(model, "mapSources");
@@ -160,6 +182,7 @@ export default function MapWidget({ model }: { model: Model }) {
           onShapesChange={onShapesChange}
           view={stored.mapView}
           onViewChange={onViewChange}
+          target={target}
         />
       </div>
     );

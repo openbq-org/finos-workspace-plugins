@@ -815,3 +815,32 @@ describe("where a widget keeps that its reader left the map", () => {
     expect(fake.fitBounds).toHaveBeenCalledTimes(1);
   });
 });
+
+describe("a view the widget settings name", () => {
+  const camera = (target: Parameters<typeof useMapCamera>[0]["target"], map: ReturnType<typeof fakeMap>["map"]) =>
+    useMapCamera({
+      map,
+      bounds: [-125, 24, -66, 50],
+      detailZoom: 6,
+      heading: true,
+      legend: false,
+      tilted: false,
+      target,
+    });
+
+  it("is not moved to on the first render, so a saved view stays", () => {
+    const { map, fake } = fakeMap(800, 500);
+    renderHook(() => camera({ center: [2.35, 48.85], zoom: 12 }, map));
+    expect(fake.easeTo).not.toHaveBeenCalled();
+  });
+
+  it("is moved to when it changes", () => {
+    const { map, fake } = fakeMap(800, 500);
+    const { rerender } = renderHook(({ target }) => camera(target, map), {
+      initialProps: { target: null as Parameters<typeof useMapCamera>[0]["target"] },
+    });
+    rerender({ target: { center: [2.35, 48.85], zoom: 12 } });
+    expect(fake.easeTo).toHaveBeenCalledTimes(1);
+    expect(fake.easeTo.mock.calls[0][0]).toMatchObject({ center: [2.35, 48.85], zoom: 12 });
+  });
+});
