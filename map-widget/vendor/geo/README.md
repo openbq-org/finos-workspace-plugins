@@ -1,17 +1,16 @@
-# Boundary files for maps
+# Boundary files
 
-These are the shapes the map draws without asking any server: the land and the borders of the basemap that a map draws when no tiles can be read, and the regions that data can shade. They are copied or built here so that a map never depends on a CDN or a registry at run time. The plugin reads each file from its package (`assets/geo/`) with `core:asset:read`, only when a map needs it; none is part of what the plugin loads at its start.
+Shapes and places the map reads from its package (`assets/geo/`, `core:asset:read`) when a map needs them.
 
-There are two kinds of files:
+- `us-atlas-3.0.1/`, `world-atlas-2.0.2/`: unmodified files of two npm packages. `countries-110m.json` is the land of the fallback basemap.
+- `regions/`: built by [`scripts/geo/prepare-regions.mjs`](../../scripts/geo/prepare-regions.mjs) from public-domain sources.
+- `places/`: built by [`scripts/geo/prepare-cities.mjs`](../../scripts/geo/prepare-cities.mjs) and [`scripts/geo/prepare-zips.mjs`](../../scripts/geo/prepare-zips.mjs).
 
-- **Unmodified files of two npm packages** (`us-atlas-3.0.1/`, `world-atlas-2.0.2/`): the US states and counties, and the world at 1:110m, which is the land of the fallback basemap.
-- **Files built by a script of this repository** (`regions/`): the countries at 1:50m, the first-level regions of the world, the US metro areas and congressional districts, and one index for each boundary set. [`scripts/geo/prepare-regions.mjs`](../../scripts/geo/prepare-regions.mjs) builds them from public-domain sources.
+## Shapes
 
-## The files
+Sizes in bytes.
 
-Sizes are in bytes; "gzip" is what a server that compresses sends.
-
-| File | Regions | Source of the shapes | Raw | Gzip |
+| File | Regions | Source | Raw | Gzip |
 | --- | --- | --- | --- | --- |
 | `us-atlas-3.0.1/states-10m.json` | 56 | [`us-atlas@3.0.1`](https://github.com/topojson/us-atlas): US Census Bureau cartographic boundary files, 2017, 1:10m | 114,554 | 36,094 |
 | `us-atlas-3.0.1/counties-10m.json` | 3,231 | the same | 842,143 | 250,234 |
@@ -32,34 +31,45 @@ Sizes are in bytes; "gzip" is what a server that compresses sends.
 | `regions/us-cbsa.index.json` | 935 | index of `us-cbsa.json` | 84,553 | 33,177 |
 | `regions/us-cd119.index.json` | 441 | index of `us-cd119.json` | 41,569 | 14,561 |
 
-Together 7.58 MB, 2.42 MB compressed. The largest file is 1.09 MB (327 KB compressed). With the cities below the folder is 8,700,643 bytes: 8,497 KB of the 8,704 KB a test lets it hold (every file under 1.5 MB, the folder under 8.5 MB of 1,024 KB each; it was 8 MB until the cities got their regions and their other names, which added 410 KB to that one file).
+Shapes total 7.58 MB (2.42 MB gzip). With `places/` the folder is 8,906,200 bytes. [`vendorChecksums.test.ts`](../../tests/unit/lib/geo/vendorChecksums.test.ts) caps each file at 1.5 MiB and the folder at 8.5 MiB.
 
-## The cities
+A shape file is TopoJSON in decimal degrees, not projected. Shape ids:
+
+| Set | Id |
+| --- | --- |
+| US states | FIPS code, two digits |
+| US counties | FIPS code, five digits |
+| Countries | ISO 3166-1 numeric code |
+| First-level regions | ISO 3166-2 code (`CA-ON`) |
+| Metro areas | CBSA code, five digits |
+| Congressional districts | state postal code and district number (`CA-12`, `AK-AL`) |
+
+An index file has no shapes: per region its id, names, a point inside its largest part, and its box. Data is matched against the index ([`src/lib/geo/regions/registry.ts`](../../src/lib/geo/regions/registry.ts)); shapes are loaded only to draw.
+
+## Cities
 
 | File | Cities | Source | Raw | Gzip |
 | --- | --- | --- | --- | --- |
-| `places/cities.json` | 23,162 of 244 countries and territories | GeoNames `cities15000`: every place of 25,000 residents or more, and every capital of a country or of a first-level region; 568 names in English from Natural Earth 5.1.1 populated places; the first-level region of 22,975 of them, from the boundary set of this folder; 25,034 other names of the 3,785 cities of 150,000 residents or more | 1,121,889 | 478,308 |
+| `places/cities.json` | 23,162 in 244 countries and territories | GeoNames `cities15000`: places of 25,000 residents or more and capitals of countries and first-level regions; 568 English names from Natural Earth 5.1.1 populated places; the first-level region of 22,975 cities from `regions/`; 25,034 alternate names of the 3,785 cities of 150,000 residents or more | 1,121,889 | 478,308 |
 
-It is what a map places by the name of a city ([`src/lib/geo/regions/cities.ts`](../../src/lib/geo/regions/cities.ts)): no shapes, one row for each city (its name, its place to a thousandth of a degree, its residents to the thousand, the first-level region it is in, and the names people write in English), and beside the rows every other name of a large city. The app fetches it the first time a map names a city.
+Read by [`src/lib/geo/regions/cities.ts`](../../src/lib/geo/regions/cities.ts) the first time a map names a city.
 
-**Licence.** GeoNames is under [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/) ([LICENSE.geonames](LICENSE.geonames)): a map that places a point by a city shows "Cities: GeoNames, CC BY 4.0" in its credit area and writes the credit into every file it is exported to. Natural Earth is in the public domain.
+- **Row:** name, position to 0.001 degree, residents to the thousand, first-level region, English names. No shapes.
+- **English names:** each Natural Earth place gives its names to the largest GeoNames city of the same country within 25 km, kept only when GeoNames lists the name for that city. The script adds eight former names: Calcutta, Bombay, Madras, Gurgaon, Saigon, Peking, Canton, Rangoon.
+- **Region:** the `regions/admin1-*.json` region whose shape holds the city, or the nearest within 0.3 degrees. Written as the end of its ISO 3166-2 code (`ON`, `BY`), or province and region where the set has two levels (`MI/25`). US cities keep the GeoNames state. 187 cities have no region (Hong Kong, Puerto Rico, Kosovo, Somaliland).
+- **Alternate names:** cities of 150,000 residents or more carry every GeoNames alternate name in Latin letters that starts with a capital. They are matched only when no city has the name as its own; the map lists cities placed by an alternate name.
+- **Not matched:** places under 25,000 residents. The map lists the rows it could not place.
 
-**Why GeoNames and not Natural Earth alone.** Natural Earth's populated places (7,342, public domain) would need no credit, but they are the places a world map labels, not the places firms are in: of 104 business locations that were checked, 24 are missing (Greenwich, Menlo Park, Palo Alto, Mountain View, Jersey City, Redmond, Cupertino, Plano, Princeton, Santa Monica, Bellevue, Waltham among them). GeoNames has them. All 34,151 places of `cities15000` are 1.04 MB in this form, which the folder has no room for; 25,000 residents keeps 23,162 in 0.71 MB. A place under that size is not matched (Armonk, Purchase, and Greenwich in Connecticut, which GeoNames lists as a town and not as a populated place): the map says which rows it could not place, and they take a latitude and a longitude.
+Licence: GeoNames is [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/) ([LICENSE.geonames](LICENSE.geonames)). A map that places a point by city shows "Cities: GeoNames, CC BY 4.0" in its credits and writes the credit into every export. Natural Earth is public domain.
 
-**The names.** GeoNames lists a city under one name, often the local one ("Genève", "Kraków", "Bengaluru"), and its other names in every language in one list. The names people write in English come from Natural Earth: each of its places gives its names to the largest city of GeoNames of the same country within 25 km, and a name is kept only when GeoNames lists it for that city too. Eight former names (Calcutta, Bombay, Madras, Gurgaon, Saigon, Peking, Canton, Rangoon) are a list of the script, checked the same way: without them "Calcutta" is only a town in South Africa.
+Sources, downloaded 2026-10-10:
 
-**The region of a city.** GeoNames names the first-level region of a city by a code of its own (a number in most countries), which the boundary set does not have. The script finds the region on the map: the region of `regions/admin1-*.json` whose shape holds the city, or the nearest within 0.3 degrees for a city on a coast the simplified shape leaves outside. It is written as the end of its ISO 3166-2 code (`ON`, `BY`), the province and the region above it where the set has two levels (`MI/25`). 187 cities are in no region of the set (Hong Kong, Puerto Rico, Kosovo, Somaliland). A city of the United States keeps the state GeoNames gives. With it "Toronto, ON", "Sydney, NSW" and a `state` column beside Canada narrow a city by the index of the first-level regions.
-
-**Every other name of a large city.** "München", "Genève", "Roma", "Firenze", "Bruxelles" and "Den Haag" matched nothing. GeoNames lists the names of a city in every language in one list and does not say which language each is in, so no name can be chosen: a city of 150,000 residents or more has all of them that are written in Latin letters and start with a capital (the others are transliterations letter by letter), each once by its key. All cities would be 1.9 MB of names; from 150,000 residents it is 297 KB. The matcher asks them only when no city has the name as its own, and the map says which cities it placed by another name.
-
-**Sources**, downloaded on 2026-10-10:
-
-| Archive | Address | SHA-256 of the archive |
+| Archive | Address | SHA-256 |
 | --- | --- | --- |
 | `cities15000.zip` (GeoNames) | `https://download.geonames.org/export/dump/cities15000.zip` | `9339ac426943c265eb7fdfd5350ae351a5584b4d4271ed58f071ddc432982aeb` |
 | `ne_10m_populated_places_simple.zip` (Natural Earth 5.1.1) | `https://naciscdn.org/naturalearth/10m/cultural/ne_10m_populated_places_simple.zip` | `2963ee08f7743f13f37d5243acd77a2f7a510e26a36c7e04b920f1b381f2b251` |
 
-To reproduce, with node 22.18 or later and `unzip` (the script downloads nothing and runs nothing of an archive: it reads one file of data from each):
+Rebuild with node 22.18 or later and `unzip`. The script downloads nothing and reads one data file from each archive.
 
 ```
 mkdir -p dl && cd dl
@@ -68,29 +78,29 @@ cd .. && node scripts/geo/prepare-cities.mjs --downloads dl
 cd vendor/geo && sha256sum -c SHA256SUMS
 ```
 
-GeoNames publishes `cities15000.zip` anew every day, so an archive of another day has another SHA-256 and the script stops: record the new one in the script and here, and review what changed in `cities.json`.
+GeoNames republishes `cities15000.zip` daily and the script stops on a different SHA-256. Record the new SHA-256 in the script and here, and review the changes to `cities.json`.
 
-## The ZIP codes
+## ZIP codes
 
-| File | Rows | Source | Bytes | Compressed |
+| File | Rows | Source | Raw | Gzip |
 | --- | --- | --- | --- | --- |
-| `places/zips.json` | 33,791 US ZIP codes | The ZIP Code Tabulation Areas of the national Gazetteer file of the US Census Bureau, 2025 edition (the areas of the 2020 Census) | 205,557 | 136,360 |
+| `places/zips.json` | 33,791 US ZIP codes | ZIP Code Tabulation Areas of the US Census Bureau national Gazetteer file, 2025 edition (2020 Census areas) | 205,557 | 136,360 |
 
-It is where a map puts a row that names a US ZIP code ([`src/lib/geo/regions/zips.ts`](../../src/lib/geo/regions/zips.ts)): no shapes, one place for each code, the internal point of its area as the Gazetteer gives it (`INTPTLAT`, `INTPTLONG`) to a thousandth of a degree, about 110 m. With it the folder is 8,906,200 bytes of the 8,912,896 a test lets it hold.
+Read by [`src/lib/geo/regions/zips.ts`](../../src/lib/geo/regions/zips.ts).
 
-**Licence.** A work of the United States government, in the public domain: no credit is asked for.
+- **Row:** one position per code: the internal point of its area (`INTPTLAT`, `INTPTLONG`) to 0.001 degree (about 110 m). No shapes.
+- **ZCTA:** the Census Bureau area built from census blocks for the ZIP code of the same five digits. It approximates the delivery area. A PO box or single-building ZIP code has none.
+- **Format:** `{ source, vintage, licence, scale, count, table }`. `table` is base64 of, for each code in ascending order, the deltas of the code, latitude × `scale` and longitude × `scale` from the previous code, as 7-bit variable-length integers. The last two are zigzag signed (2n, or -2n - 1 below zero).
 
-**A ZCTA is not a ZIP code.** A ZIP Code Tabulation Area is the area the Census Bureau builds from census blocks for the ZIP code of the same five digits. It approximates the delivery area of that ZIP code and is not identical to it, and a ZIP code that is only a post office box or one large building has none. The areas are those of the 2020 Census.
+Licence: US government work, public domain.
 
-**The form.** `{ source, vintage, licence, scale, count, table }`, where `table` is base64 of bytes: for each code in ascending order, the difference of the code, of the latitude times `scale` and of the longitude times `scale` from the ones before, as variable-length integers of seven bits a byte (the last two signed: 2n, or -2n - 1 below zero). ZIP codes that are near in number are near on the ground, so the differences are small: a list of the same numbers as text was 354 KB.
+Source, downloaded 2026-10-11:
 
-**Source**, downloaded on 2026-10-11:
-
-| Archive | Address | SHA-256 of the archive |
+| Archive | Address | SHA-256 |
 | --- | --- | --- |
 | `2025_Gaz_zcta_national.zip` (US Census Bureau) | `https://www2.census.gov/geo/docs/maps-data/data/gazetteer/2025_Gazetteer/2025_Gaz_zcta_national.zip` | `51516a4283bab5cd2376eec75609ddc4b363a18297e8adeeaac7b03cf7c84dbe` |
 
-To reproduce, with node 22.18 or later and `unzip` (the script downloads nothing and runs nothing of the archive: it reads its one file of text):
+Rebuild with node 22.18 or later and `unzip`. The script downloads nothing and reads the one text file of the archive.
 
 ```
 mkdir -p dl/2025_Gaz_zcta_national && curl -sSL -o dl/2025_Gaz_zcta_national/2025_Gaz_zcta_national.zip <the address>
@@ -98,29 +108,27 @@ node scripts/geo/prepare-zips.mjs --downloads dl
 cd vendor/geo && sha256sum -c SHA256SUMS
 ```
 
-A shape file is TopoJSON in decimal degrees, not projected. Each shape has an id: the FIPS code of a state (two digits) or a county (five), the ISO 3166-1 numeric code of a country, the ISO 3166-2 code of a first-level region (`CA-ON`), the CBSA code of a metro area (five digits), the postal code of the state and the number of a district (`CA-12`, `AK-AL`). An index file has no shapes: for each region its id, its names, a point inside its largest part and its box. The app matches data against the index ([`src/lib/geo/regions/registry.ts`](../../src/lib/geo/regions/registry.ts)) and loads shapes only for a map.
-
 ## Provenance
 
-**The npm packages.** The three files were taken from the npm tarballs, whose SHA-256 are:
+npm tarballs:
 
 ```
 e6daba1800885868303ad3549da62f85a557b8142bb72629ec15651de62f9c5d  us-atlas-3.0.1.tgz
 032e7765f2ce00edaeafec23ff22bc3b77e42987c257da944cc585b452c05b97  world-atlas-2.0.2.tgz
 ```
 
-To reproduce: `npm pack us-atlas@3.0.1 world-atlas@2.0.2`, unpack, and copy the three files.
+Rebuild: `npm pack us-atlas@3.0.1 world-atlas@2.0.2`, unpack, copy the three files.
 
-**The sources of `regions/`.** Downloaded on 2026-10-09:
+Sources of `regions/`, downloaded 2026-10-09:
 
-| Archive | Address | SHA-256 of the archive |
+| Archive | Address | SHA-256 |
 | --- | --- | --- |
 | `ne_50m_admin_0_countries.zip` (Natural Earth 5.1.1) | `https://naciscdn.org/naturalearth/50m/cultural/ne_50m_admin_0_countries.zip` | `5fed433373581fa648920435f937d95f2d3c0200e067409c6478dcdf1b853139` |
 | `ne_10m_admin_1_states_provinces.zip` (Natural Earth 5.1.1) | `https://naciscdn.org/naturalearth/10m/cultural/ne_10m_admin_1_states_provinces.zip` | `efc59726337323058f9446210adc96673179cd344e053666ee3d28cb58ba2b05` |
 | `cb_2024_us_cbsa_5m.zip` | `https://www2.census.gov/geo/tiger/GENZ2024/shp/cb_2024_us_cbsa_5m.zip` | `94b5bdbb8990eabb66e9c1450731858607e2c02489bcf669f546aa477b9caca8` |
 | `cb_2024_us_cd119_5m.zip` | `https://www2.census.gov/geo/tiger/GENZ2024/shp/cb_2024_us_cd119_5m.zip` | `17370f9f4070f3a0fa82bb7400042bd418be77c208abc44288b52b3ad2344cc6` |
 
-To reproduce, with the node of `.nvmrc` and network access for `npx` (it fetches `mapshaper@0.6.102`, the one tool the script runs):
+Rebuild with the node of `.nvmrc` and network access for `npx` (it fetches `mapshaper@0.6.102`):
 
 ```
 mkdir -p dl && cd dl
@@ -129,42 +137,45 @@ cd .. && node scripts/geo/prepare-regions.mjs --downloads dl
 cd vendor/geo && sha256sum -c SHA256SUMS
 ```
 
-The script stops when an archive does not have the SHA-256 above, writes the same bytes on each run, and fails when two lines of a file cross. It also reads the two files of `us-atlas-3.0.1/` (for the indexes of the states and the counties) and the table of ISO 3166-1 codes in [`scripts/geo/tables.mjs`](../../scripts/geo/tables.mjs), which is the input of the script only: the app matches with the index files it writes.
+- The script stops on an archive with a different SHA-256, writes the same bytes on every run, and fails when two lines of a file cross.
+- It also reads `us-atlas-3.0.1/` (for the state and county indexes) and the ISO 3166-1 table in [`scripts/geo/tables.mjs`](../../scripts/geo/tables.mjs).
 
-The SHA-256 of each file here is in [SHA256SUMS](SHA256SUMS); a unit test checks the list ([`vendorChecksums.test.ts`](../../tests/unit/lib/geo/vendorChecksums.test.ts)) and the image build checks it again, so a file that changes without its line fails both. Update the list in the same commit as a file.
+[SHA256SUMS](SHA256SUMS) lists every file. [`vendorChecksums.test.ts`](../../tests/unit/lib/geo/vendorChecksums.test.ts) and the image build check it. Update it in the same commit as the file.
 
-## What the script does to the shapes
+## Simplification
 
-| Set | Positions in the source | Positions shipped | Detail kept | Grid |
+| Set | Positions in the source | Positions shipped | Bends kept | Grid |
 | --- | --- | --- | --- | --- |
-| Countries | 80,683 | 62,220 | bends over 2 km | 0.001 degree (about 100 m) |
-| First-level regions | 864,294 | 357,949 | bends over 1 km | 0.001 degree |
-| Metro and micro areas | 71,993 | 47,812 | bends over 400 m | 0.0002 degree (about 20 m) |
-| Congressional districts | 105,423 | 58,228 | bends over 400 m | 0.0002 degree |
+| Countries | 80,683 | 62,220 | over 2 km | 0.001 degree (about 100 m) |
+| First-level regions | 864,294 | 357,949 | over 1 km | 0.001 degree |
+| Metro and micro areas | 71,993 | 47,812 | over 400 m | 0.0002 degree (about 20 m) |
+| Congressional districts | 105,423 | 58,228 | over 400 m | 0.0002 degree |
 
-- **Shared borders stay shared.** The simplification works on the lines between regions, each stored once, so two neighbours keep one border with no gap and no overlap. Every region is kept, however small.
-- **One grid for the world.** Positions are whole steps from -180, -90, the same for every file. The six continent files of the first-level regions are cut from one simplified topology, so the border between two of them (Russia and Kazakhstan) has the same positions in both files.
-- **Checked by numbers.** After the grid, the script counts the pairs of segments that cross: zero for every file. Tests repeat the count on the shipped files, and check that the point of each region is inside its shape and its box.
-- **The index.** The point of a region is the middle of the widest stretch of its largest part, so it is inside also for a crescent or a shape with a hole. The box of a region that crosses the 180th meridian (Alaska, Chukotka, Fiji) is measured across it: west can be under -180 or east over 180. A country or a region whose parts are far apart (France with its overseas departments) also has the box of its largest part, which is what a map opens on.
+- **Shared borders:** simplified once per border, so neighbours have no gap or overlap. Every region is kept.
+- **Grid:** whole steps from -180, -90 in every file. The six `admin1-*` files are cut from one topology, so a border between two of them has the same positions in both.
+- **Checks:** zero crossing segment pairs in every file. Tests repeat the count on the shipped files and check each region's point is inside its shape and box.
+- **Index point:** the middle of the widest stretch of the largest part, inside for crescents and shapes with holes.
+- **Index box:** measured across the 180th meridian for regions that cross it (Alaska, Chukotka, Fiji), so west can be under -180 or east over 180. A country with distant parts (France) also has the box of its largest part.
 
-## Deliberate choices about codes
+## Codes
 
-- **Natural Earth has `-99` for the ISO codes of France and Norway.** Their ids are 250 and 578, from the fields that carry the corrected codes.
-- **Kosovo, Northern Cyprus and Somaliland have no ISO 3166-1 numeric code.** Their ids are the three letters Natural Earth uses (`XKX`, `CYN`, `SOL`), which cannot be taken for a numeric code. Kosovo also answers to `XK`.
-- **Western Sahara (732), Taiwan (158), Palestine (275), Puerto Rico (630), Greenland (304), Hong Kong (344) and Macao (446)** are regions of their own, as in ISO 3166-1. The app takes no position: it draws what the source draws.
-- **The Indian Ocean Territories and the Ashmore and Cartier Islands** are part of the shape of Australia (036). **The Siachen Glacier** has no id and is left out.
-- **First-level regions follow ISO 3166-2 as Natural Earth records it**, with these corrections: seven codes that ISO changed since (`MX-DIF` is `MX-CMX`, `IN-OR` is `IN-OD`, and so on; the old code still matches), seven shapes that were filed under the code of a neighbour, and shapes that share one code are one region (Dublin of its four councils, Metro Manila of its 17 cities).
-- **France, Italy, Spain, Belgium and the United Kingdom are drawn by Natural Earth one level down** (departments, provinces, counties). The file has those, and the level above as groups made of them: the 13 regions of metropolitan France, the 20 regions of Italy, the 17 communities of Spain, Flanders and Wallonia, England, Scotland, Wales and Northern Ireland.
-- **188 shapes of the source have no ISO 3166-2 code and are left out**: the municipalities of Kosovo, the districts of Hong Kong, and small territories that are a country of their own in the countries file (Gibraltar, Monaco, Aruba, Guam).
-- **Congressional districts.** The one district of a state and the seat of a delegate (the District of Columbia and five territories) have the id `<state>-AL`. The source writes them 00 and 98.
+- **France and Norway:** Natural Earth has `-99` as their ISO code; their ids are 250 and 578.
+- **Kosovo, Northern Cyprus, Somaliland:** no ISO 3166-1 numeric code; ids `XKX`, `CYN`, `SOL`. Kosovo also matches `XK`.
+- **Western Sahara (732), Taiwan (158), Palestine (275), Puerto Rico (630), Greenland (304), Hong Kong (344), Macao (446):** regions of their own, as in ISO 3166-1.
+- **Indian Ocean Territories, Ashmore and Cartier Islands:** part of Australia (036).
+- **Siachen Glacier:** no id, left out.
+- **First-level regions:** ISO 3166-2 as Natural Earth records it, with corrections: seven codes ISO has changed (`MX-DIF` is `MX-CMX`, `IN-OR` is `IN-OD`, and others; the old code still matches); seven shapes filed under a neighbour's code; shapes sharing one code are one region (Dublin, Metro Manila).
+- **France, Italy, Spain, Belgium, United Kingdom:** drawn one level down (departments, provinces, counties), with the level above as groups: 13 regions of metropolitan France, 20 regions of Italy, 17 communities of Spain, Flanders and Wallonia, England, Scotland, Wales and Northern Ireland.
+- **188 source shapes without an ISO 3166-2 code are left out:** Kosovo municipalities, Hong Kong districts, and territories that are countries in the countries file (Gibraltar, Monaco, Aruba, Guam).
+- **Congressional districts:** a state's single district and delegate seats (District of Columbia and five territories) are `<state>-AL`; the source has 00 and 98.
 
 ## Licences
 
-The data of the US Census Bureau and of Natural Earth is in the public domain. The packaging of the two npm packages as TopoJSON is under the ISC licence of each: see [LICENSE.us-atlas](LICENSE.us-atlas) and [LICENSE.world-atlas](LICENSE.world-atlas). The files of `regions/` are built by this repository from the public-domain sources directly.
+US Census Bureau and Natural Earth data are public domain. The TopoJSON packaging of the two npm packages is ISC: [LICENSE.us-atlas](LICENSE.us-atlas), [LICENSE.world-atlas](LICENSE.world-atlas). `regions/` is built directly from the public-domain sources.
 
-## What is not here
+## Not included
 
-- **ZIP code areas, census tracts and second-level regions of the world.** They are too many to ship (about 33,000 ZIP code areas, 85,000 tracts). A backend serves their shapes as a vector source whose features carry the id, and data joins by that id.
-- **The counties are those of 2017.** Connecticut replaced its eight counties with nine planning regions in 2022, and data of the Census Bureau from 2022 on uses the new codes (09110 to 09190), which have no shape here.
-- **Metro divisions and combined statistical areas.** Only metro and micro areas (CBSA).
-- The Albers USA files of `us-atlas` are not used: the map draws in Web Mercator.
+- **ZIP code areas, census tracts, second-level regions of the world:** about 33,000 ZIP code areas and 85,000 tracts. A backend serves them as a vector source whose features carry the id; data joins by that id.
+- **Counties after 2017:** Connecticut's nine planning regions (2022, codes 09110 to 09190) have no shape.
+- **Metro divisions and combined statistical areas:** only CBSA metro and micro areas.
+- **Albers USA files of `us-atlas`:** not used; the map draws in Web Mercator.
