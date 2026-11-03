@@ -70,6 +70,15 @@ describe("the manifest", () => {
     );
   });
 
+  it("binds the view to settings, which the agent sets with update_widget", () => {
+    const keys = Object.keys(widget.settings.schema.properties);
+    expect(keys).toEqual(["latitude", "longitude", "zoom", "bearing", "pitch"]);
+    const bound = Object.values(widget.model.traits as Record<string, { bind: string }>)
+      .map(({ bind }) => bind)
+      .filter((bind) => bind.startsWith("config:"));
+    expect(bound.sort()).toEqual(keys.map((key) => `config:${key}`).sort());
+  });
+
   it("lists skill files that exist", () => {
     for (const skill of manifest.contributes.skills) {
       expect(skill.slug).toMatch(/^[a-z0-9]+(-[a-z0-9]+)*$/);

@@ -26,6 +26,13 @@ const STEEP_ZOOM_OUT = 0.02;
 const NOTE_LINE = 20;
 const BEYOND_BY = 0.5;
 
+export interface MapTarget {
+  center?: [number, number];
+  zoom?: number;
+  bearing?: number;
+  pitch?: number;
+}
+
 export interface KeptCamera {
   of: unknown;
   center: [number, number];
@@ -87,6 +94,7 @@ export function useMapCamera({
   onCamera,
   stored,
   onStore,
+  target,
 }: {
   map: MapLibreMap | null;
   bounds: MapBounds | null;
@@ -113,6 +121,7 @@ export function useMapCamera({
   onCamera?: (kept: KeptCamera | null) => void;
   stored?: MapCamera;
   onStore?: (camera: MapCamera | null) => void;
+  target?: MapTarget | null;
 }): {
   reset: () => void;
   fitAll: () => void;
@@ -403,6 +412,24 @@ export function useMapCamera({
     backdropZoom,
     onBeyond,
   ]);
+
+  const targeted = useRef(target);
+  useEffect(() => {
+    if (!map || !target || targeted.current === target) {
+      targeted.current = target;
+      return;
+    }
+    targeted.current = target;
+    moved.current = true;
+    map.easeTo({
+      center: target.center ?? map.getCenter(),
+      zoom: target.zoom ?? map.getZoom(),
+      ...(free
+        ? { bearing: target.bearing ?? map.getBearing(), pitch: target.pitch ?? map.getPitch() }
+        : {}),
+      duration: 500,
+    });
+  }, [map, target, free]);
 
   const reset = useCallback(() => {
     moved.current = false;

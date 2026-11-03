@@ -479,6 +479,26 @@
             "mapSources": {
               "bind": "adminSettings:mapSources",
               "access": "read"
+            },
+            "viewLatitude": {
+              "bind": "config:latitude",
+              "access": "read"
+            },
+            "viewLongitude": {
+              "bind": "config:longitude",
+              "access": "read"
+            },
+            "viewZoom": {
+              "bind": "config:zoom",
+              "access": "read"
+            },
+            "viewBearing": {
+              "bind": "config:bearing",
+              "access": "read"
+            },
+            "viewPitch": {
+              "bind": "config:pitch",
+              "access": "read"
             }
           }
         },
@@ -487,6 +507,49 @@
           "h": 16,
           "minW": 8,
           "minH": 6
+        },
+        "settings": {
+          "schema": {
+            "type": "object",
+            "properties": {
+              "latitude": {
+                "type": "number",
+                "title": "Latitude",
+                "description": "Latitude of the center of the view, from -90 to 90. Setting it moves the map there.",
+                "minimum": -90,
+                "maximum": 90
+              },
+              "longitude": {
+                "type": "number",
+                "title": "Longitude",
+                "description": "Longitude of the center of the view, from -180 to 180.",
+                "minimum": -180,
+                "maximum": 180
+              },
+              "zoom": {
+                "type": "number",
+                "title": "Zoom",
+                "description": "Zoom of the view, from 0 (the world) to 19 (a building): 4 is a country, 10 a city, 15 streets.",
+                "minimum": 0,
+                "maximum": 19
+              },
+              "bearing": {
+                "type": "number",
+                "title": "Bearing",
+                "description": "Rotation of the view in degrees, from -180 to 180.",
+                "minimum": -180,
+                "maximum": 180
+              },
+              "pitch": {
+                "type": "number",
+                "title": "Pitch",
+                "description": "Tilt of the view in degrees, from 0 to 60.",
+                "minimum": 0,
+                "maximum": 60
+              }
+            }
+          },
+          "defaults": {}
         }
       }
     ],

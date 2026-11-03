@@ -38,6 +38,10 @@ Set `view` to open the map where the question is. `view.center` is `{ "lat", "lo
 { "title": "Offices in Paris", "points": [{ "lat": 48.8566, "lon": 2.3522, "label": "Paris" }], "view": { "center": { "lat": 48.8566, "lon": 2.3522 }, "zoom": 12 } }
 ```
 
+## Move a map that is on the dashboard
+
+A map widget on the dashboard has the settings `latitude`, `longitude`, `zoom`, `bearing` and `pitch`. Call `update_widget` with `ui_args_json` `{"config": {"latitude": 48.8566, "longitude": 2.3522, "zoom": 12}}` and the map moves there. Set `latitude` and `longitude` together; `zoom` alone zooms in place. Setting the same values again does nothing, so change at least one.
+
 ## Rules
 
 - A map has at most 200 points, or 250 regions. When there are more rows, aggregate them first (by state, country or city) instead of sending every row.
