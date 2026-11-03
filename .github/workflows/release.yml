@@ -1,0 +1,47 @@
+name: Release
+
+# Builds the plugin package once and publishes it as a GitHub Release. A tag v<version> must match
+# "version" in package.json. Servers download the release with scripts/install-release.sh; they
+# never build the plugin themselves.
+
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Check the tag against package.json
+        run: |
+          version="$(node -p 'require("./package.json").version')"
+          test "${GITHUB_REF_NAME}" = "v${version}" || { echo "tag ${GITHUB_REF_NAME} is not v${version}"; exit 1; }
+          echo "VERSION=${version}" >> "$GITHUB_ENV"
+          echo "PLUGIN_ID=$(node -p 'require("./src/plugin.json").id')" >> "$GITHUB_ENV"
+      - run: npm ci
+      - run: npm test
+      - run: npm run build
+      - name: Verify the package and keep its digest
+        run: |
+          npm run -s verify | tee verify.log
+          grep '^version digest ' verify.log | cut -d' ' -f3 > "${PLUGIN_ID}-${VERSION}.digest"
+      - name: Pack
+        run: |
+          tar -czf "${PLUGIN_ID}-${VERSION}.tgz" -C dist "${PLUGIN_ID}/${VERSION}"
+          sha256sum "${PLUGIN_ID}-${VERSION}.tgz" > "${PLUGIN_ID}-${VERSION}.tgz.sha256"
+      - name: Publish
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "${GITHUB_REF_NAME}" \
+            "${PLUGIN_ID}-${VERSION}.tgz" "${PLUGIN_ID}-${VERSION}.tgz.sha256" "${PLUGIN_ID}-${VERSION}.digest" \
+            --title "${PLUGIN_ID} ${VERSION}" \
+            --notes "Version digest: $(cat "${PLUGIN_ID}-${VERSION}.digest")"
