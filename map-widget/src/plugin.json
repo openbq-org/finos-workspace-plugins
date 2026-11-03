@@ -1,0 +1,493 @@
+{
+  "manifestVersion": 1,
+  "id": "map-widget",
+  "name": "Map",
+  "description": "Renders the map widget type with MapLibre GL JS: points, regions, shapes and flows from any backend's rows, GeoJSON or KML, with layers, a legend, tags, drawing and measuring.",
+  "publisher": {
+    "name": "dlee-bq"
+  },
+  "icon": "assets/icon.svg",
+  "host": {
+    "api": 1,
+    "afm": "0.11"
+  },
+  "entry": {
+    "module": "entry.js",
+    "styles": [
+      "entry.css"
+    ]
+  },
+  "contributes": {
+    "widgets": [
+      {
+        "id": "map",
+        "name": "Map",
+        "description": "A backend's rows, GeoJSON or KML on a map",
+        "category": "Maps",
+        "handles": [
+          {
+            "type": "map",
+            "definition": {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "lat": {
+                  "type": "string",
+                  "maxLength": 200
+                },
+                "lon": {
+                  "type": "string",
+                  "maxLength": 200
+                },
+                "city": {
+                  "type": "string",
+                  "maxLength": 200
+                },
+                "zip": {
+                  "type": "string",
+                  "maxLength": 200
+                },
+                "state": {
+                  "type": "string",
+                  "maxLength": 200
+                },
+                "county": {
+                  "type": "string",
+                  "maxLength": 200
+                },
+                "country": {
+                  "type": "string",
+                  "maxLength": 200
+                },
+                "province": {
+                  "type": "string",
+                  "maxLength": 200
+                },
+                "metro": {
+                  "type": "string",
+                  "maxLength": 200
+                },
+                "district": {
+                  "type": "string",
+                  "maxLength": 200
+                },
+                "within": {
+                  "type": "string",
+                  "maxLength": 80
+                },
+                "as": {
+                  "enum": [
+                    "points",
+                    "regions"
+                  ]
+                },
+                "value": {
+                  "type": "string",
+                  "maxLength": 200
+                },
+                "label": {
+                  "type": "string",
+                  "maxLength": 200
+                },
+                "tag": {
+                  "type": "string",
+                  "maxLength": 200
+                },
+                "marker": {
+                  "type": "string",
+                  "maxLength": 200
+                },
+                "size": {
+                  "type": "string",
+                  "maxLength": 200
+                },
+                "color": {
+                  "type": "string",
+                  "maxLength": 200
+                },
+                "category": {
+                  "type": "string",
+                  "maxLength": 200
+                },
+                "height": {
+                  "type": "string",
+                  "maxLength": 200
+                },
+                "time": {
+                  "type": "string",
+                  "maxLength": 200
+                },
+                "props": {
+                  "type": "array",
+                  "maxItems": 12,
+                  "items": {
+                    "type": "string",
+                    "maxLength": 200
+                  }
+                },
+                "valueLabel": {
+                  "type": "string",
+                  "maxLength": 200
+                },
+                "title": {
+                  "type": "string",
+                  "maxLength": 200
+                },
+                "keepZero": {
+                  "type": "boolean"
+                },
+                "sources": {
+                  "type": "array",
+                  "maxItems": 16,
+                  "items": {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "required": [
+                      "id",
+                      "kind",
+                      "url",
+                      "attribution"
+                    ],
+                    "properties": {
+                      "id": {
+                        "type": "string",
+                        "maxLength": 40
+                      },
+                      "name": {
+                        "type": "string",
+                        "maxLength": 60
+                      },
+                      "kind": {
+                        "enum": [
+                          "raster-tiles",
+                          "vector-tiles",
+                          "pmtiles",
+                          "geojson",
+                          "image",
+                          "raster-dem"
+                        ]
+                      },
+                      "url": {
+                        "type": "string",
+                        "maxLength": 2000
+                      },
+                      "attribution": {
+                        "type": "string",
+                        "maxLength": 120
+                      },
+                      "role": {
+                        "enum": [
+                          "overlay",
+                          "imagery"
+                        ]
+                      },
+                      "opacity": {
+                        "type": "number"
+                      },
+                      "minzoom": {
+                        "type": "number"
+                      },
+                      "maxzoom": {
+                        "type": "number"
+                      },
+                      "bounds": {
+                        "type": "array",
+                        "minItems": 4,
+                        "maxItems": 4,
+                        "items": {
+                          "type": "number"
+                        }
+                      },
+                      "tileSize": {
+                        "enum": [
+                          256,
+                          512
+                        ]
+                      },
+                      "encoding": {
+                        "enum": [
+                          "terrarium",
+                          "mapbox"
+                        ]
+                      },
+                      "coordinates": {
+                        "type": "array",
+                        "minItems": 4,
+                        "maxItems": 4,
+                        "items": {
+                          "type": "array",
+                          "minItems": 2,
+                          "maxItems": 2,
+                          "items": {
+                            "type": "number"
+                          }
+                        }
+                      },
+                      "layers": {
+                        "type": "array",
+                        "maxItems": 8,
+                        "items": {
+                          "type": "object",
+                          "additionalProperties": false,
+                          "required": [
+                            "type",
+                            "color"
+                          ],
+                          "properties": {
+                            "sourceLayer": {
+                              "type": "string",
+                              "maxLength": 80
+                            },
+                            "type": {
+                              "enum": [
+                                "fill",
+                                "line",
+                                "circle"
+                              ]
+                            },
+                            "color": {
+                              "type": "object",
+                              "additionalProperties": false,
+                              "properties": {
+                                "value": {
+                                  "type": "string",
+                                  "maxLength": 7
+                                },
+                                "property": {
+                                  "type": "string",
+                                  "maxLength": 80
+                                },
+                                "scale": {
+                                  "enum": [
+                                    "sequential",
+                                    "diverging"
+                                  ]
+                                },
+                                "domain": {
+                                  "type": "array",
+                                  "minItems": 2,
+                                  "maxItems": 2,
+                                  "items": {
+                                    "type": "number"
+                                  }
+                                }
+                              }
+                            },
+                            "opacity": {
+                              "type": "number"
+                            },
+                            "width": {
+                              "type": "number"
+                            },
+                            "radius": {
+                              "type": "number"
+                            },
+                            "label": {
+                              "type": "string",
+                              "maxLength": 80
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            },
+            "response": {
+              "accepts": "json",
+              "description": "Rows, whose columns data.map names; a GeoJSON FeatureCollection; {\"kml\": text}, {\"gpx\": text}, {\"kmz\": base64} or {\"shapefile\": base64 of the zip}; or a map with points, regions, shapes and layers."
+            }
+          }
+        ],
+        "artifact": {
+          "description": "A map of places or regions: points at a latitude and longitude, or US states or countries shaded by a value. Use it when the answer is about where things are.",
+          "data": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "title": {
+                "type": "string",
+                "maxLength": 120
+              },
+              "valueLabel": {
+                "type": "string",
+                "maxLength": 120
+              },
+              "points": {
+                "type": "array",
+                "maxItems": 200,
+                "items": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": [
+                    "lat",
+                    "lon"
+                  ],
+                  "properties": {
+                    "lat": {
+                      "type": "number"
+                    },
+                    "lon": {
+                      "type": "number"
+                    },
+                    "label": {
+                      "type": "string",
+                      "maxLength": 80
+                    },
+                    "tag": {
+                      "type": "string",
+                      "maxLength": 40
+                    },
+                    "value": {
+                      "type": "number"
+                    }
+                  }
+                }
+              },
+              "regions": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "set",
+                  "items"
+                ],
+                "properties": {
+                  "set": {
+                    "enum": [
+                      "us-states",
+                      "countries"
+                    ]
+                  },
+                  "items": {
+                    "type": "array",
+                    "maxItems": 250,
+                    "items": {
+                      "type": "object",
+                      "additionalProperties": false,
+                      "required": [
+                        "code"
+                      ],
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "maxLength": 80
+                        },
+                        "label": {
+                          "type": "string",
+                          "maxLength": 80
+                        },
+                        "tag": {
+                          "type": "string",
+                          "maxLength": 40
+                        },
+                        "value": {
+                          "type": "number"
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "permissions": [
+          "core:data:read",
+          "core:export:provide",
+          "core:copilot:context",
+          "core:state:write",
+          "core:clipboard:write",
+          "core:download:save",
+          "core:ui:notify"
+        ],
+        "model": {
+          "traits": {
+            "data": {
+              "bind": "data",
+              "access": "read"
+            },
+            "definition": {
+              "bind": "definition",
+              "access": "read"
+            },
+            "theme": {
+              "bind": "theme",
+              "access": "read"
+            },
+            "state": {
+              "bind": "state",
+              "access": "readwrite"
+            },
+            "mapTilesUrl": {
+              "bind": "adminSettings:mapTilesUrl",
+              "access": "read"
+            },
+            "mapTilesProvider": {
+              "bind": "adminSettings:mapTilesProvider",
+              "access": "read"
+            },
+            "mapSources": {
+              "bind": "adminSettings:mapSources",
+              "access": "read"
+            }
+          }
+        },
+        "grid": {
+          "w": 24,
+          "h": 16,
+          "minW": 8,
+          "minH": 6
+        }
+      }
+    ],
+    "skills": [
+      {
+        "slug": "maps",
+        "description": "How to show a map with the Map component: points by latitude and longitude, US states or countries shaded by a value, and the limits.",
+        "file": "skills/maps.md"
+      }
+    ]
+  },
+  "adminSettings": {
+    "schema": {
+      "type": "object",
+      "properties": {
+        "mapTilesProvider": {
+          "type": "string",
+          "enum": [
+            "none",
+            "openfreemap"
+          ],
+          "title": "Tile service",
+          "description": "openfreemap draws the basemap from the public OpenFreeMap tiles. none draws it from the bundled world file."
+        },
+        "mapTilesUrl": {
+          "type": "string",
+          "maxLength": 2000,
+          "title": "PMTiles file",
+          "description": "The address of a PMTiles file you host, with more zooms than the bundled one. Its host must be allowed in the frame policy."
+        },
+        "mapSources": {
+          "type": "string",
+          "maxLength": 20000,
+          "title": "Map sources",
+          "description": "A JSON list of map sources every map of this plugin may draw: tiles, PMTiles files, GeoJSON, images and elevation, each with an https url. A host must be allowed in the frame policy before its data loads."
+        }
+      }
+    },
+    "defaults": {
+      "mapTilesProvider": "openfreemap",
+      "mapTilesUrl": "",
+      "mapSources": ""
+    }
+  },
+  "csp": {
+    "connect-src": [
+      "https://tiles.openfreemap.org"
+    ]
+  },
+  "cspNotes": {
+    "connect-src": "Vector tiles and TileJSON of the OpenFreeMap basemap. A hosted PMTiles file needs its own host added by a superuser."
+  }
+}

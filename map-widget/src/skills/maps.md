@@ -1,0 +1,40 @@
+# Maps with the Map component
+
+Use the Map component (`map-widget/map`) to show where things are: places at a latitude and longitude, or US states and countries shaded by a number. The user can add the card to a dashboard as a widget, so give it a clear title.
+
+## Choose what to draw
+
+| The question | Field | How |
+|---|---|---|
+| Where are these places | `points` | Each point has `lat` and `lon`, and a `label`. Give a `value` to colour the points by a number, and say what it is in `valueLabel`. |
+| How does a number differ across US states or countries | `regions` | `set` is `us-states` or `countries`. Each item has a `code` (a state's postal code or name, a country's name or ISO code) and a `value`. |
+
+## The data
+
+```json
+{
+  "title": "Offices",
+  "valueLabel": "Staff",
+  "points": [
+    { "lat": 40.7128, "lon": -74.006, "label": "New York", "value": 120 },
+    { "lat": 51.5072, "lon": -0.1276, "label": "London", "value": 85 }
+  ]
+}
+```
+
+```json
+{
+  "title": "Population",
+  "valueLabel": "Millions",
+  "regions": { "set": "us-states", "items": [{ "code": "CA", "value": 39 }, { "code": "TX", "value": 30 }] }
+}
+```
+
+## Rules
+
+- A map has at most 200 points, or 250 regions. When there are more rows, aggregate them first (by state, country or city) instead of sending every row.
+- Use the latitude and longitude the data gives. Never guess a place's coordinates.
+- Give the title and, with `value`, the `valueLabel`: the legend says what the colours mean.
+- Do not set colours or basemaps. The map is drawn in the workspace's light or dark mode.
+- Lines, areas, flows, GeoJSON files and counties need a backend that answers with them.
+- Say what the map shows and what stands out; do not repeat the numbers it draws.
