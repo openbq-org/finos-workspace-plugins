@@ -1,7 +1,8 @@
-// Copies the built package into a Workspace plugins directory:
+// Copies the built package into a Workspace plugins directory. Run it from a plugin's folder
+// (npm run install:workspace does):
 //
-//   WORKSPACE_PLUGINS_DIR=<plugins directory> node scripts/install.mjs
-//   node scripts/install.mjs <plugins directory>
+//   WORKSPACE_PLUGINS_DIR=<plugins directory> node ../scripts/install.mjs
+//   node ../scripts/install.mjs <plugins directory>
 //
 // The directory is the one a Workspace deployment mounts as WIDGET_PLUGINS_DIR (a local stack:
 // WORKSPACE_PLUGINS_DIR in workspace/local/.env, default workspace/widget-plugins). The package
@@ -15,7 +16,8 @@ import { cpSync, existsSync, mkdirSync, readdirSync, readFileSync, statSync } fr
 import { dirname, join, relative, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
-const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
+const root = process.cwd();
+const here = dirname(fileURLToPath(import.meta.url));
 const pkg = JSON.parse(readFileSync(join(root, "package.json"), "utf8"));
 const { id } = JSON.parse(readFileSync(join(root, "src/plugin.json"), "utf8"));
 const target = process.argv[2] ?? process.env.WORKSPACE_PLUGINS_DIR;
@@ -32,7 +34,7 @@ if (!existsSync(source)) {
 }
 
 /* The same checks Workspace's discovery makes, before anything is copied */
-execFileSync(process.execPath, [join(root, "scripts/verify.mjs"), source], { stdio: "inherit" });
+execFileSync(process.execPath, [join(here, "verify.mjs"), source], { stdio: "inherit" });
 
 function listing(directory) {
   const files = {};

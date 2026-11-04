@@ -1,0 +1,56 @@
+name: Release
+
+# Builds one plugin's package once and publishes it as a GitHub Release. The tag is
+# <plugin folder>-v<version>, such as ag-grid-v2.0.0, and must match
+# "version" in that folder's package.json. Servers download the release with
+# scripts/install-release.sh; they never build the plugin themselves.
+
+on:
+  push:
+    tags: ["*-v*"]
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
+        with:
+          node-version: 26.12.1
+      - name: Read the plugin and the version from the tag
+        run: |
+          folder="${GITHUB_REF_NAME%-v*}"
+          tagged="${GITHUB_REF_NAME##*-v}"
+          test -f "${folder}/package.json" || { echo "no plugin folder ${folder}/"; exit 1; }
+          version="$(node -p "require('./${folder}/package.json').version")"
+          test "${tagged}" = "${version}" || { echo "tag ${GITHUB_REF_NAME} is not ${folder}-v${version}"; exit 1; }
+          echo "FOLDER=${folder}" >> "$GITHUB_ENV"
+          echo "VERSION=${version}" >> "$GITHUB_ENV"
+          echo "PLUGIN_ID=$(node -p "require('./${folder}/src/plugin.json').id")" >> "$GITHUB_ENV"
+      - run: npm ci --ignore-scripts
+        working-directory: ${{ env.FOLDER }}
+      - run: npm test
+        working-directory: ${{ env.FOLDER }}
+      - run: npm run build
+        working-directory: ${{ env.FOLDER }}
+      - name: Verify the package and keep its digest
+        working-directory: ${{ env.FOLDER }}
+        run: |
+          npm run -s verify | tee verify.log
+          grep '^version digest ' verify.log | cut -d' ' -f3 > "${GITHUB_WORKSPACE}/${PLUGIN_ID}-${VERSION}.digest"
+      - name: Pack
+        run: |
+          tar -czf "${PLUGIN_ID}-${VERSION}.tgz" -C "${FOLDER}/dist" "${PLUGIN_ID}/${VERSION}"
+          sha256sum "${PLUGIN_ID}-${VERSION}.tgz" > "${PLUGIN_ID}-${VERSION}.tgz.sha256"
+      - name: Publish
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "${GITHUB_REF_NAME}" \
+            "${PLUGIN_ID}-${VERSION}.tgz" "${PLUGIN_ID}-${VERSION}.tgz.sha256" "${PLUGIN_ID}-${VERSION}.digest" \
+            --title "${PLUGIN_ID} ${VERSION}" \
+            --notes "Version digest: $(cat "${PLUGIN_ID}-${VERSION}.digest")"

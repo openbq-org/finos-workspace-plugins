@@ -1,6 +1,7 @@
-// Checks a built package the way Workspace's discovery does, offline:
+// Checks a built package the way Workspace's discovery does, offline. Run it from a plugin's
+// folder (npm run verify does), which holds package.json and src/plugin.json:
 //
-//   node scripts/verify.mjs [dist/<plugin id>/<version>]
+//   node ../scripts/verify.mjs [dist/<plugin id>/<version>]
 //
 // It mirrors the rules in Workspace's backend-api/backend/api/widget_plugins/discovery.py and
 // manifest.py that a build can break (folder names, file names, caps, served files, checksum),
@@ -10,9 +11,8 @@
 import { createHash } from "node:crypto";
 import { lstatSync, readdirSync, readFileSync } from "node:fs";
 import { basename, dirname, join, relative, resolve } from "node:path";
-import { fileURLToPath } from "node:url";
 
-const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
+const root = process.cwd();
 const pkg = JSON.parse(readFileSync(join(root, "package.json"), "utf8"));
 const source = JSON.parse(readFileSync(join(root, "src/plugin.json"), "utf8"));
 const dir = resolve(process.argv[2] ?? join(root, "dist", source.id, pkg.version));
@@ -92,6 +92,22 @@ if (manifest) {
   if (manifest.icon && !manifest.icon.startsWith("assets/")) errors.push("icon must be under assets/");
   const unserved = Object.keys(hashes).filter((p) => p !== "plugin.json" && !served.includes(p) && !p.startsWith("assets/"));
   for (const path of unserved) warnings.push(`${path} is packaged but never served`);
+
+  /* Text limits (manifest.ShortText: 1 to 80 characters, manifest.Sentence: at most 300) */
+  const SHORT_TEXT = 80;
+  const SENTENCE = 300;
+  const texts = [
+    ["name", manifest.name, SHORT_TEXT],
+    ["description", manifest.description, SENTENCE],
+    ...(manifest.contributes?.widgets ?? []).flatMap((widget, i) => [
+      [`contributes/widgets/${i}/name`, widget.name, SHORT_TEXT],
+      [`contributes/widgets/${i}/description`, widget.description, SENTENCE],
+      ...(widget.handles ?? []).map((handle, j) => [`contributes/widgets/${i}/handles/${j}/response/description`, handle.response?.description, SENTENCE]),
+    ]),
+  ];
+  for (const [path, text, max] of texts) {
+    if (typeof text === "string" && text.length > max) errors.push(`${path}: ${text.length} characters, at most ${max}`);
+  }
 
   /* Widgets and the types they handle */
   const seen = new Set();

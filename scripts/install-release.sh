@@ -5,7 +5,7 @@
 #     ./install-release.sh <plugin-id> <version>
 #
 # It downloads <plugin-id>-<version>.tgz, its .sha256 and its .digest from the GitHub Release
-# v<version> (with the gh CLI; set GH_TOKEN for a private repository), checks the archive's
+# <plugin-id>-v<version> (with the gh CLI; set GH_TOKEN for a private repository), checks the archive's
 # SHA-256 and the package's version digest, and places the package at
 # $PLUGINS_DIR/<plugin-id>/<version>/, next to the versions already there.
 #
@@ -13,7 +13,8 @@
 # refused, since Workspace blocks a version whose files change. Nothing is approved: a superuser
 # rescans and approves the version in Workspace afterwards.
 #
-# Optional: RELEASE_TAG (default v<version>); RELEASE_DIR=<folder> reads the three files from a
+# Optional: RELEASE_TAG (default <plugin-id>-v<version>, the tag of one plugin's release in the
+# plugins repository); RELEASE_DIR=<folder> reads the three files from a
 # local folder instead of GitHub (for a mirror, or to test).
 
 set -euo pipefail
@@ -25,7 +26,7 @@ fail() { echo "error: $*" >&2; exit 1; }
 plugin="$1"
 version="$2"
 : "${PLUGINS_DIR:?set PLUGINS_DIR to the folder Workspace mounts as WIDGET_PLUGINS_DIR}"
-tag="${RELEASE_TAG:-v${version}}"
+tag="${RELEASE_TAG:-${plugin}-v${version}}"
 
 # The names Workspace accepts (manifest.py PLUGIN_ID_PATTERN and VERSION_PATTERN)
 [[ "$plugin" =~ ^[a-z][a-z0-9-]{1,47}$ ]] || fail "\"$plugin\" is not a plugin id"

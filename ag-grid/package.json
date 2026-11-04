@@ -7,8 +7,8 @@
   "type": "module",
   "scripts": {
     "build": "node build.mjs",
-    "verify": "node scripts/verify.mjs",
-    "install:workspace": "node scripts/install.mjs",
+    "verify": "node ../scripts/verify.mjs",
+    "install:workspace": "node ../scripts/install.mjs",
     "test": "node --test"
   },
   "dependencies": {

@@ -5,7 +5,7 @@ A Workspace widget plugin that renders the `ag-grid` widget type with
 [OpenBQ Workspace's table widget](https://docs.OpenBQ.co/workspace/developers/widget-types/aggrid-table-charts)
 is: column definitions, render functions, hover cards, sparklines and ChartView.
 
-This repository holds the plugin on its own, moved from FINOS Workspace's
+This folder of the plugins repository holds the plugin, moved from FINOS Workspace's
 `docs/examples/ag-grid/`. The plugin id stays `ag-grid` and the widget stays `grid`, handling
 type `ag-grid`, so existing dashboards and `widgets.json` files keep working. Nothing in it
 imports Workspace code: it talks to Workspace only through the widget plugin contract

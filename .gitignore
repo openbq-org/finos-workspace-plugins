@@ -147,3 +147,11 @@ vite.config.ts.timestamp-*
 
 # Turbo Repo
 .turbo
+
+# macOS
+.DS_Store
+
+# Python (data backends)
+.venv/
+__pycache__/
+.pytest_cache/
