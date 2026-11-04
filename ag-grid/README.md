@@ -290,9 +290,9 @@ the integrated chart and transpose. Drawing charts needs a browser; check them o
 
 ## The data backend
 
-The plugin has no backend of its own and no backend URL. The rows come from a data backend that
-runs on its own server, outside Workspace and outside this repository, which a Workspace admin
-or user adds under **Connections**:
+The plugin has no plugin backend and no backend URL. The rows come from a data backend that
+runs on its own server, outside Workspace, which a Workspace admin or user adds under
+**Connections**:
 
 - The backend serves `GET /widgets.json`, declaring widgets of `"type": "ag-grid"` with their
   `endpoint`, `dataKey`, `params` and table configuration in `data["ag-grid"]` (the shapes under
@@ -302,8 +302,11 @@ or user adds under **Connections**:
   no CSP change, no proxy and no secret, and the backend needs no CORS for the frame.
 - Each Workspace sets the URL on its own Connection, so one package serves every deployment.
 
-The demo backend that used to sit in `examples/` stays in the Workspace repository, at
-`docs/examples/ag-grid/examples/`; it is the shape a third-party backend follows.
+[`backend/`](backend/README.md) is such a data backend: the 12 example widgets of OpenBB's AgGrid
+table page (column definitions, render functions, hover cards, charts, sparklines, cell clicks,
+transpose, live prices), on port 7800. It came from the Workspace repository's
+`docs/examples/ag-grid/examples/` unchanged, and it is the shape a third-party backend follows.
+It is not part of the package, which the build makes from `src/` only.
 
 ## Deploy
 
