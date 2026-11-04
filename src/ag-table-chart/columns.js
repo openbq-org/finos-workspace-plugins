@@ -1,5 +1,5 @@
 /*
- * OpenBB's table configuration (`data.table` in an OpenBB widgets.json, `data["ag-grid"]` here)
+ * OpenBQ's table configuration (`data.table` in an OpenBQ widgets.json, `data["ag-grid"]` here)
  * as AG Grid column definitions. Formatting, styles and clicks read `params.context`, which the
  * grid shares: { locale, decimals, actions, changes }.
  */
@@ -41,7 +41,7 @@ function dateComparator(filterDate, cellValue) {
   return day === filterDate.getTime() ? 0 : day < filterDate.getTime() ? -1 : 1;
 }
 
-/** The OpenBB data type of a column: its `cellDataType`, else inferred from the rows. */
+/** The OpenBQ data type of a column: its `cellDataType`, else inferred from the rows. */
 function dataTypeOf(def, rows) {
   if (def.cellDataType) return def.cellDataType;
   const values = rows.slice(0, 200).map((r) => (r ? r[def.field] : undefined));
@@ -49,7 +49,7 @@ function dataTypeOf(def, rows) {
   return { numeric: "number", date: "date", boolean: "boolean", string: "text", object: "object", array: "object" }[inferred] ?? "text";
 }
 
-/** A tooltip component (AG Grid ITooltipComp) that shows OpenBB's hover card. */
+/** A tooltip component (AG Grid ITooltipComp) that shows OpenBQ's hover card. */
 export class HoverCardTooltip {
   init(params) {
     const doc = params.eGridCell?.ownerDocument ?? document;
@@ -116,7 +116,7 @@ function onCellClick(def, params) {
   }
 }
 
-/** One OpenBB column definition as an AG Grid ColDef. */
+/** One OpenBQ column definition as an AG Grid ColDef. */
 export function toColDef(def, rows, table = {}) {
   const field = def.field;
   const fns = renderFnsOf(def);
@@ -231,7 +231,7 @@ export function changeTrackedColumns(columnsDefs) {
 }
 
 /**
- * The AG Grid column definitions for rows and an OpenBB table configuration. With `showAll`
+ * The AG Grid column definitions for rows and an OpenBQ table configuration. With `showAll`
  * (the default), fields the rows have and `columnsDefs` does not are shown too.
  */
 export function agTableChartColumnDefs(rows, table = {}) {

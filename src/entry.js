@@ -120,7 +120,7 @@ function rowsOf(data) {
 }
 
 /**
- * The grid for the endpoint's JSON and the widget's `data["ag-grid"]` object, an OpenBB table
+ * The grid for the endpoint's JSON and the widget's `data["ag-grid"]` object, an OpenBQ table
  * configuration (columnsDefs, formatterFn, transpose, showAll, chartView, ...).
  * `columnsKey` changes when the columns must be set again.
  */

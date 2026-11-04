@@ -12,7 +12,7 @@ import { agChartType, chartColumns, navigatorOverrides } from "../src/ag-table-c
 
 const en = { locale: "en-US" };
 
-test("formatterFn values format like OpenBB", () => {
+test("formatterFn values format like OpenBQ", () => {
   assert.equal(formatValue(45000000000, { ...en, formatterFn: "int" }), "45,000,000,000");
   assert.equal(formatValue(2.5, { ...en, formatterFn: "percent" }), "2.50%");
   assert.equal(formatValue(0.5, { ...en, formatterFn: "normalized" }), "50.00");
@@ -42,7 +42,7 @@ test("titleCase, headers and years", () => {
   assert.equal(yearOf(2020), "2020");
 });
 
-test("customFormatter strings from the OpenBB docs evaluate without eval", () => {
+test("customFormatter strings from the OpenBQ docs evaluate without eval", () => {
   const pnl = compileFormatter("(params) => ({ fill: params.yValue >= 0 ? '#22c55e' : '#ef4444', stroke: params.yValue >= 0 ? '#16a34a' : '#dc2626' })");
   assert.deepEqual(pnl({ yValue: 3 }), { fill: "#22c55e", stroke: "#16a34a" });
   assert.deepEqual(pnl({ yValue: -1 }), { fill: "#ef4444", stroke: "#dc2626" });
@@ -122,7 +122,7 @@ test("sparklines map to AG Grid 32 options", () => {
   assert.equal(area.marker.formatter({ yValue: 1 }).size, 0);
 });
 
-test("points of interest keep OpenBB's precedence", () => {
+test("points of interest keep OpenBQ's precedence", () => {
   const points = {
     positiveNegative: { positive: { fill: "g" }, negative: { fill: "r" } },
     firstLast: { fill: "fl" },
@@ -168,7 +168,7 @@ test("hover card tooltip shows title and markdown from the cell object", () => {
   assert.match(gui.textContent, /Smart contracts/);
 });
 
-test("columnsDefs map to colDefs with OpenBB's options", () => {
+test("columnsDefs map to colDefs with OpenBQ's options", () => {
   const rows = [{ name: { value: "ethereum", description: "x" }, tvl: 45e9, change_1d: -0.5, history: [1, 2, 3] }];
   const [name, tvl, change, history] = agTableChartColumnDefs(rows, {
     columnsDefs: [

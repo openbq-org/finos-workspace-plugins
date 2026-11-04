@@ -38,7 +38,7 @@ export function yearOf(value) {
 }
 
 /**
- * Formats one value the way OpenBB's table does.
+ * Formats one value the way OpenBQ's table does.
  * `options`: { formatterFn, decimalPlaces, prefix, suffix, locale, decimals }.
  */
 export function formatValue(value, options = {}) {
@@ -80,7 +80,7 @@ export function titleCase(text) {
     .replace(/(^|[\s_\-/(])(\p{L})/gu, (_, sep, letter) => `${sep}${letter.toUpperCase()}`);
 }
 
-/** `revenue_growth` -> `Revenue Growth`, the default header OpenBB shows. */
+/** `revenue_growth` -> `Revenue Growth`, the default header OpenBQ shows. */
 export function headerFromField(field) {
   return titleCase(String(field).replace(/_/g, " ").replace(/([a-z])([A-Z])/g, "$1 $2"));
 }

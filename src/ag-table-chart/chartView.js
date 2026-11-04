@@ -1,5 +1,5 @@
 /*
- * OpenBB's ChartView: the table shown as an AG Grid integrated chart, linked to the rows, which
+ * OpenBQ's ChartView: the table shown as an AG Grid integrated chart, linked to the rows, which
  * the toolbar switches to and from. `chartView`: { enabled, chartType, cellRangeCols,
  * ignoreCellRange, chartNavigatorEnabled, chartMiniChartEnabled }. The chart the user arranges
  * is saved to the widget's state and restored, unless `ignoreCellRange`.
@@ -22,7 +22,7 @@ const CARTESIAN = new Set([
   "rangeBar", "rangeArea", "boxPlot", "waterfall", "columnLineCombo", "areaColumnCombo", "customCombo",
 ]);
 
-/** AG Grid has no plain `column`: OpenBB's `column` is its grouped column. */
+/** AG Grid has no plain `column`: OpenBQ's `column` is its grouped column. */
 export function agChartType(chartType) {
   if (chartType === "column") return "groupedColumn";
   if (chartType === "bar") return "groupedBar";

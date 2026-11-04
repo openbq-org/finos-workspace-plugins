@@ -1,7 +1,7 @@
 /*
- * OpenBB's `sparkline` column option, as AG Grid 32's sparklineOptions.
+ * OpenBQ's `sparkline` column option, as AG Grid 32's sparklineOptions.
  *
- * OpenBB          AG Grid 32
+ * OpenBQ          AG Grid 32
  * line, area      line, area: line.stroke/strokeWidth, marker
  * bar             column (vertical, the default) or bar (direction "horizontal")
  * min, max        valueAxisDomain (bars only; AG Grid 32 has no domain for lines)
@@ -22,7 +22,7 @@ function pick(style) {
   return out;
 }
 
-/** The style the OpenBB points of interest give one point, lowest precedence first. */
+/** The style the OpenBQ points of interest give one point, lowest precedence first. */
 export function pointStyle(points, params) {
   if (!points || typeof points !== "object") return null;
   let style = null;

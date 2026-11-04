@@ -2,7 +2,7 @@
   "manifestVersion": 1,
   "id": "ag-grid",
   "name": "AgGrid table",
-  "description": "Renders the ag-grid widget type with AG Grid: OpenBB-style column definitions, render functions, hover cards, sparklines, ChartView, streaming row updates and grid events.",
+  "description": "Renders the ag-grid widget type with AG Grid: OpenBQ-style column definitions, render functions, hover cards, sparklines, ChartView, streaming row updates and grid events.",
   "publisher": {
     "name": "dlee-bq"
   },
@@ -38,19 +38,19 @@
       {
         "id": "grid",
         "name": "AgGrid table",
-        "description": "A backend's tabular data as an AG Grid table, configured like OpenBB Workspace's table widget, with charts, sparklines and streaming.",
+        "description": "A backend's tabular data as an AG Grid table, configured like OpenBQ Workspace's table widget, with charts, sparklines and streaming.",
         "category": "Data",
         "handles": [
           {
             "type": "ag-grid",
             "response": {
               "accepts": "json",
-              "description": "Rows as JSON: a list of records, a dict of columns, pandas split, or an ag-grid-ready object ({ columnDefs, rowData, gridOptions }). data[\"ag-grid\"] in widgets.json takes OpenBB's table configuration. The endpoint gets theme=dark or theme=light."
+              "description": "Rows as JSON: a list of records, a dict of columns, pandas split, or an ag-grid-ready object ({ columnDefs, rowData, gridOptions }). data[\"ag-grid\"] in widgets.json takes OpenBQ's table configuration. The endpoint gets theme=dark or theme=light."
             },
             "definition": {
               "type": "object",
               "additionalProperties": false,
-              "description": "OpenBB Workspace's table configuration (data.table there).",
+              "description": "OpenBQ Workspace's table configuration (data.table there).",
               "properties": {
                 "enableCharts": {
                   "type": "boolean"

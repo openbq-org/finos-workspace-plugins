@@ -1,5 +1,5 @@
 /*
- * OpenBB's sparkline `customFormatter` is a JavaScript function in a string, such as
+ * OpenBQ's sparkline `customFormatter` is a JavaScript function in a string, such as
  *   "(params) => ({ fill: params.yValue >= 0 ? '#22c55e' : '#ef4444' })".
  * The frame's policy has no 'unsafe-eval', and a backend's string should not run as code, so
  * this parses the subset formatters use and evaluates it over the params object only:

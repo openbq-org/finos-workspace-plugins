@@ -2,7 +2,7 @@
 
 A Workspace widget plugin that renders the `ag-grid` widget type with
 [AG Grid](https://www.ag-grid.com/), configured the way
-[OpenBB Workspace's table widget](https://docs.openbb.co/workspace/developers/widget-types/aggrid-table-charts)
+[OpenBQ Workspace's table widget](https://docs.OpenBQ.co/workspace/developers/widget-types/aggrid-table-charts)
 is: column definitions, render functions, hover cards, sparklines and ChartView.
 
 This repository holds the plugin on its own, moved from FINOS Workspace's
@@ -119,7 +119,7 @@ Column definitions and types are inferred automatically from the data.
 
 ## Table chart configuration
 
-An OpenBB backend's table widget moves over with two changes: `"type": "table"` becomes
+An OpenBQ backend's table widget moves over with two changes: `"type": "table"` becomes
 `"type": "ag-grid"`, and `data.table` becomes `data["ag-grid"]`. The endpoint returns the same
 rows. The plugin declares the object's schema (`definition` in `plugin.json`), so a backend whose
 keys or values do not fit sees the problem, with its JSON pointer, when it connects.
@@ -146,7 +146,7 @@ keys or values do not fit sees the problem, with its JSON pointer, when it conne
 }
 ```
 
-| Key (as in OpenBB) | What the plugin does |
+| Key (as in OpenBQ) | What the plugin does |
 |---|---|
 | `columnsDefs[]`: `field`, `headerName`, `headerTooltip`, `width`, `minWidth`, `maxWidth`, `hide`, `pinned`, `align` | The AG Grid column options of the same names. A column with `width` keeps it instead of sharing the card's width. |
 | `cellDataType` (`text`, `number`, `boolean`, `date`, `dateString`, `object`) | The column's filter, alignment and formatting. Without it, the type is inferred from the rows. Date strings sort, filter and chart as dates and show as they came. |
@@ -156,7 +156,7 @@ keys or values do not fit sees the problem, with its JSON pointer, when it conne
 | `chartDataType` (`category`, `series`, `time`, `excluded`) | The column's role in charts. |
 | `showAll` | Default `true`: fields the rows have and `columnsDefs` does not are shown after the declared ones. `false` shows only `columnsDefs`. |
 | `transpose` | One row per column and one column per row, headed by the first column's values. Each cell keeps its column's format and colours. |
-| `enableCharts`, `chartView` (`enabled`, `chartType`, `cellRangeCols`, `ignoreCellRange`, `chartNavigatorEnabled`, `chartMiniChartEnabled`) | A *Table / Chart* toolbar and an AG Grid integrated chart linked to the rows, with every chart type of OpenBB's list. The chart a user arranges is saved with the dashboard and restored, unless `ignoreCellRange`. Right-click *Chart Range* charts any selection. `enableCharts: false` turns charting off. |
+| `enableCharts`, `chartView` (`enabled`, `chartType`, `cellRangeCols`, `ignoreCellRange`, `chartNavigatorEnabled`, `chartMiniChartEnabled`) | A *Table / Chart* toolbar and an AG Grid integrated chart linked to the rows, with every chart type of OpenBQ's list. The chart a user arranges is saved with the dashboard and restored, unless `ignoreCellRange`. Right-click *Chart Range* charts any selection. `enableCharts: false` turns charting off. |
 | `enableAdvanced` | `true` opens the Columns panel; `false` hides the side bar. |
 | `wsRowIdColumn` | The field that identifies a row across refreshes (default `id`), so changed rows are applied as transactions and `showCellChange` knows which cell moved. |
 
