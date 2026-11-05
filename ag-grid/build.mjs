@@ -12,6 +12,7 @@ const duckdbDist = join(root, "node_modules/@duckdb/duckdb-wasm/dist");
 
 const FILES = {
   "assets/icon.svg": join(root, "src/assets/icon.svg"),
+  "assets/autosize.svg": join(root, "src/assets/autosize.svg"),
   "entry.css": join(root, "src/entry.css"),
   ...(await duckdbFiles(duckdbDist)),
 };

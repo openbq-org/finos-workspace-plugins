@@ -2,6 +2,7 @@ import { createChartView } from "./ag-table-chart/chartView.js";
 import { agTableChartColumnDefs, changeTrackedColumns, transpose } from "./ag-table-chart/columns.js";
 import {
   applyTheme,
+  attachCardActions,
   backendOptions,
   cellExpressionsOf,
   compactColumnDefs,
@@ -164,6 +165,7 @@ export function mountTable({ model, el, signal, experimental, tracker, saved = {
   };
   const api = createGrid(gridEl, gridOptionsFor({ model, gridOptions: currentGridOptions, ...own }));
   const detach = tracker.attach(api);
+  const detachActions = attachCardActions(api, model);
 
   const events = (Array.isArray(table.gridEvents) ? table.gridEvents : []).filter((name) => GRID_EVENTS.includes(name));
   const detailOf = {
@@ -301,6 +303,7 @@ export function mountTable({ model, el, signal, experimental, tracker, saved = {
     flashTimers.clear();
     for (const name of events) api.removeEventListener(name, sendState);
     detach();
+    detachActions();
     chartView?.destroy();
     api.destroy();
   });

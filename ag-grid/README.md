@@ -39,6 +39,13 @@ package serves FINOS Workspace and BQ Workspace.
   too.
 - **Copilot context.** The AI agent can read the columns, the row count, the filter and sort
   models and the grouping.
+- **Card actions.** The card's header has a **Floating filters** button, which switches the
+  card's `floatingFilters` setting and shows a filter box under each column header while it is on.
+  The card's options menu has **Autosize columns**, which sizes every column to its content, and
+  **Clear filters and sort**. Workspace draws them from the widget's `actions` in `plugin.json`
+  (`core:ui:button`, `core:ui:menu`) and sends the widget an `action` event when the user picks
+  one. Until a card's button is used, the backend's `defaultColDef.floatingFilter` decides. The
+  autosize item's icon is the package's `assets/autosize.svg`.
 
 ## Two-way communication with the backend
 
@@ -292,6 +299,14 @@ WebAssembly. The tables and their columns are listed beside the editor. Running 
 to the backend, which decides what may run: the example backend opens SQLite read-only, with an
 authorizer and a time limit.
 
+The card's **Create static widget** button copies the current result into an AgGrid table widget
+of its own, with no parameters and no query: the first 60 columns and the first 1,000 rows, as the
+table's artifact holds them, with each text cut to 500 characters, and fewer rows when they would
+pass 380,000 bytes, which keeps the copy under Workspace's limit. The button is the widget's
+`freeze` action (`core:ui:button`), and the copy is made with the command
+`core:dashboard:add-widget`, which Workspace takes only right after the click. A static copy is an
+AgGrid table, so it has the table's buttons and menu items.
+
 ## The table component in the chat
 
 The `table` widget is also an agent component: the AI agent shows rows in the chat with
@@ -305,7 +320,7 @@ The plugin's skill, `skills/ag-grid-widgets.md`, tells the agent when each widge
 | `data` | No | The endpoint's answer, at the widget's `dataKey`. |
 | `definition` | No | The widget's `data["<type>"]` object, checked against the definition in `plugin.json`. |
 | `params` | Yes | The widget's params. The widgets write `gridState`, the block params, the `sql` param and `groupBy` params. |
-| `config` | No | The card's settings: `licenseKey` and `theme`. |
+| `config` | No | The card's settings: `licenseKey`, `theme` and, on the grid widgets, `floatingFilters`. |
 | `theme` | No | The site's mode and colour tokens. |
 | `adminSettings` | No | The organization's settings: `licenseKey` and `theme`. |
 | `state` | Yes | The saved grid state, the selection, the last event, the chart view and the editor's query. |
@@ -327,7 +342,7 @@ npm run verify  # checks the package as Workspace's discovery does, prints its d
 ```
 
 The build bundles the plugin and its dependencies into the one module `entry.js`, because a
-plugin frame loads a single module. It copies `entry.css`, the icon, the skill, DuckDB-WASM's
+plugin frame loads a single module. It copies `entry.css`, the icons, the skill, DuckDB-WASM's
 WebAssembly and worker, and DuckDB's `autocomplete` and `json` extensions. The extensions are
 downloaded from `extensions.duckdb.org` once, checked against their pinned SHA-256 and kept in
 `.cache/`. The build writes every bundled package's licence under `licenses/`, takes DuckDB's
@@ -337,11 +352,12 @@ and `checksum`.
 The package Workspace consumes is the folder `dist/ag-grid/<version>/`:
 
 ```
-dist/ag-grid/3.0.0/
+dist/ag-grid/3.1.0/
   plugin.json                                manifest; version and checksum written by the build
   entry.js                                   the AFM module (entry.module)
   entry.css                                  the styles (entry.styles)
   assets/icon.svg                            the icon
+  assets/autosize.svg                        the icon of Autosize columns
   assets/duckdb-eh.wasm                      DuckDB-WASM, for the SQL editor's completion
   assets/duckdb-browser-eh.worker.js         its worker
   assets/autocomplete.duckdb_extension.wasm  DuckDB's completion extension

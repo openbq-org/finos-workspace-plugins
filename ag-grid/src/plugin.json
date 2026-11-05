@@ -672,7 +672,9 @@
           "core:download:save",
           "core:state:write",
           "core:ui:notify",
-          "core:ui:open-link"
+          "core:ui:open-link",
+          "core:ui:button",
+          "core:ui:menu"
         ],
         "model": {
           "traits": {
@@ -730,6 +732,11 @@
                   "alpine",
                   "material"
                 ]
+              },
+              "floatingFilters": {
+                "type": "boolean",
+                "title": "Floating filters",
+                "description": "A filter box under each column header."
               }
             }
           },
@@ -800,7 +807,28 @@
               }
             }
           }
-        }
+        },
+        "actions": [
+          {
+            "id": "floating-filters",
+            "label": "Floating filters",
+            "icon": "filter",
+            "placement": "navbar",
+            "toggles": "floatingFilters"
+          },
+          {
+            "id": "autosize",
+            "label": "Autosize columns",
+            "icon": "assets/autosize.svg",
+            "placement": "menu"
+          },
+          {
+            "id": "clear-filters",
+            "label": "Clear filters and sort",
+            "icon": "refresh",
+            "placement": "menu"
+          }
+        ]
       },
       {
         "id": "ssrm",
@@ -838,7 +866,9 @@
           "core:data:stream",
           "core:params:write",
           "core:copilot:context",
-          "core:state:write"
+          "core:state:write",
+          "core:ui:button",
+          "core:ui:menu"
         ],
         "model": {
           "traits": {
@@ -896,6 +926,11 @@
                   "alpine",
                   "material"
                 ]
+              },
+              "floatingFilters": {
+                "type": "boolean",
+                "title": "Floating filters",
+                "description": "A filter box under each column header."
               }
             }
           },
@@ -906,7 +941,28 @@
           "h": 24,
           "minW": 12,
           "minH": 10
-        }
+        },
+        "actions": [
+          {
+            "id": "floating-filters",
+            "label": "Floating filters",
+            "icon": "filter",
+            "placement": "navbar",
+            "toggles": "floatingFilters"
+          },
+          {
+            "id": "autosize",
+            "label": "Autosize columns",
+            "icon": "assets/autosize.svg",
+            "placement": "menu"
+          },
+          {
+            "id": "clear-filters",
+            "label": "Clear filters and sort",
+            "icon": "refresh",
+            "placement": "menu"
+          }
+        ]
       },
       {
         "id": "infinite",
@@ -1482,7 +1538,9 @@
           "core:data:read",
           "core:params:write",
           "core:copilot:context",
-          "core:state:write"
+          "core:state:write",
+          "core:ui:button",
+          "core:ui:menu"
         ],
         "model": {
           "traits": {
@@ -1540,6 +1598,11 @@
                   "alpine",
                   "material"
                 ]
+              },
+              "floatingFilters": {
+                "type": "boolean",
+                "title": "Floating filters",
+                "description": "A filter box under each column header."
               }
             }
           },
@@ -1550,7 +1613,28 @@
           "h": 24,
           "minW": 12,
           "minH": 10
-        }
+        },
+        "actions": [
+          {
+            "id": "floating-filters",
+            "label": "Floating filters",
+            "icon": "filter",
+            "placement": "navbar",
+            "toggles": "floatingFilters"
+          },
+          {
+            "id": "autosize",
+            "label": "Autosize columns",
+            "icon": "assets/autosize.svg",
+            "placement": "menu"
+          },
+          {
+            "id": "clear-filters",
+            "label": "Clear filters and sort",
+            "icon": "refresh",
+            "placement": "menu"
+          }
+        ]
       },
       {
         "id": "streaming",
@@ -2166,7 +2250,9 @@
           "core:download:save",
           "core:state:write",
           "core:ui:notify",
-          "core:ui:open-link"
+          "core:ui:open-link",
+          "core:ui:button",
+          "core:ui:menu"
         ],
         "model": {
           "traits": {
@@ -2224,6 +2310,11 @@
                   "alpine",
                   "material"
                 ]
+              },
+              "floatingFilters": {
+                "type": "boolean",
+                "title": "Floating filters",
+                "description": "A filter box under each column header."
               }
             }
           },
@@ -2234,7 +2325,28 @@
           "h": 20,
           "minW": 10,
           "minH": 8
-        }
+        },
+        "actions": [
+          {
+            "id": "floating-filters",
+            "label": "Floating filters",
+            "icon": "filter",
+            "placement": "navbar",
+            "toggles": "floatingFilters"
+          },
+          {
+            "id": "autosize",
+            "label": "Autosize columns",
+            "icon": "assets/autosize.svg",
+            "placement": "menu"
+          },
+          {
+            "id": "clear-filters",
+            "label": "Clear filters and sort",
+            "icon": "refresh",
+            "placement": "menu"
+          }
+        ]
       },
       {
         "id": "sql",
@@ -2255,7 +2367,9 @@
           "core:params:write",
           "core:state:write",
           "core:export:provide",
-          "core:copilot:context"
+          "core:copilot:context",
+          "core:ui:button",
+          "core:dashboard:add-widget"
         ],
         "model": {
           "traits": {
@@ -2319,7 +2433,15 @@
           "h": 24,
           "minW": 12,
           "minH": 10
-        }
+        },
+        "actions": [
+          {
+            "id": "freeze",
+            "label": "Create static widget",
+            "icon": "table",
+            "placement": "navbar"
+          }
+        ]
       }
     ],
     "skills": [

@@ -1,5 +1,6 @@
 import {
   applyTheme,
+  attachCardActions,
   backendOptions,
   columnFieldsOf,
   createGrid,
@@ -174,6 +175,7 @@ export default {
     const saved = model.get("state") || {};
     const tracker = createTracker(model, { grid: saved.grid ?? null });
     let detach = () => {};
+    let detachActions = () => {};
     let gridOptions = {};
 
     const start = () => {
@@ -188,6 +190,7 @@ export default {
       const datasource = createDatasource({ model, definition, channel, say, signal });
       api = createGrid(gridEl, optionsFor({ model, definition, columnDefs, gridOptions: backendOptions(gridOptions), datasource, initialState: saved.grid }));
       detach = tracker.attach(api);
+      detachActions = attachCardActions(api, model);
       tracker.gridRestored();
       say("");
     };
@@ -209,6 +212,7 @@ export default {
       model.off("change:config", onTheme);
       model.off("msg:custom", onEvent);
       detach();
+      detachActions();
       api?.destroy();
       api = null;
     });

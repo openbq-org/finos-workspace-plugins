@@ -202,3 +202,45 @@ test("the theme follows the site's mode and colours, and the card's base theme",
   model.push("config", { theme: "alpine" });
   abort.abort();
 });
+
+test("the card's actions show floating filters, clear the filters and sort, and autosize the columns", async () => {
+  const { model, el, abort } = await render({ data: { columnDefs, rowData: rows } });
+  try {
+    const api = await liveApi(el);
+    assert.equal(el.querySelector(".ag-floating-filter"), null);
+
+    model.push("config", { floatingFilters: true });
+    await settle();
+    assert.ok(el.querySelector(".ag-floating-filter"));
+
+    api.setFilterModel({ name: { filterType: "set", values: ["Bob", "Carol"] } });
+    api.applyColumnState({ state: [{ colId: "sales", sort: "desc" }] });
+    await settle();
+    assert.equal(api.getDisplayedRowCount(), 2);
+    model.emit("msg:custom", { kind: "workspace-event", name: "action", id: "clear-filters" });
+    await settle();
+    assert.deepEqual(api.getFilterModel(), {});
+    assert.ok(api.getColumnState().every((column) => !column.sort));
+    assert.equal(api.getDisplayedRowCount(), 3);
+
+    model.emit("msg:custom", { kind: "workspace-event", name: "action", id: "autosize" });
+    await settle();
+
+    model.push("config", { floatingFilters: false });
+    await settle();
+    assert.equal(el.querySelector(".ag-floating-filter"), null);
+  } finally {
+    abort.abort();
+  }
+  assert.equal(model.listenerCount("msg:custom"), 0);
+  assert.equal(model.listenerCount("change:config"), 0);
+});
+
+test("a card that never toggled floating filters keeps the backend's choice", async () => {
+  const { el, abort } = await render({ data: { columnDefs, rowData: rows, gridOptions: { defaultColDef: { floatingFilter: true } } } });
+  try {
+    assert.ok(el.querySelector(".ag-floating-filter"));
+  } finally {
+    abort.abort();
+  }
+});

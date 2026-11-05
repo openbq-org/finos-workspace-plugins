@@ -49,3 +49,28 @@ test("every skill is a markdown file under src/skills, and the artifact has a cl
   assert.deepEqual(artifacts.map((w) => w.id), ["table"]);
   assert.equal(artifacts[0].artifact.data.additionalProperties, false);
 });
+
+test("the grid widgets have the card's floating filters button and its two menu items, and the SQL widget creates a static table", () => {
+  const icons = new Set(["filter", "refresh", "table"]);
+  for (const widget of widgets) {
+    const actions = widget.actions ?? [];
+    const placed = (placement) => actions.some((a) => a.placement === placement);
+    assert.equal(placed("navbar"), widget.permissions.includes("core:ui:button"), widget.id);
+    assert.equal(placed("menu"), widget.permissions.includes("core:ui:menu"), widget.id);
+    for (const action of actions) {
+      assert.ok(icons.has(action.icon) || existsSync(join(root, "src", action.icon)), action.icon);
+      if (action.toggles) assert.equal(widget.settings.schema.properties[action.toggles].type, "boolean");
+    }
+  }
+  for (const id of ["table", "ssrm", "infinite", "streaming"]) {
+    assert.deepEqual(widgets.find((w) => w.id === id).actions.map((a) => [a.id, a.placement, a.toggles ?? null]), [
+      ["floating-filters", "navbar", "floatingFilters"],
+      ["autosize", "menu", null],
+      ["clear-filters", "menu", null],
+    ]);
+  }
+  const sql = widgets.find((w) => w.id === "sql");
+  assert.deepEqual(sql.actions.map((a) => a.id), ["freeze"]);
+  assert.ok(sql.permissions.includes("core:dashboard:add-widget"));
+  assert.ok(widgets.find((w) => w.id === "table").artifact);
+});

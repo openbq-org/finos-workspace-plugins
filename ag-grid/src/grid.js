@@ -254,13 +254,45 @@ export function cellExpressionsOf(gridOptions, definition) {
   return gridOptions?.enableCellExpressions === true || definition?.enableCellExpressions === true;
 }
 
+export function floatingFiltersOf(model) {
+  const on = model?.get("config")?.floatingFilters;
+  return typeof on === "boolean" ? on : undefined;
+}
+
 export function gridOptionsFor({ model, gridOptions = {}, serverSide = false, base = baseOptions(model, gridOptions, { serverSide }), ...own }) {
   const backend = backendOptions(gridOptions);
+  const floatingFilter = floatingFiltersOf(model);
   return {
     ...base,
     ...own,
     ...backend,
-    defaultColDef: { ...DEFAULT_COL_DEF, ...(backend.defaultColDef || {}) },
+    defaultColDef: { ...DEFAULT_COL_DEF, ...(backend.defaultColDef || {}), ...(floatingFilter === undefined ? {} : { floatingFilter }) },
+  };
+}
+
+export const ACTION_AUTOSIZE = "autosize";
+export const ACTION_CLEAR_FILTERS = "clear-filters";
+
+export function attachCardActions(api, model) {
+  const onConfig = () => {
+    const floatingFilter = floatingFiltersOf(model);
+    if (floatingFilter === undefined || api.isDestroyed()) return;
+    const defaultColDef = api.getGridOption("defaultColDef") || {};
+    if (defaultColDef.floatingFilter !== floatingFilter) api.setGridOption("defaultColDef", { ...defaultColDef, floatingFilter });
+  };
+  const onEvent = (event) => {
+    if (event?.kind !== "workspace-event" || event.name !== "action" || api.isDestroyed()) return;
+    if (event.id === ACTION_AUTOSIZE) api.autoSizeAllColumns();
+    if (event.id === ACTION_CLEAR_FILTERS) {
+      api.setFilterModel(null);
+      api.applyColumnState({ defaultState: { sort: null } });
+    }
+  };
+  model.on("change:config", onConfig);
+  model.on("msg:custom", onEvent);
+  return () => {
+    model.off("change:config", onConfig);
+    model.off("msg:custom", onEvent);
   };
 }
 

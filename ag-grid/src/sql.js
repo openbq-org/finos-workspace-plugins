@@ -85,6 +85,40 @@ export function gridRows(result) {
   return result.rows.map((row) => Object.fromEntries(row.map((value, i) => [String(i), value])));
 }
 
+export const ACTION_FREEZE = "freeze";
+export const STATIC_WIDGET = "table";
+const MAX_STATIC_ROWS = 1000;
+const MAX_STATIC_COLUMNS = 60;
+const MAX_STATIC_TEXT = 500;
+const MAX_STATIC_HEADER = 100;
+export const MAX_STATIC_BYTES = 380_000;
+
+const byteSize = (value) => new TextEncoder().encode(JSON.stringify(value)).byteLength;
+
+function staticValue(value) {
+  if (value === null || value === undefined) return null;
+  if (typeof value === "boolean") return value;
+  if (typeof value === "number") return Number.isFinite(value) ? value : null;
+  const text = typeof value === "object" ? JSON.stringify(value) : String(value);
+  return text.slice(0, MAX_STATIC_TEXT);
+}
+
+export function staticTableData(result) {
+  const columnDefs = gridColumns(result)
+    .slice(0, MAX_STATIC_COLUMNS)
+    .map(({ field, headerName, type }) => ({ field, headerName: String(headerName).slice(0, MAX_STATIC_HEADER), ...(type ? { type } : {}) }));
+  const fields = columnDefs.map((column) => column.field);
+  let budget = MAX_STATIC_BYTES - byteSize({ columnDefs, rowData: [] });
+  const rowData = [];
+  for (const row of gridRows(result).slice(0, MAX_STATIC_ROWS)) {
+    const copy = Object.fromEntries(fields.map((field) => [field, staticValue(row[field])]));
+    budget -= byteSize(copy) + 1;
+    if (budget < 0) break;
+    rowData.push(copy);
+  }
+  return { columnDefs, rowData };
+}
+
 export function contextOf(run) {
   if (!run) return null;
   const base = { sql: run.sql.slice(0, 4000), engine: run.engine };
@@ -442,6 +476,24 @@ export default {
     for (const name of ["blur", "click", "scroll"]) editor.addEventListener(name, closePopup);
     run.addEventListener("click", execute);
 
+    const freeze = async () => {
+      if (!lastRun?.result) {
+        status.textContent = "Run a query first, then create a static widget of its result.";
+        return;
+      }
+      const data = staticTableData(lastRun.result);
+      try {
+        await experimental.invoke("core:dashboard:add-widget", { widget: STATIC_WIDGET, data }, { signal });
+        const total = lastRun.result.rows.length;
+        status.textContent = data.rowData.length < total ? `Static widget created with the first ${data.rowData.length.toLocaleString("en")} of ${total.toLocaleString("en")} rows` : "Static widget created";
+      } catch (error) {
+        status.textContent = error instanceof Error ? error.message : String(error);
+      }
+    };
+    const onEvent = (event) => {
+      if (event?.kind === "workspace-event" && event.name === "action" && event.id === ACTION_FREEZE) freeze();
+    };
+
     const onTheme = () => {
       paintSite(model.get("theme"), root);
       applyTheme(api, model);
@@ -451,6 +503,7 @@ export default {
     model.on("change:params", onParams);
     model.on("change:theme", onTheme);
     model.on("change:config", onTheme);
+    model.on("msg:custom", onEvent);
     signal.addEventListener("abort", () => {
       clearTimeout(saveTimer);
       clearTimeout(suggestTimer);
@@ -458,6 +511,7 @@ export default {
       model.off("change:params", onParams);
       model.off("change:theme", onTheme);
       model.off("change:config", onTheme);
+      model.off("msg:custom", onEvent);
       api?.destroy();
       api = null;
     });
