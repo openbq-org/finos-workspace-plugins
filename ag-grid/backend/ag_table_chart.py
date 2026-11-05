@@ -1,7 +1,7 @@
-"""The examples of OpenBB Workspace's AgGrid table page, as `ag-grid` widgets.
+"""The examples of OpenBB Workspace's AgGrid table page, as `aggrid-table` widgets.
 
-An OpenBB widget of type `table` with `data.table` is here a widget of type `ag-grid` with
-`data["ag-grid"]`; the rows its endpoint returns are the same.
+An OpenBB widget of type `table` with `data.table` is here a widget of type `aggrid-table` with
+`data["aggrid-table"]`; the rows its endpoint returns are the same.
 """
 
 import math
@@ -44,21 +44,21 @@ def change_column(field: str, header: str, **extra) -> dict:
     }
 
 
-def widget(name: str, description: str, endpoint: str, table: dict | None = None, w: int = 20, h: int = 6, **extra) -> dict:
+def widget(name: str, description: str, endpoint: str, table: dict | None = None, w: int = 40, h: int = 8, **extra) -> dict:
     return {
         "name": name,
         "description": description,
         "category": CATEGORY,
-        "type": "ag-grid",
+        "type": "aggrid-table",
         "endpoint": f"/ag-table-chart/{endpoint}",
         "gridData": {"w": w, "h": h},
-        **({"data": {"ag-grid": table}} if table is not None else {}),
+        **({"data": {"aggrid-table": table}} if table is not None else {}),
         **extra,
     }
 
 
 WIDGETS = {
-    "ag_table_chart_basic": widget("Table widget", "Rows only: columns, types and formats inferred", "assets", w=12, h=4),
+    "ag_table_chart_basic": widget("Table widget", "Rows only: columns, types and formats inferred", "assets"),
     "ag_table_chart_column_definitions": widget(
         "Table with column definitions",
         "columnsDefs: header names and tooltips, data types, formats, widths, pinning and a hidden column",
@@ -136,7 +136,7 @@ WIDGETS = {
                 {"field": "tvl", "headerName": "TVL (USD)", "chartDataType": "series"},
             ],
         },
-        h=12,
+        h=20,
     ),
     "ag_table_chart_time_series": widget(
         "Table to time series",
@@ -153,7 +153,7 @@ WIDGETS = {
                 {"field": "Solana", "headerName": "Solana", "chartDataType": "series"},
             ],
         },
-        h=12,
+        h=20,
     ),
     "ag_table_chart_chart_ranges": widget(
         "Chart with default ranges",
@@ -168,7 +168,7 @@ WIDGETS = {
             },
             "columnsDefs": [{"field": "month", "chartDataType": "category"}],
         },
-        h=12,
+        h=20,
     ),
     "ag_table_chart_sparklines": widget(
         "Table with sparklines",
@@ -212,6 +212,7 @@ WIDGETS = {
                 },
             ]
         },
+        h=9,
     ),
     "ag_table_chart_sparkline_formatter": widget(
         "Sparklines with custom formatters",
@@ -244,6 +245,7 @@ WIDGETS = {
                 },
             ]
         },
+        h=9,
     ),
     "ag_table_chart_cell_click": widget(
         "Companies (cell clicks)",
@@ -284,7 +286,8 @@ WIDGETS = {
                 {"field": "url", "headerName": "Investor relations", "renderFn": "cellOnClick", "renderFnParams": {"actionType": "openUrl"}},
             ]
         },
-        params=[{"paramName": "symbol", "type": "text", "label": "Symbol", "value": "AAPL"}],
+        params=[{"paramName": "symbol", "type": "text", "label": "Symbol", "value": "AAPL", "show": False}],
+        h=9,
     ),
     "ag_table_chart_company_detail": widget(
         "Company detail",
@@ -302,8 +305,8 @@ WIDGETS = {
             ],
             "showAll": False,
         },
-        w=12,
         params=[{"paramName": "symbol", "type": "text", "label": "Symbol", "value": "AAPL"}],
+        h=10,
     ),
     "ag_table_chart_live": widget(
         "Live prices",
@@ -319,6 +322,7 @@ WIDGETS = {
             ],
         },
         refetchInterval=5000,
+        h=10,
     ),
 }
 

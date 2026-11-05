@@ -1,14 +1,3 @@
-/*
- * OpenBQ's `sparkline` column option, as AG Grid 32's sparklineOptions.
- *
- * OpenBQ          AG Grid 32
- * line, area      line, area: line.stroke/strokeWidth, marker
- * bar             column (vertical, the default) or bar (direction "horizontal")
- * min, max        valueAxisDomain (bars only; AG Grid 32 has no domain for lines)
- * pointsOfInterest and customFormatter
- *                 marker.formatter (line, area) or formatter (bars), which receive the same
- *                 { yValue, first, last, min, max, highlighted } params.
- */
 import { compileFormatter } from "./expression.js";
 import { withOpacity } from "./colors.js";
 
@@ -22,7 +11,6 @@ function pick(style) {
   return out;
 }
 
-/** The style the OpenBQ points of interest give one point, lowest precedence first. */
 export function pointStyle(points, params) {
   if (!points || typeof points !== "object") return null;
   let style = null;
@@ -54,23 +42,40 @@ function applyOpacity(style, opacity) {
   return out;
 }
 
+export function pointParams(params) {
+  const datum = params.datum && typeof params.datum === "object" ? params.datum : {};
+  return {
+    yValue: params.yValue ?? datum.y,
+    xValue: params.xValue ?? datum.x,
+    first: params.first ?? datum.first === true,
+    last: params.last ?? datum.last === true,
+    min: params.min ?? datum.min === true,
+    max: params.max ?? datum.max === true,
+    highlighted: typeof params.highlightState === "string" && params.highlightState.startsWith("highlighted"),
+    datum,
+  };
+}
+
 export function sparklineOptions(sparkline) {
   const type = sparkline?.type ?? "line";
   const o = sparkline?.options && typeof sparkline.options === "object" ? sparkline.options : {};
   const custom = compile(o.customFormatter);
   const points = o.pointsOfInterest;
-  const options = {};
+  const options = { xKey: "x", yKey: "y" };
   if (o.padding) options.padding = { ...o.padding };
+  if (typeof o.min === "number") options.min = o.min;
+  if (typeof o.max === "number") options.max = o.max;
 
   if (type === "bar") {
-    options.type = o.direction === "horizontal" ? "bar" : "column";
+    options.type = "bar";
+    options.direction = o.direction === "horizontal" ? "horizontal" : "vertical";
     if (o.fill) options.fill = withOpacity(o.fill, o.fillOpacity);
     if (o.stroke) options.stroke = o.stroke;
     if (typeof o.strokeWidth === "number") options.strokeWidth = o.strokeWidth;
-    if (typeof o.min === "number" && typeof o.max === "number") options.valueAxisDomain = [o.min, o.max];
     if (points || custom) {
-      options.formatter = (params) => {
-        const style = { ...(pointStyle(points, params) ?? {}), ...(custom ? custom(params) : {}) };
+      options.itemStyler = (params) => {
+        const at = pointParams(params);
+        const style = { ...(pointStyle(points, at) ?? {}), ...(custom ? custom(at) : {}) };
         delete style.size;
         return applyOpacity(style, o.fillOpacity);
       };
@@ -79,10 +84,8 @@ export function sparklineOptions(sparkline) {
   }
 
   options.type = type === "area" ? "area" : "line";
-  const line = {};
-  if (o.stroke) line.stroke = o.stroke;
-  if (typeof o.strokeWidth === "number") line.strokeWidth = o.strokeWidth;
-  if (Object.keys(line).length) options.line = line;
+  if (o.stroke) options.stroke = o.stroke;
+  if (typeof o.strokeWidth === "number") options.strokeWidth = o.strokeWidth;
   if (type === "area" && o.fill) options.fill = withOpacity(o.fill, o.fillOpacity ?? 0.3);
 
   const markers = o.markers && typeof o.markers === "object" ? o.markers : {};
@@ -90,18 +93,17 @@ export function sparklineOptions(sparkline) {
   if (markersOn || points || custom) {
     const base = markersOn ? pick(markers) : { size: 0 };
     options.marker = { enabled: true, ...base };
-    options.marker.formatter = (params) => {
-      const poi = pointStyle(points, params);
-      const style = { ...base, ...(poi ?? {}), ...(custom ? custom(params) : {}) };
+    options.marker.itemStyler = (params) => {
+      const at = pointParams(params);
+      const poi = pointStyle(points, at);
+      const style = { ...base, ...(poi ?? {}), ...(custom ? custom(at) : {}) };
       if (!markersOn && poi && style.size === 0) style.size = DEFAULT_POINT_SIZE;
       return applyOpacity(style, undefined);
     };
   }
-  if (points?.highlighted) options.highlightStyle = pick(points.highlighted);
   return options;
 }
 
-/** The sparkline's numbers, from an array, a {values} object or a JSON string. */
 export function sparklineData(value) {
   if (Array.isArray(value)) return value;
   if (typeof value === "string") {
@@ -114,4 +116,19 @@ export function sparklineData(value) {
   }
   if (value && typeof value === "object" && Array.isArray(value.values)) return value.values;
   return [];
+}
+
+export function sparklinePoints(value) {
+  const values = sparklineData(value).map((v) => (typeof v === "number" ? v : Number(v)));
+  const finite = values.filter(Number.isFinite);
+  const min = finite.length ? Math.min(...finite) : null;
+  const max = finite.length ? Math.max(...finite) : null;
+  return values.map((y, x) => ({
+    x,
+    y: Number.isFinite(y) ? y : null,
+    first: x === 0,
+    last: x === values.length - 1,
+    min: y === min,
+    max: y === max,
+  }));
 }

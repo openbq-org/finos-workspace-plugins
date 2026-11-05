@@ -79,37 +79,50 @@ function columnsOf(api) {
 export function createChartView({ api, gridEl, chartEl, chartView = {}, saved, mode, onChange }) {
   let ref = null;
   let open = false;
+  let drawnColumns = 0;
+  let drawnRows = 0;
   let currentMode = mode;
   const type = agChartType(chartView.chartType);
 
   const save = () => {
-    let model = null;
-    try {
-      const models = api.getChartModels?.() ?? [];
-      model = models.find((m) => m.chartId === ref?.chartId) ?? null;
-      if (model && JSON.stringify(model).length > MAX_SAVED_MODEL) model = null;
-    } catch {
-      model = null;
+    let model = ref ? null : saved?.model ?? null;
+    if (ref) {
+      try {
+        const models = api.getChartModels?.() ?? [];
+        model = models.find((m) => m.chartId === ref.chartId) ?? null;
+        if (model && JSON.stringify(model).length > MAX_SAVED_MODEL) model = null;
+      } catch {
+        model = null;
+      }
     }
     onChange?.({ open, model });
   };
 
   const create = (model, restore = chartView.ignoreCellRange !== true) => {
-    if (model && restore) {
+    if (model && restore && columnsOf(api).length && api.getDisplayedRowCount()) {
       try {
         ref = api.restoreChart({ ...model, chartThemeName: chartThemeName(currentMode) }, chartEl);
+        drawnColumns = columnsOf(api).length;
+        drawnRows = api.getDisplayedRowCount();
         if (ref) return;
       } catch (e) {
         console.warn("ag-grid restoreChart:", e.message);
       }
     }
+    const columns = chartColumns(columnsOf(api), chartView, chartView.chartType);
+    drawnColumns = columns.length;
+    drawnRows = api.getDisplayedRowCount();
+    if (!columns.length || !drawnRows) {
+      ref = null;
+      return;
+    }
     ref = api.createRangeChart({
       chartType: type,
-      cellRange: { columns: chartColumns(columnsOf(api), chartView, chartView.chartType) },
+      cellRange: { columns },
       chartThemeName: chartThemeName(currentMode),
       chartContainer: chartEl,
       suppressChartRanges: true,
-      chartThemeOverrides: navigatorOverrides(chartView, type),
+      chartThemeOverrides: { ...navigatorOverrides(chartView, type), common: { ...navigatorOverrides(chartView, type)?.common, background: { fill: "transparent" } } },
     }) ?? null;
   };
 
@@ -154,6 +167,12 @@ export function createChartView({ api, gridEl, chartEl, chartView = {}, saved, m
       try { model = (api.getChartModels?.() ?? []).find((m) => m.chartId === ref.chartId) ?? null; } catch { model = null; }
       destroyChart();
       try { create(model, true); } catch (e) { console.warn("ag-grid chart theme:", e.message); }
+    },
+    refresh() {
+      if (!open || (ref && drawnColumns > 0 && drawnRows > 0)) return;
+      destroyChart();
+      try { create(saved?.model); } catch (e) { console.warn("ag-grid createRangeChart:", e.message); }
+      if (ref) save();
     },
     destroy() {
       api.removeEventListener("chartOptionsChanged", listener);

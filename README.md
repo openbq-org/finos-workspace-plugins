@@ -5,7 +5,7 @@ package, `dist/<plugin id>/<version>/`, which a deployment places in its plugins
 
 | Folder | Plugin | Widget types |
 |---|---|---|
-| [`ag-grid/`](ag-grid/README.md) | AgGrid table | `ag-grid`: OpenBB's table widget, with charts, sparklines and streaming |
+| [`ag-grid/`](ag-grid/README.md) | AgGrid | `aggrid-table`, `aggrid-ssrm`, `aggrid-infinite`, `aggrid-streaming`, `aggrid-sql`: AG Grid Enterprise with integrated charts |
 
 ## Shared tooling
 
@@ -22,12 +22,12 @@ package, `dist/<plugin id>/<version>/`, which a deployment places in its plugins
 Raise `version` in the plugin's `package.json`, then push a tag:
 
 ```bash
-git tag ag-grid-v2.0.0 && git push origin ag-grid-v2.0.0
+git tag ag-grid-v3.0.0 && git push origin ag-grid-v3.0.0
 ```
 
 On a server:
 
 ```bash
 PLUGINS_DIR=/srv/workspace-plugins GITHUB_REPO=openbq-org/finos-workspace-plugins \
-  scripts/install-release.sh ag-grid 2.0.0
+  scripts/install-release.sh ag-grid 3.0.0
 ```
