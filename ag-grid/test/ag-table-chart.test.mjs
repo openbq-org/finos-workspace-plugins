@@ -3,9 +3,9 @@ import { test } from "node:test";
 import { JSDOM } from "jsdom";
 
 import { formatValue, headerFromField, titleCase, yearOf } from "../src/ag-table-chart/format.js";
-import { compileFormatter } from "../src/ag-table-chart/expression.js";
+import { compileExpression, compileFormatter } from "../src/ag-table-chart/expression.js";
 import { columnColorStyle, contrastText, greenRedStyle, ruleMatches, withOpacity } from "../src/ag-table-chart/colors.js";
-import { pointStyle, sparklineData, sparklineOptions } from "../src/ag-table-chart/sparkline.js";
+import { pointParams, pointStyle, sparklineData, sparklineOptions, sparklinePoints } from "../src/ag-table-chart/sparkline.js";
 import { fillTemplate, renderMarkdown } from "../src/ag-table-chart/markdown.js";
 import { HoverCardTooltip, changeTrackedColumns, agTableChartColumnDefs, renderFnsOf, toColDef } from "../src/ag-table-chart/columns.js";
 import { agChartType, chartColumns, navigatorOverrides } from "../src/ag-table-chart/chartView.js";
@@ -94,7 +94,7 @@ test("columnColor and greenRed styles", () => {
   assert.equal(withOpacity("#22c55e", 0.3), "rgba(34, 197, 94, 0.3)");
 });
 
-test("sparklines map to AG Grid 32 options", () => {
+test("sparklines map to AG Charts sparkline options", () => {
   const line = sparklineOptions({
     type: "line",
     options: {
@@ -103,23 +103,35 @@ test("sparklines map to AG Grid 32 options", () => {
     },
   });
   assert.equal(line.type, "line");
-  assert.deepEqual(line.line, { stroke: "#2563eb", strokeWidth: 2 });
+  assert.equal(line.xKey, "x");
+  assert.equal(line.yKey, "y");
+  assert.equal(line.stroke, "#2563eb");
+  assert.equal(line.strokeWidth, 2);
   assert.equal(line.marker.enabled, true);
-  assert.deepEqual(line.marker.formatter({ yValue: 5, max: true }), { size: 6, fill: "#22c55e" });
-  assert.deepEqual(line.marker.formatter({ yValue: 4 }), { size: 3 });
+  assert.deepEqual(line.marker.itemStyler({ yValue: 5, max: true }), { size: 6, fill: "#22c55e" });
+  assert.deepEqual(line.marker.itemStyler({ yValue: 4, max: false, min: false }), { size: 3 });
 
   const column = sparklineOptions({ type: "bar", options: { fill: "#6b7280", min: 0, max: 10 } });
-  assert.equal(column.type, "column");
-  assert.deepEqual(column.valueAxisDomain, [0, 10]);
-  assert.equal(sparklineOptions({ type: "bar", options: { direction: "horizontal" } }).type, "bar");
+  assert.equal(column.type, "bar");
+  assert.equal(column.direction, "vertical");
+  assert.equal(column.min, 0);
+  assert.equal(column.max, 10);
+  assert.equal(sparklineOptions({ type: "bar", options: { direction: "horizontal" } }).direction, "horizontal");
 
   const pnl = sparklineOptions({ type: "bar", options: { customFormatter: "(p) => ({ fill: p.yValue >= 0 ? '#22c55e' : '#ef4444', fillOpacity: 0.5 })" } });
-  assert.deepEqual(pnl.formatter({ yValue: -2 }), { fill: "rgba(239, 68, 68, 0.5)" });
+  assert.deepEqual(pnl.itemStyler({ datum: { x: 1, y: -2 } }), { fill: "rgba(239, 68, 68, 0.5)" });
+
+  const bars = sparklineOptions({ type: "bar", options: { pointsOfInterest: { maximum: { fill: "max" }, firstLast: { fill: "edge" } } } });
+  const points = sparklinePoints([3, 9, 1]);
+  assert.deepEqual(points[1], { x: 1, y: 9, first: false, last: false, min: false, max: true });
+  assert.equal(bars.itemStyler({ datum: points[1] }).fill, "max");
+  assert.equal(bars.itemStyler({ datum: points[0] }).fill, "edge");
+  assert.equal(pointParams({ datum: points[2], highlightState: "highlighted-item" }).highlighted, true);
 
   const area = sparklineOptions({ type: "area", options: { fill: "#2563eb", pointsOfInterest: { firstLast: { fill: "black" } } } });
   assert.equal(area.fill, "rgba(37, 99, 235, 0.3)");
-  assert.equal(area.marker.formatter({ yValue: 1, last: true }).size, 5);
-  assert.equal(area.marker.formatter({ yValue: 1 }).size, 0);
+  assert.equal(area.marker.itemStyler({ yValue: 1, last: true }).size, 5);
+  assert.equal(area.marker.itemStyler({ yValue: 1 }).size, 0);
 });
 
 test("points of interest keep OpenBQ's precedence", () => {
@@ -182,6 +194,7 @@ test("columnsDefs map to colDefs with OpenBQ's options", () => {
   assert.equal(name.flex, 0);
   assert.equal(name.width, 120);
   assert.equal(name.tooltipComponent, HoverCardTooltip);
+  assert.equal(name.cellClassRules["ag-table-chart-has-card"](), true);
   assert.equal(tvl.headerTooltip, "Total Value Locked");
   assert.deepEqual(tvl.cellStyle({ value: 45e9, data: rows[0] }), { color: "#ffffff", backgroundColor: "#16a34a" });
   assert.equal(change.hide, true);
@@ -190,7 +203,7 @@ test("columnsDefs map to colDefs with OpenBQ's options", () => {
   assert.equal(change.cellStyle({ value: -0.5, data: rows[0] }).color, "#dc2626");
   assert.equal(change.cellClassRules["ag-table-chart-cell-down"]({ node: { id: "0" }, context: { changes: new Map([["0|change_1d", "down"]]) } }), true);
   assert.equal(history.cellRenderer, "agSparklineCellRenderer");
-  assert.deepEqual(history.valueGetter({ data: rows[0] }), [1, 2, 3]);
+  assert.deepEqual(history.valueGetter({ data: rows[0] }).map((p) => p.y), [1, 2, 3]);
   assert.equal(history.chartDataType, "excluded");
 });
 
@@ -259,4 +272,19 @@ test("ChartView picks chart types, columns and the navigator", () => {
   assert.deepEqual(navigatorOverrides({ chartNavigatorEnabled: true, chartMiniChartEnabled: true }, "line"), { common: { navigator: { enabled: true, miniChart: { enabled: true } } } });
   assert.equal(navigatorOverrides({ chartNavigatorEnabled: true }, "pie"), undefined);
   assert.equal(navigatorOverrides({}, "line"), undefined);
+});
+
+test("expressions read columns by name and refuse code", () => {
+  const row = { revenue: 120, cost: 80, "Market Cap": 3, name: "a" };
+  const run = (source) => compileExpression(source)((name) => row[name]);
+  assert.equal(run("[revenue] - [cost]"), 40);
+  assert.equal(run("[ Market Cap ] * 2"), 6);
+  assert.equal(run("[revenue] > 100 ? 'big' : 'small'"), "big");
+  assert.equal(run("Math.max([revenue], [cost]) / 10"), 12);
+  assert.equal(run("[missing] ?? 0"), 0);
+  assert.throws(() => compileExpression("[revenue"), SyntaxError);
+  assert.throws(() => compileExpression("[revenue] + "), SyntaxError);
+  assert.throws(() => compileExpression("fetch('https://evil')")(() => undefined), TypeError);
+  assert.equal(run("[name].constructor"), undefined);
+  assert.throws(() => compileExpression("x".repeat(2001)), SyntaxError);
 });

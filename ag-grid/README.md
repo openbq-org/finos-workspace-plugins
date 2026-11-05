@@ -1,138 +1,155 @@
-# AgGrid table for Workspace
+# AgGrid widgets for Workspace
 
-A Workspace widget plugin that renders the `ag-grid` widget type with
-[AG Grid](https://www.ag-grid.com/), configured the way
-[OpenBQ Workspace's table widget](https://docs.OpenBQ.co/workspace/developers/widget-types/aggrid-table-charts)
-is: column definitions, render functions, hover cards, sparklines and ChartView.
+A Workspace widget plugin with five widgets built on [AG Grid](https://www.ag-grid.com/)
+Enterprise 34.3 and AG Charts Enterprise 12.3. Each widget handles its own widget type, and
+each one gets its rows from its widget's endpoint in `widgets.json`.
 
-This folder of the plugins repository holds the plugin, moved from FINOS Workspace's
-`docs/examples/ag-grid/`. The plugin id stays `ag-grid` and the widget stays `grid`, handling
-type `ag-grid`, so existing dashboards and `widgets.json` files keep working. Nothing in it
-imports Workspace code: it talks to Workspace only through the widget plugin contract
-(`plugin.json`, the AFM module in `entry.js`, traits and host commands), and the same built
+| Widget | Type | Row model | What it is for |
+|---|---|---|---|
+| `table` | `aggrid-table` | Client-side | The rows a backend returns, with OpenBQ's table configuration: formats, render functions, hover cards, sparklines, cell clicks and the table-to-chart view. |
+| `ssrm` | `aggrid-ssrm` | Server-side | A large table that the backend pages, sorts, filters, groups, aggregates and pivots. Each request of the grid is a POST to the endpoint. |
+| `infinite` | `aggrid-infinite` | Infinite | A long table that loads in blocks as the user scrolls, from a backend that answers `startRow` and `endRow`, `offset` and `limit`, or the grid state. |
+| `streaming` | `aggrid-streaming` | Client-side | A table kept current by a WebSocket that Workspace opens, which updates rows, inserts new ones and removes them. |
+| `sql` | `aggrid-sql` | Client-side | A SQL editor with completion for the backend's database, with the result in a grid. |
+
+Nothing in the plugin imports Workspace code. It talks to Workspace only through the widget plugin
+contract: `plugin.json`, the AFM module in `entry.js`, traits and host commands. The same built
 package serves FINOS Workspace and BQ Workspace.
 
-## What it shows
+## What every widget has
 
-The plugin renders tabular data returned by a backend as an ag-grid Community
-table, with:
+- **AG Grid Enterprise.** The side bar has the Columns and Filters panels. Cells can be selected
+  as ranges, and the status bar shows the row count and the aggregation of the selected cells.
+  Integrated charts are on: a selected range is charted from the context menu.
+- **Grouping, aggregation and pivot.** Every column can be a row group, a value or a pivot, from
+  the Columns panel or the row group and pivot panels above the grid. The table and streaming
+  widgets group in the browser. The server-side widget sends the grouping to the backend. The
+  infinite widget has no grouping, because AG Grid's infinite row model does not group.
+- **The backend's grid options.** An answer's `gridOptions` are passed to AG Grid as they are, and
+  they replace the plugin's defaults. That includes `defaultColDef`, `sideBar`, `statusBar`,
+  `rowSelection`, `pagination` and any other option of AG Grid 34.
+- **Themes.** The grid's base theme is one of AG Grid's four: `balham`, which is compact and the
+  default, `quartz`, `alpine` or `material`. Its colours come from the site's light or dark
+  palette, so the grid follows the site when the user switches. The base theme is chosen in this
+  order: the card's `theme` setting, the backend's `gridOptions.theme`, the organization's `theme`
+  admin setting, then `balham`. Charts use AG Charts' light or dark theme to match.
+- **Saved state.** The grid's state (columns, order, widths, sort, filters, row groups, pivot, open
+  groups and the side bar) is saved in the widget's `state` trait and restored when the dashboard
+  opens again. On the table and streaming widgets, the table-to-chart view and its chart are saved
+  too.
+- **Copilot context.** The AI agent can read the columns, the row count, the filter and sort
+  models and the grouping.
+- **Card actions.** The card's header has a **Floating filters** button, which switches the
+  card's `floatingFilters` setting and shows a filter box under each column header while it is on.
+  The card's options menu has **Autosize columns**, which sizes every column to its content, and
+  **Clear filters and sort**. Workspace draws them from the widget's `actions` in `plugin.json`
+  (`core:ui:button`, `core:ui:menu`) and sends the widget an `action` event when the user picks
+  one. Until a card's button is used, the backend's `defaultColDef.floatingFilter` decides. The
+  autosize item's icon is the package's `assets/autosize.svg`.
 
-- **Column definitions**: `field`, `headerName`, `width`, `minWidth`, `maxWidth`,
-  `flex`, `resizable`, `sortable`, `filter`, `editable`, `pinned`, `cellRenderer`,
-  `cellEditor`, `valueGetter`, `valueSetter`, `cellClass`, `cellStyle`, `tooltip`, and more.
-- **Grid options**: `rowSelection` (`single`/`multiple`), `rowMultiSelectWithClick`,
-  `rowDeselection`, `pagination` / `paginationPageSize`, `domLayout`
-  (`autoHeight`), `editing` (`singleCell`/`fullRow`), `enableRangeSelection`,
-  `suppressContextMenu`, `animateRows`, `enableCellTextSelection`, `rowHeight`,
-  `headerHeight`, and many others.
-- **Streaming updates**: when the backend pushes new row data through the
-  `data` trait, the widget computes an add/update/remove diff and applies it
-  with `api.applyTransaction()` — efficient incremental updates without a full
-  re-render. Falls back to `api.setRowData()` if transactions fail.
-- **Grid events**: `selectionChanged`, `cellValueChanged`, `rowDataChanged`,
-  `filterChanged`, `sortChanged`, `columnResized`, `columnMoved`, `cellClicked`
-  are recorded to the widget's `state` trait (written back to the host via
-  `model.save_changes()`) and exposed through `copilotContext()` so the AI
-  agent can read them.
-- **Export**: CSV export of the visible rows (`core:export:provide`).
-- **Themes**: follows the site's `theme=dark` / `theme=light` using
-  `ag-theme-quartz` / `ag-theme-quartz-dark`, in a compact density: 26 px rows, a 30 px header,
-  formatted and right-aligned numbers, columns that share the card's width, and pagination only
-  above 100 rows, with as many rows per page as fit.
-- **Tool panels**: with `ag-grid-enterprise` loaded, a side bar with the Columns panel (column
-  visibility and order) and the Filters panel, range selection, and a status bar with the row
-  count. A selected range is charted from the context menu (Chart Range: column, bar, pie, line,
-  scatter, area, statistical and combination charts) in a dark or light chart theme that follows
-  the site. A backend's `gridOptions` replace any of these defaults. The plugin offers no row
-  grouping, aggregation or pivot of its own: the Columns panel has no row group, values or pivot
-  sections, and columns are not set up to be grouped, aggregated or pivoted.
+## Two-way communication with the backend
 
-## The contract
-
-The backend declares a widget of type `ag-grid` and returns JSON:
+A widget never calls a backend itself. It writes the widget's params with `core:params:write`, and
+Workspace sends the request to the endpoint, as it does when a user changes a param. The grid's
+side of the conversation goes in a hidden body param that the backend declares in
+`widgets.json`:
 
 ```json
 {
-  "sales": {
-    "name": "Sales by region",
-    "type": "ag-grid",
-    "endpoint": "/sales"
+  "paramName": "gridState",
+  "type": "text",
+  "label": "Grid state",
+  "show": false,
+  "in": "body",
+  "value": ""
+}
+```
+
+A body param needs `"method": "POST"` on the widget. The param's value is a JSON text of at most
+4,096 characters, which is Workspace's limit for a text param:
+
+```json
+{
+  "seq": 1762250000001,
+  "event": { "type": "cellValueChanged", "rowId": "P3", "colId": "quantity", "oldValue": 100, "newValue": 150 },
+  "filterModel": {},
+  "sortModel": [{ "colId": "symbol", "sort": "asc" }],
+  "rowGroupCols": [],
+  "pivotCols": [],
+  "valueCols": [],
+  "pivotMode": false,
+  "selectedRowIds": []
+}
+```
+
+`seq` grows with every request. A backend that echoes `seq` in its answer lets the widget match
+the answer to its request and ignore an older one. When the selection would make the text too
+long, `selectedRowIds` is sent empty, with `selectedRowCount` instead.
+
+## The table widget (`aggrid-table`)
+
+The endpoint returns the rows in any of these shapes:
+
+- An object with `columnDefs`, `rowData` and optionally `gridOptions`, passed to AG Grid as they are.
+- A list of records, which is pandas `to_dict("records")`.
+- A dict of columns, which is pandas `to_dict("list")`.
+- The pandas split format: `{ "columns": [...], "index": [...], "data": [[...], ...] }`.
+- `{ "transaction": { "add": [...], "update": [...], "remove": [...] } }`, which changes the rows
+  the grid already has instead of replacing them.
+
+Without `columnDefs`, the columns are the keys of the rows. Numbers are right-aligned and
+formatted, ISO dates filter as dates, and booleans show as Yes or No. Pagination switches on above
+100 rows. Rows keep their identity across refreshes by `wsRowIdColumn` (default `id`), so a refresh
+applies only the rows that changed.
+
+### Grid events
+
+`gridEvents` in the widget's `data["aggrid-table"]` lists the grid events that send the grid state
+to the endpoint: `cellClicked`, `cellDoubleClicked`, `cellValueChanged`, `selectionChanged`,
+`filterChanged`, `sortChanged`, `columnRowGroupChanged`, `columnPivotChanged`,
+`columnValueChanged`, `columnPivotModeChanged` and `rowGroupOpened`. It is empty by default, so a
+widget sends nothing until its backend asks for an event. The backend's answer replaces the rows,
+or changes some of them with a `transaction`.
+
+```json
+{
+  "positions": {
+    "name": "Positions",
+    "type": "aggrid-table",
+    "endpoint": "/positions",
+    "method": "POST",
+    "params": [{ "paramName": "gridState", "type": "text", "label": "Grid state", "show": false, "in": "body", "value": "" }],
+    "data": { "aggrid-table": { "gridEvents": ["cellValueChanged"] } }
   }
 }
 ```
 
-The endpoint returns JSON at the `dataKey` path. `dataKey` is set in
-`widgets.json` as a dot-notation path into the API response (e.g.
-`"results.grid"`). The host extracts the value at that path and delivers it to
-the plugin through the `data` trait.
+### Expressions
 
-### 1. ag-grid-ready object (explicit column defs)
+A column with `calculatedExpression` gets its value from the other columns of its row, such as
+`[revenue] - [cost]`. With `enableCellExpressions` (in the definition or the answer's
+`gridOptions`), a cell value that starts with `=` is an expression too, such as
+`=[quantity] * [price]`. Expressions take literals, `[column]`, `+ - * / %`, comparisons,
+`&& || ??`, `?:` and `Math.abs`, `min`, `max`, `round`, `floor`, `ceil` and `sign`. A calculated
+column can name another one. The plugin evaluates expressions itself and never runs them as code.
+An expression that fails, divides by zero or refers to itself shows `#ERROR`.
 
-```json
-{
-  "columnDefs": [
-    { "field": "region", "headerName": "Region", "width": 150 },
-    { "field": "sales", "headerName": "Sales", "width": 100 }
-  ],
-  "rowData": [
-    { "region": "EMEA", "sales": 100 },
-    { "region": "APAC", "sales": 105 }
-  ],
-  "gridOptions": {
-    "rowSelection": "multiple",
-    "pagination": true,
-    "paginationPageSize": 20
-  }
-}
-```
-
-### 2. List of records (pandas `to_dict('records')`)
-
-```json
-[
-  { "region": "EMEA", "sales": 100, "date": "2024-01-10" },
-  { "region": "APAC", "sales": 105, "date": "2024-01-12" }
-]
-```
-
-Column definitions and types are inferred automatically from the data.
-
-### 3. Dict of columns (pandas `to_dict('list')`)
-
-```json
-{
-  "region": ["EMEA", "APAC"],
-  "sales": [100, 105],
-  "date": ["2024-01-10", "2024-01-12"]
-}
-```
-
-### 4. Pandas split format
-
-```json
-{
-  "columns": ["region", "sales", "date"],
-  "index": [0, 1],
-  "data": [["EMEA", 100, "2024-01-10"], ["APAC", 105, "2024-01-12"]]
-}
-```
-
-## Table chart configuration
+### OpenBQ's table configuration
 
 An OpenBQ backend's table widget moves over with two changes: `"type": "table"` becomes
-`"type": "ag-grid"`, and `data.table` becomes `data["ag-grid"]`. The endpoint returns the same
-rows. The plugin declares the object's schema (`definition` in `plugin.json`), so a backend whose
-keys or values do not fit sees the problem, with its JSON pointer, when it connects.
+`"type": "aggrid-table"`, and `data.table` becomes `data["aggrid-table"]`. The endpoint returns the
+same rows. The plugin declares the object's schema (`definition` in `plugin.json`), so a backend
+whose keys or values do not fit sees the problem, with its JSON pointer, when it connects.
 
 ```json
 {
   "assets": {
     "name": "Assets",
     "description": "TVL by asset",
-    "type": "ag-grid",
+    "type": "aggrid-table",
     "endpoint": "/assets",
     "data": {
-      "ag-grid": {
+      "aggrid-table": {
         "enableCharts": true,
         "chartView": { "enabled": false, "chartType": "column" },
         "columnsDefs": [
@@ -151,75 +168,170 @@ keys or values do not fit sees the problem, with its JSON pointer, when it conne
 | `columnsDefs[]`: `field`, `headerName`, `headerTooltip`, `width`, `minWidth`, `maxWidth`, `hide`, `pinned`, `align` | The AG Grid column options of the same names. A column with `width` keeps it instead of sharing the card's width. |
 | `cellDataType` (`text`, `number`, `boolean`, `date`, `dateString`, `object`) | The column's filter, alignment and formatting. Without it, the type is inferred from the rows. Date strings sort, filter and chart as dates and show as they came. |
 | `formatterFn` (`int`, `none`, `percent`, `normalized`, `normalizedPercent`, `dateToYear`), on a column or the whole table; `decimalPlaces`; `prefix`, `suffix` | Formatted cell text. Sorting, filtering, charts and the CSV keep the raw values. Numbers follow the site's locale and decimals. |
-| `renderFn` (one or a list) and `renderFnParams` | `greenRed`, `titleCase`, `columnColor` (`colorRules` with every condition, `fill`, `colorValueKey`), `hoverCard` (`cellField`, `title`, `markdown` with `{field}` placeholders, or `hoverCardData`), `cellOnClick` (below) and `showCellChange` (below). |
-| `sparkline` (`line`, `area`, `bar`; `dataField`; `options`) | AG Grid sparklines: stroke, fill, opacity, markers, padding, bar `direction`, `min`/`max` for bars, every point of interest, and `customFormatter`. |
+| `renderFn` (one or a list) and `renderFnParams` | `greenRed`, `titleCase`, `columnColor` (`colorRules` with every condition, `fill`, `colorValueKey`), `hoverCard` (`cellField`, `title`, `markdown` with `{field}` placeholders, or `hoverCardData`), `cellOnClick` and `showCellChange`, both described below. A cell with a hover card shows a help pointer and a dotted underline. |
+| `sparkline` (`line`, `area`, `bar`; `dataField`; `options`) | AG Charts sparklines: stroke, fill, opacity, markers, padding, bar `direction`, `min` and `max`, every point of interest, and `customFormatter`. |
 | `chartDataType` (`category`, `series`, `time`, `excluded`) | The column's role in charts. |
+| `calculatedExpression` | The column's value as an expression over its row, as under [Expressions](#expressions). |
 | `showAll` | Default `true`: fields the rows have and `columnsDefs` does not are shown after the declared ones. `false` shows only `columnsDefs`. |
 | `transpose` | One row per column and one column per row, headed by the first column's values. Each cell keeps its column's format and colours. |
-| `enableCharts`, `chartView` (`enabled`, `chartType`, `cellRangeCols`, `ignoreCellRange`, `chartNavigatorEnabled`, `chartMiniChartEnabled`) | A *Table / Chart* toolbar and an AG Grid integrated chart linked to the rows, with every chart type of OpenBQ's list. The chart a user arranges is saved with the dashboard and restored, unless `ignoreCellRange`. Right-click *Chart Range* charts any selection. `enableCharts: false` turns charting off. |
+| `enableCharts`, `chartView` (`enabled`, `chartType`, `cellRangeCols`, `ignoreCellRange`, `chartNavigatorEnabled`, `chartMiniChartEnabled`) | A *Table / Chart* toolbar and an integrated chart linked to the rows, with every chart type of OpenBQ's list. The chart a user arranges is saved with the dashboard and restored, unless `ignoreCellRange`. `enableCharts: false` turns charting off. |
 | `enableAdvanced` | `true` opens the Columns panel; `false` hides the side bar. |
 | `wsRowIdColumn` | The field that identifies a row across refreshes (default `id`), so changed rows are applied as transactions and `showCellChange` knows which cell moved. |
+| `gridEvents`, `enableCellExpressions` | As above. |
 
 **Cell clicks** (`renderFn: "cellOnClick"`):
 
-- `actionType: "groupBy"` writes `groupBy.paramName` (the cell's value, or the row's `valueField`) to the widget's params, which also updates every widget grouped with that param. The param must be one the widget declares in `widgets.json`. The widget always refetches, as with `forceUpdate: true`.
-- `actionType: "openUrl"` opens the cell's value, or `renderFnParams.url` with `{field}` placeholders, after the user confirms. Only `https:` and `mailto:` links.
-- `actionType: "sendToAgent"` fills `sendToAgent.markdown` from the row, copies it to the clipboard and keeps it in the widget's Copilot context. FINOS Workspace has no host command that sends a message to the AI agent, so the user pastes it.
+- `actionType: "groupBy"` writes `groupBy.paramName` (the cell's value, or the row's `valueField`)
+  to the widget's params. Workspace then updates every widget grouped with that param. The param
+  must be one the widget declares in `widgets.json`; a param with `"show": false` does this without
+  showing a control on the card. The widget always refetches, as with `forceUpdate: true`.
+- `actionType: "openUrl"` opens the cell's value, or `renderFnParams.url` with `{field}`
+  placeholders, after the user confirms. Only `https:` and `mailto:` links open.
+- `actionType: "sendToAgent"` fills `sendToAgent.markdown` from the row, copies it to the clipboard
+  and keeps it in the widget's Copilot context. FINOS Workspace has no host command that sends a
+  message to the AI agent, so the user pastes it.
 
-**`showCellChange`**: when a refresh or `refetchInterval` brings new values, a changed cell flashes green when it rose and red when it fell (by `colorValueKey`'s field when set). `enableCellChangeWs: false` turns it off for a column.
+**`showCellChange`**: when a refresh, a `refetchInterval` or a stream brings new values, a changed
+cell flashes green when it rose and red when it fell (by `colorValueKey`'s field when set).
+`enableCellChangeWs: false` turns it off for a column.
 
-**`customFormatter`** is a JavaScript function in a string. The frame forbids `eval`, and a backend's string should not run as code, so the plugin evaluates the subset formatters use, over the formatter's params only: `(params) => ({ ... })`, `params => { return {...} }` or `function (params) { return {...} }`, with literals, `params.x` and `params["x"]`, `! - + * / %`, comparisons, `&& || ??`, `?:` and `Math.abs/min/max/round/floor/ceil/sign`. Anything else is ignored with a console warning.
+**`customFormatter`** is a JavaScript function in a string. The frame forbids `eval`, and a
+backend's string should not run as code, so the plugin evaluates the subset formatters use, over
+the formatter's params only: `(params) => ({ ... })`, `params => { return {...} }` or
+`function (params) { return {...} }`, with literals, `params.x` and `params["x"]`,
+`! - + * / %`, comparisons, `&& || ??`, `?:` and `Math.abs/min/max/round/floor/ceil/sign`.
+Anything else is ignored with a console warning.
 
-**Not supported:** `enableFormulas` (AG Grid formulas need AG Grid 34; this plugin uses 32), `min`/`max` on line and area sparklines (AG Grid 32 has no value domain for them), and the clickable links inside a hover card (shown as text).
+**Not supported:** OpenBQ's `enableFormulas`, because AG Grid 34.3 has no formula engine (use
+`enableCellExpressions` instead), and the clickable links inside a hover card, which show as text.
 
-## Column type inference
+## The server-side widget (`aggrid-ssrm`)
 
-When column defs are not provided explicitly, the widget infers column types
-from the data:
+The widget uses AG Grid's server-side row model. Its endpoint is `POST`, and the widget declares
+the `gridState` body param. The first answer, to an empty `gridState`, gives the columns:
 
-| Inferred type | Condition | Ag-grid treatment |
-|---|---|---|
-| `numeric` | Mostly numbers | `agNumberColumnFilter`, numeric cell class |
-| `date` | ISO-8601 date strings | `agDateColumnFilter` |
-| `boolean` | Mostly booleans | "Yes"/"No" cell renderer |
-| `string` | Everything else | Text filter |
+```json
+{ "columnDefs": [{ "field": "desk" }, { "field": "notional", "aggFunc": "sum" }], "gridOptions": {} }
+```
 
-## What it gives the FINOS Workspace
+After that, every block the grid needs is a request in `gridState`: AG Grid's
+`IServerSideGetRowsRequest`, which is `startRow`, `endRow`, `rowGroupCols`, `valueCols`,
+`pivotCols`, `pivotMode`, `groupKeys`, `filterModel` and `sortModel`, with `seq` and
+`event: { "type": "getRows" }`. The backend answers with the block:
 
-- **Exports.** The export dialog offers *Rows (CSV)*.
-- **Copilot context.** The AI agent receives row count, column count, column
-  names, selection count, current filter/sort models, and per-column numeric
-  statistics (min/max/sum/avg).
-- **Grid events.** Selection changes, cell edits, filter/sort changes, and
-  column resizes/moves are persisted to the `state` trait so they survive
-  dashboard saves and are readable by the agent.
+```json
+{ "seq": 1762250000002, "rowData": [{ "desk": "FX", "notional": 1250000 }], "rowCount": 4, "pivotResultFields": [] }
+```
+
+`rowCount` is the number of rows at that level, when the backend knows it. `pivotResultFields` are
+the pivot columns, joined with `|`. An answer `{ "error": "..." }` shows the message on the card.
+The widget sends one request at a time and gives up on one after 35 seconds.
+
+`definition.pageSize` (default 100) is the page and block size. With `wsRowIdColumn` and a
+`data.streamEndpoint`, a WebSocket can change the rows the grid already has, with messages
+`{ "op": "transaction", "route": [...], "add": [...], "update": [...], "remove": [...] }` and
+`{ "op": "refresh", "route": [...], "purge": true }`.
+
+## The infinite widget (`aggrid-infinite`)
+
+The widget uses AG Grid's infinite row model. The table has no pages: the grid asks for the next
+block of rows as the user scrolls, and asks again from the top when the sort or a filter changes.
+It works with the way the backend already pages its rows. The widget declares the params its
+endpoint takes, as hidden params, and the widget fills the ones it finds:
+
+| Param | Value |
+|---|---|
+| `gridState` | The block request as JSON: `startRow`, `endRow`, `sortModel` and `filterModel`, with `seq`. |
+| `startRow`, `endRow` | The first row and the row after the last. |
+| `offset`, `limit` | The first row and the number of rows. |
+| `sort`, `order` | The first sorted column and `asc` or `desc`. |
+| `sortModel`, `filterModel` | AG Grid's sort and filter models as JSON. |
+
+`definition.requestParams` maps one of these to the endpoint's own name, for example
+`{ "offset": "skip", "limit": "top" }`. `blockSize` (default 100) is the number of rows each
+request asks for, and `maxBlocksInCache` (default 20) is the number of blocks the grid keeps.
+
+The answer is a list of records, or an object with its rows under `rowData`, `rows`, `items`,
+`results`, `records`, `value` or `data`, or in a pandas format. The total number of rows is read
+from `rowCount`, `lastRow`, `total`, `totalCount`, `total_count`, `count`, `totalRecords` or
+`@odata.count`. Without a total, the table ends at a block shorter than the request, or when the
+answer says `hasMore: false`, `has_more: false` or `next: null`. For any other shape,
+`definition.rowsKey` and `definition.totalKey` are dot paths to the rows and the total.
+
+The first block is the answer Workspace already has for the widget's params, so the first screen
+needs no second request. The columns come from that answer's `columnDefs`, from
+`definition.columnsDefs`, or from the keys of its rows.
+
+## The streaming widget (`aggrid-streaming`)
+
+The widget is the table widget with a live feed. Its endpoint returns the first rows, as for
+`aggrid-table`, and every row has an id (`wsRowIdColumn`, default `id`). `data.streamEndpoint` in
+`widgets.json` is a WebSocket on the backend, which Workspace opens and relays to the widget. Its
+messages are JSON:
+
+- `{ "op": "snapshot", "rows": [...] }` replaces every row.
+- `{ "op": "upsert", "rows": [...] }` merges each row into the row with its id, or adds it as a new
+  row.
+- `{ "op": "remove", "ids": [...] }` removes rows by id.
+
+Changes are applied every 150 ms. Changed cells flash with `showCellChange`. The strip above the
+grid shows whether the feed is live, retrying or closed. The widget takes the same configuration
+as the table widget.
+
+## The SQL widget (`aggrid-sql`)
+
+The widget shows a SQL editor above a grid. The query is the widget's `sql` body param, so the
+endpoint is `POST`. The backend answers:
+
+```json
+{
+  "schema": { "engine": "SQLite", "tables": [{ "name": "trades", "columns": [{ "name": "desk", "type": "TEXT" }] }] },
+  "columns": ["desk", "trades"],
+  "rows": [["FX", 5012]],
+  "truncated": false,
+  "elapsedMs": 4
+}
+```
+
+or `{ "schema": ..., "error": "..." }`. An empty query is answered with the schema alone. The editor completes keywords, functions, tables and
+columns from `schema`, with DuckDB-WASM's completion running inside the frame on the package's own
+WebAssembly. The tables and their columns are listed beside the editor. Running a query sends it
+to the backend, which decides what may run: the example backend opens SQLite read-only, with an
+authorizer and a time limit.
+
+The card's **Create static widget** button copies the current result into an AgGrid table widget
+of its own, with no parameters and no query: the first 60 columns and the first 1,000 rows, as the
+table's artifact holds them, with each text cut to 500 characters, and fewer rows when they would
+pass 380,000 bytes, which keeps the copy under Workspace's limit. The button is the widget's
+`freeze` action (`core:ui:button`), and the copy is made with the command
+`core:dashboard:add-widget`, which Workspace takes only right after the click. A static copy is an
+AgGrid table, so it has the table's buttons and menu items.
+
+## The table component in the chat
+
+The `table` widget is also an agent component: the AI agent shows rows in the chat with
+`columnDefs` and `rowData` (at most 1,000 rows), and the user can add the card to a dashboard.
+The plugin's skill, `skills/ag-grid-widgets.md`, tells the agent when each widget fits.
 
 ## Model traits
 
-| Trait | Bind | Writable | Purpose |
-|---|---|---|---|
-| `data` | `data` | No | The grid data from the backend (extracted at `dataKey` path) |
-| `definition` | `definition` | No | The widget's `data["ag-grid"]` object: the table chart configuration above. |
-| `params` | `params` | Yes | The widget's params, written by `cellOnClick` with `groupBy` (needs `core:params:write`). |
-| `capabilities` | `capabilities` | No | The permissions the organization left the widget. |
-| `config` | `config` | No | Per-instance widget settings |
-| `theme` | `theme` | No | `{ mode, tokens, ... }` — drives dark/light theme |
-| `adminSettings` | `adminSettings` | No | Organization admin settings (license key, etc.) |
-| `state` | `state` | Yes | Grid state written back: selection, last event, filter/sort models, column state, the ChartView and its chart, the last agent prompt |
+| Trait | Writable | Purpose |
+|---|---|---|
+| `data` | No | The endpoint's answer, at the widget's `dataKey`. |
+| `definition` | No | The widget's `data["<type>"]` object, checked against the definition in `plugin.json`. |
+| `params` | Yes | The widget's params. The widgets write `gridState`, the block params, the `sql` param and `groupBy` params. |
+| `config` | No | The card's settings: `licenseKey`, `theme` and, on the grid widgets, `floatingFilters`. |
+| `theme` | No | The site's mode and colour tokens. |
+| `adminSettings` | No | The organization's settings: `licenseKey` and `theme`. |
+| `state` | Yes | The saved grid state, the selection, the last event, the chart view and the editor's query. |
+| `meta` | No | The widget id, which selects the widget's module. |
 
-## License key (AgGrid Enterprise)
+## Licence key
 
-AgGrid Community needs no license key. The package also bundles `ag-grid-charts-enterprise`
-(AG Grid Enterprise with AG Charts Enterprise, which sparklines, integrated charts, the navigator
-and chart types such as heatmap, treemap, waterfall and box plot need). It runs in trial mode,
-with a watermark, until it has a key. The plugin reads the key from two
-settings, in this order:
-
-1. **Per-instance widget setting**: `licenseKey` in the widget's `settings`, for one card.
-2. **Organization admin setting**: `licenseKey` under Admin, Widgets, AgGrid table, Settings,
-   for every card of the organization.
-
-The plugin passes the key to `LicenseManager.setLicenseKey()`.
+The package bundles AG Grid Enterprise and AG Charts Enterprise. Without a key they run in trial
+mode, with a watermark. The plugin reads the key from the card's `licenseKey` setting, or else
+from the organization's `licenseKey` under Admin, Widgets, AgGrid, Settings. A key works only for
+AG Grid releases its licence covers.
 
 ## Build
 
@@ -229,21 +341,33 @@ npm run build   # writes dist/ag-grid/<version>/
 npm run verify  # checks the package as Workspace's discovery does, prints its digest
 ```
 
-The build bundles `ag-grid-community` and `ag-grid-charts-enterprise` into the one module
-`entry.js` (a plugin frame loads a single module, so nothing is split into chunks), inlines the
-ag-grid theme CSS into `entry.css`, copies the icon, writes `assets/THIRD-PARTY-LICENSES.txt`,
-computes the checksum, and writes `plugin.json` with `version` and `checksum`.
+The build bundles the plugin and its dependencies into the one module `entry.js`, because a
+plugin frame loads a single module. It copies `entry.css`, the icons, the skill, DuckDB-WASM's
+WebAssembly and worker, and DuckDB's `autocomplete` and `json` extensions. The extensions are
+downloaded from `extensions.duckdb.org` once, checked against their pinned SHA-256 and kept in
+`.cache/`. The build writes every bundled package's licence under `licenses/`, takes DuckDB's
+licence texts from `third-party/`, computes the checksum, and writes `plugin.json` with `version`
+and `checksum`.
 
 The package Workspace consumes is the folder `dist/ag-grid/<version>/`:
 
 ```
-dist/ag-grid/2.0.0/
-  plugin.json                     manifest; version and checksum written by the build
-  entry.js                        the AFM module (entry.module)
-  entry.css                       the styles (entry.styles)
-  assets/icon.svg                 the icon
-  assets/THIRD-PARTY-LICENSES.txt AG Grid's licences
+dist/ag-grid/3.1.0/
+  plugin.json                                manifest; version and checksum written by the build
+  entry.js                                   the AFM module (entry.module)
+  entry.css                                  the styles (entry.styles)
+  assets/icon.svg                            the icon
+  assets/autosize.svg                        the icon of Autosize columns
+  assets/duckdb-eh.wasm                      DuckDB-WASM, for the SQL editor's completion
+  assets/duckdb-browser-eh.worker.js         its worker
+  assets/autocomplete.duckdb_extension.wasm  DuckDB's completion extension
+  assets/json.duckdb_extension.wasm          DuckDB's JSON extension
+  skills/ag-grid-widgets.md                  the agent's skill
+  licenses/<package>/                        the licence of every bundled package
 ```
+
+The manifest's CSP adds `'wasm-unsafe-eval'` to `script-src`, to compile DuckDB's WebAssembly, and
+`blob:` to `connect-src`, where DuckDB reads that file from. The frame reaches no host.
 
 ## Checksum and digest
 
@@ -281,32 +405,29 @@ blocks a version whose files change after it was discovered, and keeps it blocke
 npm test
 ```
 
-Tests run in Node. `test/widget.test.mjs` and `test/ag-table-chart.test.mjs` cover the helpers and every
-table chart option: formatters, colour rules, the `customFormatter` evaluator (and that it runs no
-code), sparkline options, hover cards, cell clicks, ChartView columns and the navigator.
-`test/integration.test.mjs` renders real grids in jsdom: configured headers and formats, colours,
-sparkline cells, the toolbar, a `groupBy` click writing the param, a falling cell flashing,
-the integrated chart and transpose. Drawing charts needs a browser; check them on a dashboard.
+The tests run in Node, with real grids rendered in jsdom. They cover the shared grid code
+(themes, options, expressions, saved state and the grid state channel) in `grid.test.mjs`; each
+widget in `table.test.mjs`, `ssrm.test.mjs`, `infinite.test.mjs`, `streaming.test.mjs` and
+`sql.test.mjs`; the SQL completion in `completion.test.mjs`; OpenBQ's table configuration in
+`ag-table-chart.test.mjs`; and the manifest in `manifest.test.mjs`. Drawing charts needs a browser;
+check them on a dashboard.
 
 ## The data backend
 
-The plugin has no plugin backend and no backend URL. The rows come from a data backend that
-runs on its own server, outside Workspace, which a Workspace admin or user adds under
-**Connections**:
+The plugin has no plugin backend and no backend URL. The rows come from a data backend that runs
+on its own server, outside Workspace, which a Workspace admin or user adds under **Connections**:
 
-- The backend serves `GET /widgets.json`, declaring widgets of `"type": "ag-grid"` with their
-  `endpoint`, `dataKey`, `params` and table configuration in `data["ag-grid"]` (the shapes under
-  [The contract](#the-contract)). Its endpoints are on the same origin as the Connection's URL.
-- Workspace's API calls it for the browser (`/api-source/<id>/request`), with the keys stored on the
-  Connection and an `X-Workspace-Identity` token. The frame never calls it, so the plugin needs
-  no CSP change, no proxy and no secret, and the backend needs no CORS for the frame.
+- The backend serves `GET /widgets.json`, declaring widgets of the five types with their
+  `endpoint`, `method`, `params`, `dataKey` and configuration in `data["<type>"]`. Its endpoints
+  are on the same origin as the Connection's URL.
+- Workspace's API calls it for the browser (`/api-source/<id>/request`), with the keys stored on
+  the Connection and an `X-Workspace-Identity` token, and opens its WebSockets. The frame never
+  calls it, so the plugin needs no proxy and no secret, and the backend needs no CORS for the
+  frame.
 - Each Workspace sets the URL on its own Connection, so one package serves every deployment.
 
-[`backend/`](backend/README.md) is such a data backend: the 12 example widgets of OpenBB's AgGrid
-table page (column definitions, render functions, hover cards, charts, sparklines, cell clicks,
-transpose, live prices), on port 7800. It came from the Workspace repository's
-`docs/examples/ag-grid/examples/` unchanged, and it is the shape a third-party backend follows.
-It is not part of the package, which the build makes from `src/` only.
+[`backend/`](backend/README.md) is such a data backend, with an example of every widget type on
+port 7800. It is not part of the package, which the build makes from `src/` only.
 
 ## Deploy
 
@@ -315,8 +436,9 @@ It is not part of the package, which the build makes from `src/` only.
 2. Where versions must be pinned, add the digest to `WIDGET_PLUGINS_PINS` as
    `"ag-grid@<version>": "<digest>"`.
 3. Admin, Widgets, Deployment: Rescan, review, approve, and enable the plugin. Grant it to the
-   roles that may use it. Enter the AG Grid license key under the plugin's settings.
-4. Add the data backend under Connections, and put a widget of type `ag-grid` on a dashboard.
+   roles that may use it. Enter the AG Grid licence key and choose the theme under the plugin's
+   settings.
+4. Add the data backend under Connections, and put its widgets on a dashboard.
 
 ## Try it on a local Workspace
 
@@ -345,5 +467,5 @@ docker exec workspace-local-backend-1 python -m scripts.workspace_admin plugin a
 
 The approved version replaces the active one for every organization that enabled the plugin.
 A first install also needs `plugin enable` and `plugin grant` (or the Admin pages). Add the data
-backend under Connections (`MODE=local` accepts `http://localhost:<port>`) and put an `ag-grid`
-widget on a dashboard.
+backend under Connections (`MODE=local` accepts `http://localhost:<port>`) and put its widgets on a
+dashboard.

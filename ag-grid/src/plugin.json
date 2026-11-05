@@ -1,8 +1,8 @@
 {
   "manifestVersion": 1,
   "id": "ag-grid",
-  "name": "AgGrid table",
-  "description": "Renders the ag-grid widget type with AG Grid: OpenBQ-style column definitions, render functions, hover cards, sparklines, ChartView, streaming row updates and grid events.",
+  "name": "AgGrid",
+  "description": "AgGrid Enterprise widgets with integrated charts: a table, a server-side table, an infinite table, a streaming grid and a SQL editor, each fed by its widget's endpoint.",
   "publisher": {
     "name": "dlee-bq"
   },
@@ -20,11 +20,23 @@
           "title": "AgGrid license key",
           "description": "AgGrid Enterprise license key for every card of the organization. Leave it empty to run AgGrid Community.",
           "maxLength": 1024
+        },
+        "theme": {
+          "type": "string",
+          "title": "AgGrid theme",
+          "description": "The AgGrid theme of every card of the organization, in the site's light or dark colours: balham (compact), quartz, alpine or material.",
+          "enum": [
+            "balham",
+            "quartz",
+            "alpine",
+            "material"
+          ]
         }
       }
     },
     "defaults": {
-      "licenseKey": ""
+      "licenseKey": "",
+      "theme": "balham"
     }
   },
   "entry": {
@@ -33,24 +45,36 @@
       "entry.css"
     ]
   },
+  "csp": {
+    "script-src": [
+      "'wasm-unsafe-eval'"
+    ],
+    "connect-src": [
+      "blob:"
+    ]
+  },
+  "cspNotes": {
+    "script-src": "Compiles DuckDB-WASM, the package's own assets/duckdb-eh.wasm, which completes the SQL editor's queries inside the frame.",
+    "connect-src": "DuckDB-WASM reads its binary from a blob: URL the frame makes of that asset. No host is reachable."
+  },
   "contributes": {
     "widgets": [
       {
-        "id": "grid",
+        "id": "table",
         "name": "AgGrid table",
-        "description": "A backend's tabular data as an AG Grid table, configured like OpenBQ Workspace's table widget, with charts, sparklines and streaming.",
+        "description": "A backend's rows in AgGrid with OpenBQ's table configuration, row groups, pivot, calculated columns, charts, and grid events sent back to the endpoint.",
         "category": "Data",
         "handles": [
           {
-            "type": "ag-grid",
+            "type": "aggrid-table",
             "response": {
               "accepts": "json",
-              "description": "Rows as JSON: a list of records, a dict of columns, pandas split, or an ag-grid-ready object ({ columnDefs, rowData, gridOptions }). data[\"ag-grid\"] in widgets.json takes OpenBQ's table configuration. The endpoint gets theme=dark or theme=light."
+              "description": "Rows as JSON: records, a dict of columns, pandas split, or { columnDefs, rowData, gridOptions }; or { transaction: { add, update, remove } }. data[\"aggrid-table\"] takes OpenBQ's table configuration."
             },
             "definition": {
               "type": "object",
               "additionalProperties": false,
-              "description": "OpenBQ Workspace's table configuration (data.table there).",
+              "description": "OpenBQ's table configuration (data.table there), and the grid events sent to the backend.",
               "properties": {
                 "enableCharts": {
                   "type": "boolean"
@@ -88,6 +112,31 @@
                   "items": {
                     "$ref": "#/$defs/column"
                   }
+                },
+                "gridEvents": {
+                  "type": "array",
+                  "maxItems": 11,
+                  "items": {
+                    "type": "string",
+                    "enum": [
+                      "cellClicked",
+                      "cellDoubleClicked",
+                      "cellValueChanged",
+                      "selectionChanged",
+                      "filterChanged",
+                      "sortChanged",
+                      "columnRowGroupChanged",
+                      "columnPivotChanged",
+                      "columnValueChanged",
+                      "columnPivotModeChanged",
+                      "rowGroupOpened"
+                    ]
+                  },
+                  "description": "The grid events that send the grid state to the endpoint, in the gridState body param, so the backend can answer them. None by default."
+                },
+                "enableCellExpressions": {
+                  "type": "boolean",
+                  "description": "Cell values that start with = are expressions over the row, such as =[quantity] * [price]. Evaluated by the plugin, never as code."
                 }
               },
               "$defs": {
@@ -532,6 +581,11 @@
                     },
                     "sparkline": {
                       "$ref": "#/$defs/sparkline"
+                    },
+                    "calculatedExpression": {
+                      "type": "string",
+                      "maxLength": 2000,
+                      "description": "The column's value as an expression over the row's columns, such as [revenue] - [cost]: literals, [column], + - * / %, comparisons, && || ??, ?: and Math functions."
                     }
                   },
                   "required": [
@@ -618,7 +672,9 @@
           "core:download:save",
           "core:state:write",
           "core:ui:notify",
-          "core:ui:open-link"
+          "core:ui:open-link",
+          "core:ui:button",
+          "core:ui:menu"
         ],
         "model": {
           "traits": {
@@ -650,8 +706,8 @@
               "bind": "params",
               "access": "readwrite"
             },
-            "capabilities": {
-              "bind": "capabilities",
+            "meta": {
+              "bind": "meta",
               "access": "read"
             }
           }
@@ -665,17 +721,1734 @@
                 "title": "AgGrid license key",
                 "description": "AgGrid Enterprise license key for this card. It replaces the organization's key.",
                 "maxLength": 1024
+              },
+              "theme": {
+                "type": "string",
+                "title": "AgGrid theme",
+                "description": "The AgGrid theme of this card; it replaces the backend's and the organization's, in the site's light or dark colours: balham (compact), quartz, alpine or material.",
+                "enum": [
+                  "balham",
+                  "quartz",
+                  "alpine",
+                  "material"
+                ]
+              },
+              "floatingFilters": {
+                "type": "boolean",
+                "title": "Floating filters",
+                "description": "A filter box under each column header."
               }
             }
           },
           "defaults": {}
         },
         "grid": {
-          "w": 24,
-          "h": 16,
+          "w": 40,
+          "h": 20,
           "minW": 10,
-          "minH": 6
-        }
+          "minH": 8
+        },
+        "artifact": {
+          "description": "A table of rows in AgGrid: sortable, filterable, groupable, pivotable, selectable and exportable, with numbers right-aligned and formatted. Use it to show rows the user will want to work with, such as a list of records or the rows of a query.",
+          "data": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "rowData"
+            ],
+            "properties": {
+              "columnDefs": {
+                "type": "array",
+                "maxItems": 60,
+                "items": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": [
+                    "field"
+                  ],
+                  "properties": {
+                    "field": {
+                      "type": "string",
+                      "maxLength": 100
+                    },
+                    "headerName": {
+                      "type": "string",
+                      "maxLength": 100
+                    },
+                    "type": {
+                      "enum": [
+                        "numericColumn",
+                        "rightAligned"
+                      ]
+                    },
+                    "width": {
+                      "type": "integer",
+                      "minimum": 40,
+                      "maximum": 800
+                    }
+                  }
+                }
+              },
+              "rowData": {
+                "type": "array",
+                "maxItems": 1000,
+                "items": {
+                  "type": "object",
+                  "additionalProperties": {
+                    "type": [
+                      "string",
+                      "number",
+                      "boolean",
+                      "null"
+                    ],
+                    "maxLength": 500
+                  }
+                }
+              }
+            }
+          }
+        },
+        "actions": [
+          {
+            "id": "floating-filters",
+            "label": "Floating filters",
+            "icon": "filter",
+            "placement": "navbar",
+            "toggles": "floatingFilters"
+          },
+          {
+            "id": "autosize",
+            "label": "Autosize columns",
+            "icon": "assets/autosize.svg",
+            "placement": "menu"
+          },
+          {
+            "id": "clear-filters",
+            "label": "Clear filters and sort",
+            "icon": "refresh",
+            "placement": "menu"
+          }
+        ]
+      },
+      {
+        "id": "ssrm",
+        "name": "AgGrid server-side table",
+        "description": "AgGrid's server-side row model: every block, sort, filter, row group, aggregation and pivot is a POST of the grid's request to the widget's endpoint.",
+        "category": "Data",
+        "handles": [
+          {
+            "type": "aggrid-ssrm",
+            "response": {
+              "accepts": "json",
+              "description": "{ columnDefs, gridOptions } for the columns, and { rowData, rowCount, pivotResultFields, seq } for the request in the gridState body param. The endpoint is POST."
+            },
+            "definition": {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "pageSize": {
+                  "type": "integer",
+                  "minimum": 10,
+                  "maximum": 1000,
+                  "default": 100
+                },
+                "wsRowIdColumn": {
+                  "type": "string",
+                  "maxLength": 128,
+                  "description": "The row id field, which server-side transactions from data.streamEndpoint need."
+                }
+              }
+            }
+          }
+        ],
+        "permissions": [
+          "core:data:read",
+          "core:data:stream",
+          "core:params:write",
+          "core:copilot:context",
+          "core:state:write",
+          "core:ui:button",
+          "core:ui:menu"
+        ],
+        "model": {
+          "traits": {
+            "data": {
+              "bind": "data",
+              "access": "read"
+            },
+            "definition": {
+              "bind": "definition",
+              "access": "read"
+            },
+            "config": {
+              "bind": "config",
+              "access": "read"
+            },
+            "theme": {
+              "bind": "theme",
+              "access": "read"
+            },
+            "adminSettings": {
+              "bind": "adminSettings",
+              "access": "read"
+            },
+            "state": {
+              "bind": "state",
+              "access": "readwrite"
+            },
+            "params": {
+              "bind": "params",
+              "access": "readwrite"
+            },
+            "meta": {
+              "bind": "meta",
+              "access": "read"
+            }
+          }
+        },
+        "settings": {
+          "schema": {
+            "type": "object",
+            "properties": {
+              "licenseKey": {
+                "type": "string",
+                "title": "AgGrid license key",
+                "description": "AgGrid Enterprise license key for this card. It replaces the organization's key.",
+                "maxLength": 1024
+              },
+              "theme": {
+                "type": "string",
+                "title": "AgGrid theme",
+                "description": "The AgGrid theme of this card; it replaces the backend's and the organization's, in the site's light or dark colours: balham (compact), quartz, alpine or material.",
+                "enum": [
+                  "balham",
+                  "quartz",
+                  "alpine",
+                  "material"
+                ]
+              },
+              "floatingFilters": {
+                "type": "boolean",
+                "title": "Floating filters",
+                "description": "A filter box under each column header."
+              }
+            }
+          },
+          "defaults": {}
+        },
+        "grid": {
+          "w": 40,
+          "h": 24,
+          "minW": 12,
+          "minH": 10
+        },
+        "actions": [
+          {
+            "id": "floating-filters",
+            "label": "Floating filters",
+            "icon": "filter",
+            "placement": "navbar",
+            "toggles": "floatingFilters"
+          },
+          {
+            "id": "autosize",
+            "label": "Autosize columns",
+            "icon": "assets/autosize.svg",
+            "placement": "menu"
+          },
+          {
+            "id": "clear-filters",
+            "label": "Clear filters and sort",
+            "icon": "refresh",
+            "placement": "menu"
+          }
+        ]
+      },
+      {
+        "id": "infinite",
+        "name": "AgGrid infinite table",
+        "description": "AgGrid's infinite row model: rows load in blocks as the user scrolls, each block's startRow and endRow, sort and filter written to the widget's own params.",
+        "category": "Data",
+        "handles": [
+          {
+            "type": "aggrid-infinite",
+            "response": {
+              "accepts": "json",
+              "description": "One block of rows: a list of records, or an object with rows under rowData, rows, items, results, records, value or data and an optional total. A short block ends the table."
+            },
+            "definition": {
+              "type": "object",
+              "additionalProperties": false,
+              "description": "How the widget asks its endpoint for a block of rows and reads the answer, and OpenBQ's column configuration.",
+              "properties": {
+                "showAll": {
+                  "type": "boolean"
+                },
+                "formatterFn": {
+                  "type": "string",
+                  "enum": [
+                    "int",
+                    "none",
+                    "percent",
+                    "normalized",
+                    "normalizedPercent",
+                    "dateToYear"
+                  ]
+                },
+                "wsRowIdColumn": {
+                  "type": "string",
+                  "maxLength": 128
+                },
+                "columnsDefs": {
+                  "type": "array",
+                  "maxItems": 200,
+                  "items": {
+                    "$ref": "#/$defs/column"
+                  }
+                },
+                "enableCellExpressions": {
+                  "type": "boolean",
+                  "description": "Cell values that start with = are expressions over the row, such as =[quantity] * [price]. Evaluated by the plugin, never as code."
+                },
+                "blockSize": {
+                  "type": "integer",
+                  "minimum": 10,
+                  "maximum": 1000,
+                  "default": 100,
+                  "description": "The rows each request asks for."
+                },
+                "maxBlocksInCache": {
+                  "type": "integer",
+                  "minimum": 1,
+                  "maximum": 100,
+                  "default": 20
+                },
+                "requestParams": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "description": "The widgets.json param that carries each part of the request, when its name is not the part's own, such as offset: $skip and limit: $top.",
+                  "properties": {
+                    "gridState": {
+                      "type": "string",
+                      "maxLength": 64
+                    },
+                    "startRow": {
+                      "type": "string",
+                      "maxLength": 64
+                    },
+                    "endRow": {
+                      "type": "string",
+                      "maxLength": 64
+                    },
+                    "offset": {
+                      "type": "string",
+                      "maxLength": 64
+                    },
+                    "limit": {
+                      "type": "string",
+                      "maxLength": 64
+                    },
+                    "sort": {
+                      "type": "string",
+                      "maxLength": 64
+                    },
+                    "order": {
+                      "type": "string",
+                      "maxLength": 64
+                    },
+                    "sortModel": {
+                      "type": "string",
+                      "maxLength": 64
+                    },
+                    "filterModel": {
+                      "type": "string",
+                      "maxLength": 64
+                    }
+                  }
+                },
+                "rowsKey": {
+                  "type": "string",
+                  "maxLength": 128,
+                  "description": "A dot path to the rows in the answer, when they are not rowData, rows, items, results, records, value or data."
+                },
+                "totalKey": {
+                  "type": "string",
+                  "maxLength": 128,
+                  "description": "A dot path to the total row count, when it is not rowCount, lastRow, total, totalCount, count, totalRecords or @odata.count."
+                }
+              },
+              "$defs": {
+                "pointStyle": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "fill": {
+                      "type": "string",
+                      "maxLength": 64,
+                      "description": "A hex colour or a CSS colour name."
+                    },
+                    "stroke": {
+                      "type": "string",
+                      "maxLength": 64,
+                      "description": "A hex colour or a CSS colour name."
+                    },
+                    "strokeWidth": {
+                      "type": "number",
+                      "minimum": 0,
+                      "maximum": 20
+                    },
+                    "size": {
+                      "type": "number",
+                      "minimum": 0,
+                      "maximum": 40
+                    }
+                  }
+                },
+                "sparklineOptions": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "stroke": {
+                      "type": "string",
+                      "maxLength": 64,
+                      "description": "A hex colour or a CSS colour name."
+                    },
+                    "strokeWidth": {
+                      "type": "number",
+                      "minimum": 0,
+                      "maximum": 20
+                    },
+                    "fill": {
+                      "type": "string",
+                      "maxLength": 64,
+                      "description": "A hex colour or a CSS colour name."
+                    },
+                    "fillOpacity": {
+                      "type": "number",
+                      "minimum": 0,
+                      "maximum": 1
+                    },
+                    "min": {
+                      "type": "number"
+                    },
+                    "max": {
+                      "type": "number"
+                    },
+                    "direction": {
+                      "type": "string",
+                      "enum": [
+                        "vertical",
+                        "horizontal"
+                      ]
+                    },
+                    "markers": {
+                      "type": "object",
+                      "additionalProperties": false,
+                      "properties": {
+                        "enabled": {
+                          "type": "boolean"
+                        },
+                        "size": {
+                          "type": "number",
+                          "minimum": 0,
+                          "maximum": 40
+                        },
+                        "fill": {
+                          "type": "string",
+                          "maxLength": 64,
+                          "description": "A hex colour or a CSS colour name."
+                        },
+                        "stroke": {
+                          "type": "string",
+                          "maxLength": 64,
+                          "description": "A hex colour or a CSS colour name."
+                        },
+                        "strokeWidth": {
+                          "type": "number",
+                          "minimum": 0,
+                          "maximum": 20
+                        }
+                      }
+                    },
+                    "pointsOfInterest": {
+                      "type": "object",
+                      "additionalProperties": false,
+                      "properties": {
+                        "firstLast": {
+                          "$ref": "#/$defs/pointStyle"
+                        },
+                        "minimum": {
+                          "$ref": "#/$defs/pointStyle"
+                        },
+                        "maximum": {
+                          "$ref": "#/$defs/pointStyle"
+                        },
+                        "highlighted": {
+                          "$ref": "#/$defs/pointStyle"
+                        },
+                        "positiveNegative": {
+                          "type": "object",
+                          "additionalProperties": false,
+                          "properties": {
+                            "positive": {
+                              "$ref": "#/$defs/pointStyle"
+                            },
+                            "negative": {
+                              "$ref": "#/$defs/pointStyle"
+                            }
+                          }
+                        }
+                      }
+                    },
+                    "customFormatter": {
+                      "type": "string",
+                      "maxLength": 2000,
+                      "description": "An arrow function in a string, (params) => ({ fill, stroke, ... }). Evaluated without eval: literals, params.*, operators, ?: and Math functions."
+                    },
+                    "padding": {
+                      "type": "object",
+                      "additionalProperties": false,
+                      "properties": {
+                        "top": {
+                          "type": "number",
+                          "minimum": 0,
+                          "maximum": 50
+                        },
+                        "right": {
+                          "type": "number",
+                          "minimum": 0,
+                          "maximum": 50
+                        },
+                        "bottom": {
+                          "type": "number",
+                          "minimum": 0,
+                          "maximum": 50
+                        },
+                        "left": {
+                          "type": "number",
+                          "minimum": 0,
+                          "maximum": 50
+                        }
+                      }
+                    }
+                  }
+                },
+                "sparkline": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "type": {
+                      "type": "string",
+                      "enum": [
+                        "line",
+                        "area",
+                        "bar"
+                      ]
+                    },
+                    "dataField": {
+                      "type": "string",
+                      "maxLength": 128
+                    },
+                    "options": {
+                      "$ref": "#/$defs/sparklineOptions"
+                    }
+                  },
+                  "required": [
+                    "type"
+                  ]
+                },
+                "colorRule": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "condition": {
+                      "type": "string",
+                      "enum": [
+                        "eq",
+                        "ne",
+                        "gt",
+                        "lt",
+                        "gte",
+                        "lte",
+                        "between",
+                        "contains",
+                        "notContains"
+                      ]
+                    },
+                    "value": {
+                      "type": [
+                        "number",
+                        "string"
+                      ],
+                      "maxLength": 200
+                    },
+                    "range": {
+                      "type": "object",
+                      "additionalProperties": false,
+                      "properties": {
+                        "min": {
+                          "type": "number"
+                        },
+                        "max": {
+                          "type": "number"
+                        }
+                      }
+                    },
+                    "color": {
+                      "type": "string",
+                      "maxLength": 64,
+                      "description": "A hex colour or a CSS colour name."
+                    },
+                    "fill": {
+                      "type": "boolean"
+                    }
+                  },
+                  "required": [
+                    "condition",
+                    "color"
+                  ]
+                },
+                "renderFnParams": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "actionType": {
+                      "type": "string",
+                      "enum": [
+                        "groupBy",
+                        "sendToAgent",
+                        "openUrl"
+                      ]
+                    },
+                    "groupBy": {
+                      "type": "object",
+                      "additionalProperties": false,
+                      "properties": {
+                        "paramName": {
+                          "type": "string",
+                          "maxLength": 64
+                        },
+                        "valueField": {
+                          "type": "string",
+                          "maxLength": 128
+                        },
+                        "forceUpdate": {
+                          "type": "boolean"
+                        }
+                      },
+                      "required": [
+                        "paramName"
+                      ]
+                    },
+                    "sendToAgent": {
+                      "type": "object",
+                      "additionalProperties": false,
+                      "properties": {
+                        "markdown": {
+                          "type": "string",
+                          "maxLength": 4000
+                        },
+                        "agentId": {
+                          "type": "string",
+                          "maxLength": 128
+                        }
+                      }
+                    },
+                    "url": {
+                      "type": "string",
+                      "maxLength": 2000,
+                      "description": "openUrl: the link, with {field} placeholders. Without it, the cell's value is the link."
+                    },
+                    "colorValueKey": {
+                      "type": "string",
+                      "maxLength": 128
+                    },
+                    "hoverCardData": {
+                      "type": "array",
+                      "maxItems": 50,
+                      "items": {
+                        "type": "string",
+                        "maxLength": 128
+                      }
+                    },
+                    "colorRules": {
+                      "type": "array",
+                      "maxItems": 50,
+                      "items": {
+                        "$ref": "#/$defs/colorRule"
+                      }
+                    },
+                    "hoverCard": {
+                      "type": "object",
+                      "additionalProperties": false,
+                      "properties": {
+                        "cellField": {
+                          "type": "string",
+                          "maxLength": 128
+                        },
+                        "title": {
+                          "type": "string",
+                          "maxLength": 200
+                        },
+                        "markdown": {
+                          "type": "string",
+                          "maxLength": 4000
+                        }
+                      }
+                    }
+                  }
+                },
+                "column": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "field": {
+                      "type": "string",
+                      "maxLength": 128
+                    },
+                    "headerName": {
+                      "type": "string",
+                      "maxLength": 200
+                    },
+                    "headerTooltip": {
+                      "type": "string",
+                      "maxLength": 500
+                    },
+                    "chartDataType": {
+                      "type": "string",
+                      "enum": [
+                        "category",
+                        "series",
+                        "time",
+                        "excluded"
+                      ]
+                    },
+                    "cellDataType": {
+                      "type": "string",
+                      "enum": [
+                        "text",
+                        "number",
+                        "boolean",
+                        "date",
+                        "dateString",
+                        "object"
+                      ]
+                    },
+                    "align": {
+                      "type": "string",
+                      "enum": [
+                        "left",
+                        "center",
+                        "right"
+                      ]
+                    },
+                    "enableCellChangeWs": {
+                      "type": "boolean"
+                    },
+                    "formatterFn": {
+                      "type": "string",
+                      "enum": [
+                        "int",
+                        "none",
+                        "percent",
+                        "normalized",
+                        "normalizedPercent",
+                        "dateToYear"
+                      ]
+                    },
+                    "decimalPlaces": {
+                      "type": "integer",
+                      "minimum": 0,
+                      "maximum": 12
+                    },
+                    "renderFn": {
+                      "type": [
+                        "string",
+                        "array"
+                      ],
+                      "maxLength": 32,
+                      "maxItems": 6,
+                      "items": {
+                        "type": "string",
+                        "enum": [
+                          "greenRed",
+                          "titleCase",
+                          "hoverCard",
+                          "cellOnClick",
+                          "columnColor",
+                          "showCellChange"
+                        ]
+                      },
+                      "description": "One of greenRed, titleCase, hoverCard, cellOnClick, columnColor, showCellChange, or a list of them."
+                    },
+                    "renderFnParams": {
+                      "$ref": "#/$defs/renderFnParams"
+                    },
+                    "width": {
+                      "type": "number",
+                      "minimum": 10,
+                      "maximum": 4000
+                    },
+                    "minWidth": {
+                      "type": "number",
+                      "minimum": 10,
+                      "maximum": 4000
+                    },
+                    "maxWidth": {
+                      "type": "number",
+                      "minimum": 10,
+                      "maximum": 4000
+                    },
+                    "hide": {
+                      "type": "boolean"
+                    },
+                    "pinned": {
+                      "type": "string",
+                      "enum": [
+                        "left",
+                        "right"
+                      ]
+                    },
+                    "prefix": {
+                      "type": "string",
+                      "maxLength": 32
+                    },
+                    "suffix": {
+                      "type": "string",
+                      "maxLength": 32
+                    },
+                    "sparkline": {
+                      "$ref": "#/$defs/sparkline"
+                    },
+                    "calculatedExpression": {
+                      "type": "string",
+                      "maxLength": 2000,
+                      "description": "The column's value as an expression over the row's columns, such as [revenue] - [cost]: literals, [column], + - * / %, comparisons, && || ??, ?: and Math functions."
+                    }
+                  },
+                  "required": [
+                    "field"
+                  ]
+                }
+              }
+            }
+          }
+        ],
+        "permissions": [
+          "core:data:read",
+          "core:params:write",
+          "core:copilot:context",
+          "core:state:write",
+          "core:ui:button",
+          "core:ui:menu"
+        ],
+        "model": {
+          "traits": {
+            "data": {
+              "bind": "data",
+              "access": "read"
+            },
+            "definition": {
+              "bind": "definition",
+              "access": "read"
+            },
+            "config": {
+              "bind": "config",
+              "access": "read"
+            },
+            "theme": {
+              "bind": "theme",
+              "access": "read"
+            },
+            "adminSettings": {
+              "bind": "adminSettings",
+              "access": "read"
+            },
+            "state": {
+              "bind": "state",
+              "access": "readwrite"
+            },
+            "params": {
+              "bind": "params",
+              "access": "readwrite"
+            },
+            "meta": {
+              "bind": "meta",
+              "access": "read"
+            }
+          }
+        },
+        "settings": {
+          "schema": {
+            "type": "object",
+            "properties": {
+              "licenseKey": {
+                "type": "string",
+                "title": "AgGrid license key",
+                "description": "AgGrid Enterprise license key for this card. It replaces the organization's key.",
+                "maxLength": 1024
+              },
+              "theme": {
+                "type": "string",
+                "title": "AgGrid theme",
+                "description": "The AgGrid theme of this card; it replaces the backend's and the organization's, in the site's light or dark colours: balham (compact), quartz, alpine or material.",
+                "enum": [
+                  "balham",
+                  "quartz",
+                  "alpine",
+                  "material"
+                ]
+              },
+              "floatingFilters": {
+                "type": "boolean",
+                "title": "Floating filters",
+                "description": "A filter box under each column header."
+              }
+            }
+          },
+          "defaults": {}
+        },
+        "grid": {
+          "w": 40,
+          "h": 24,
+          "minW": 12,
+          "minH": 10
+        },
+        "actions": [
+          {
+            "id": "floating-filters",
+            "label": "Floating filters",
+            "icon": "filter",
+            "placement": "navbar",
+            "toggles": "floatingFilters"
+          },
+          {
+            "id": "autosize",
+            "label": "Autosize columns",
+            "icon": "assets/autosize.svg",
+            "placement": "menu"
+          },
+          {
+            "id": "clear-filters",
+            "label": "Clear filters and sort",
+            "icon": "refresh",
+            "placement": "menu"
+          }
+        ]
+      },
+      {
+        "id": "streaming",
+        "name": "AgGrid streaming grid",
+        "description": "An AgGrid table kept current by a WebSocket that FINOS Workspace opens: snapshots, upserts of changed and new rows, and removals by row id.",
+        "category": "Data",
+        "handles": [
+          {
+            "type": "aggrid-streaming",
+            "response": {
+              "accepts": "json",
+              "description": "The first rows, as for aggrid-table, every row with an id. data.streamEndpoint is a WebSocket of JSON messages {op: snapshot, rows}, {op: upsert, rows} and {op: remove, ids}."
+            },
+            "definition": {
+              "type": "object",
+              "additionalProperties": false,
+              "description": "OpenBQ's table configuration (data.table there), and the grid events sent to the backend.",
+              "properties": {
+                "enableCharts": {
+                  "type": "boolean"
+                },
+                "showAll": {
+                  "type": "boolean"
+                },
+                "transpose": {
+                  "type": "boolean"
+                },
+                "enableAdvanced": {
+                  "type": "boolean"
+                },
+                "formatterFn": {
+                  "type": "string",
+                  "enum": [
+                    "int",
+                    "none",
+                    "percent",
+                    "normalized",
+                    "normalizedPercent",
+                    "dateToYear"
+                  ]
+                },
+                "wsRowIdColumn": {
+                  "type": "string",
+                  "maxLength": 128
+                },
+                "chartView": {
+                  "$ref": "#/$defs/chartView"
+                },
+                "columnsDefs": {
+                  "type": "array",
+                  "maxItems": 200,
+                  "items": {
+                    "$ref": "#/$defs/column"
+                  }
+                },
+                "gridEvents": {
+                  "type": "array",
+                  "maxItems": 11,
+                  "items": {
+                    "type": "string",
+                    "enum": [
+                      "cellClicked",
+                      "cellDoubleClicked",
+                      "cellValueChanged",
+                      "selectionChanged",
+                      "filterChanged",
+                      "sortChanged",
+                      "columnRowGroupChanged",
+                      "columnPivotChanged",
+                      "columnValueChanged",
+                      "columnPivotModeChanged",
+                      "rowGroupOpened"
+                    ]
+                  },
+                  "description": "The grid events that send the grid state to the endpoint, in the gridState body param, so the backend can answer them. None by default."
+                },
+                "enableCellExpressions": {
+                  "type": "boolean",
+                  "description": "Cell values that start with = are expressions over the row, such as =[quantity] * [price]. Evaluated by the plugin, never as code."
+                }
+              },
+              "$defs": {
+                "pointStyle": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "fill": {
+                      "type": "string",
+                      "maxLength": 64,
+                      "description": "A hex colour or a CSS colour name."
+                    },
+                    "stroke": {
+                      "type": "string",
+                      "maxLength": 64,
+                      "description": "A hex colour or a CSS colour name."
+                    },
+                    "strokeWidth": {
+                      "type": "number",
+                      "minimum": 0,
+                      "maximum": 20
+                    },
+                    "size": {
+                      "type": "number",
+                      "minimum": 0,
+                      "maximum": 40
+                    }
+                  }
+                },
+                "sparklineOptions": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "stroke": {
+                      "type": "string",
+                      "maxLength": 64,
+                      "description": "A hex colour or a CSS colour name."
+                    },
+                    "strokeWidth": {
+                      "type": "number",
+                      "minimum": 0,
+                      "maximum": 20
+                    },
+                    "fill": {
+                      "type": "string",
+                      "maxLength": 64,
+                      "description": "A hex colour or a CSS colour name."
+                    },
+                    "fillOpacity": {
+                      "type": "number",
+                      "minimum": 0,
+                      "maximum": 1
+                    },
+                    "min": {
+                      "type": "number"
+                    },
+                    "max": {
+                      "type": "number"
+                    },
+                    "direction": {
+                      "type": "string",
+                      "enum": [
+                        "vertical",
+                        "horizontal"
+                      ]
+                    },
+                    "markers": {
+                      "type": "object",
+                      "additionalProperties": false,
+                      "properties": {
+                        "enabled": {
+                          "type": "boolean"
+                        },
+                        "size": {
+                          "type": "number",
+                          "minimum": 0,
+                          "maximum": 40
+                        },
+                        "fill": {
+                          "type": "string",
+                          "maxLength": 64,
+                          "description": "A hex colour or a CSS colour name."
+                        },
+                        "stroke": {
+                          "type": "string",
+                          "maxLength": 64,
+                          "description": "A hex colour or a CSS colour name."
+                        },
+                        "strokeWidth": {
+                          "type": "number",
+                          "minimum": 0,
+                          "maximum": 20
+                        }
+                      }
+                    },
+                    "pointsOfInterest": {
+                      "type": "object",
+                      "additionalProperties": false,
+                      "properties": {
+                        "firstLast": {
+                          "$ref": "#/$defs/pointStyle"
+                        },
+                        "minimum": {
+                          "$ref": "#/$defs/pointStyle"
+                        },
+                        "maximum": {
+                          "$ref": "#/$defs/pointStyle"
+                        },
+                        "highlighted": {
+                          "$ref": "#/$defs/pointStyle"
+                        },
+                        "positiveNegative": {
+                          "type": "object",
+                          "additionalProperties": false,
+                          "properties": {
+                            "positive": {
+                              "$ref": "#/$defs/pointStyle"
+                            },
+                            "negative": {
+                              "$ref": "#/$defs/pointStyle"
+                            }
+                          }
+                        }
+                      }
+                    },
+                    "customFormatter": {
+                      "type": "string",
+                      "maxLength": 2000,
+                      "description": "An arrow function in a string, (params) => ({ fill, stroke, ... }). Evaluated without eval: literals, params.*, operators, ?: and Math functions."
+                    },
+                    "padding": {
+                      "type": "object",
+                      "additionalProperties": false,
+                      "properties": {
+                        "top": {
+                          "type": "number",
+                          "minimum": 0,
+                          "maximum": 50
+                        },
+                        "right": {
+                          "type": "number",
+                          "minimum": 0,
+                          "maximum": 50
+                        },
+                        "bottom": {
+                          "type": "number",
+                          "minimum": 0,
+                          "maximum": 50
+                        },
+                        "left": {
+                          "type": "number",
+                          "minimum": 0,
+                          "maximum": 50
+                        }
+                      }
+                    }
+                  }
+                },
+                "sparkline": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "type": {
+                      "type": "string",
+                      "enum": [
+                        "line",
+                        "area",
+                        "bar"
+                      ]
+                    },
+                    "dataField": {
+                      "type": "string",
+                      "maxLength": 128
+                    },
+                    "options": {
+                      "$ref": "#/$defs/sparklineOptions"
+                    }
+                  },
+                  "required": [
+                    "type"
+                  ]
+                },
+                "colorRule": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "condition": {
+                      "type": "string",
+                      "enum": [
+                        "eq",
+                        "ne",
+                        "gt",
+                        "lt",
+                        "gte",
+                        "lte",
+                        "between",
+                        "contains",
+                        "notContains"
+                      ]
+                    },
+                    "value": {
+                      "type": [
+                        "number",
+                        "string"
+                      ],
+                      "maxLength": 200
+                    },
+                    "range": {
+                      "type": "object",
+                      "additionalProperties": false,
+                      "properties": {
+                        "min": {
+                          "type": "number"
+                        },
+                        "max": {
+                          "type": "number"
+                        }
+                      }
+                    },
+                    "color": {
+                      "type": "string",
+                      "maxLength": 64,
+                      "description": "A hex colour or a CSS colour name."
+                    },
+                    "fill": {
+                      "type": "boolean"
+                    }
+                  },
+                  "required": [
+                    "condition",
+                    "color"
+                  ]
+                },
+                "renderFnParams": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "actionType": {
+                      "type": "string",
+                      "enum": [
+                        "groupBy",
+                        "sendToAgent",
+                        "openUrl"
+                      ]
+                    },
+                    "groupBy": {
+                      "type": "object",
+                      "additionalProperties": false,
+                      "properties": {
+                        "paramName": {
+                          "type": "string",
+                          "maxLength": 64
+                        },
+                        "valueField": {
+                          "type": "string",
+                          "maxLength": 128
+                        },
+                        "forceUpdate": {
+                          "type": "boolean"
+                        }
+                      },
+                      "required": [
+                        "paramName"
+                      ]
+                    },
+                    "sendToAgent": {
+                      "type": "object",
+                      "additionalProperties": false,
+                      "properties": {
+                        "markdown": {
+                          "type": "string",
+                          "maxLength": 4000
+                        },
+                        "agentId": {
+                          "type": "string",
+                          "maxLength": 128
+                        }
+                      }
+                    },
+                    "url": {
+                      "type": "string",
+                      "maxLength": 2000,
+                      "description": "openUrl: the link, with {field} placeholders. Without it, the cell's value is the link."
+                    },
+                    "colorValueKey": {
+                      "type": "string",
+                      "maxLength": 128
+                    },
+                    "hoverCardData": {
+                      "type": "array",
+                      "maxItems": 50,
+                      "items": {
+                        "type": "string",
+                        "maxLength": 128
+                      }
+                    },
+                    "colorRules": {
+                      "type": "array",
+                      "maxItems": 50,
+                      "items": {
+                        "$ref": "#/$defs/colorRule"
+                      }
+                    },
+                    "hoverCard": {
+                      "type": "object",
+                      "additionalProperties": false,
+                      "properties": {
+                        "cellField": {
+                          "type": "string",
+                          "maxLength": 128
+                        },
+                        "title": {
+                          "type": "string",
+                          "maxLength": 200
+                        },
+                        "markdown": {
+                          "type": "string",
+                          "maxLength": 4000
+                        }
+                      }
+                    }
+                  }
+                },
+                "column": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "field": {
+                      "type": "string",
+                      "maxLength": 128
+                    },
+                    "headerName": {
+                      "type": "string",
+                      "maxLength": 200
+                    },
+                    "headerTooltip": {
+                      "type": "string",
+                      "maxLength": 500
+                    },
+                    "chartDataType": {
+                      "type": "string",
+                      "enum": [
+                        "category",
+                        "series",
+                        "time",
+                        "excluded"
+                      ]
+                    },
+                    "cellDataType": {
+                      "type": "string",
+                      "enum": [
+                        "text",
+                        "number",
+                        "boolean",
+                        "date",
+                        "dateString",
+                        "object"
+                      ]
+                    },
+                    "align": {
+                      "type": "string",
+                      "enum": [
+                        "left",
+                        "center",
+                        "right"
+                      ]
+                    },
+                    "enableCellChangeWs": {
+                      "type": "boolean"
+                    },
+                    "formatterFn": {
+                      "type": "string",
+                      "enum": [
+                        "int",
+                        "none",
+                        "percent",
+                        "normalized",
+                        "normalizedPercent",
+                        "dateToYear"
+                      ]
+                    },
+                    "decimalPlaces": {
+                      "type": "integer",
+                      "minimum": 0,
+                      "maximum": 12
+                    },
+                    "renderFn": {
+                      "type": [
+                        "string",
+                        "array"
+                      ],
+                      "maxLength": 32,
+                      "maxItems": 6,
+                      "items": {
+                        "type": "string",
+                        "enum": [
+                          "greenRed",
+                          "titleCase",
+                          "hoverCard",
+                          "cellOnClick",
+                          "columnColor",
+                          "showCellChange"
+                        ]
+                      },
+                      "description": "One of greenRed, titleCase, hoverCard, cellOnClick, columnColor, showCellChange, or a list of them."
+                    },
+                    "renderFnParams": {
+                      "$ref": "#/$defs/renderFnParams"
+                    },
+                    "width": {
+                      "type": "number",
+                      "minimum": 10,
+                      "maximum": 4000
+                    },
+                    "minWidth": {
+                      "type": "number",
+                      "minimum": 10,
+                      "maximum": 4000
+                    },
+                    "maxWidth": {
+                      "type": "number",
+                      "minimum": 10,
+                      "maximum": 4000
+                    },
+                    "hide": {
+                      "type": "boolean"
+                    },
+                    "pinned": {
+                      "type": "string",
+                      "enum": [
+                        "left",
+                        "right"
+                      ]
+                    },
+                    "prefix": {
+                      "type": "string",
+                      "maxLength": 32
+                    },
+                    "suffix": {
+                      "type": "string",
+                      "maxLength": 32
+                    },
+                    "sparkline": {
+                      "$ref": "#/$defs/sparkline"
+                    },
+                    "calculatedExpression": {
+                      "type": "string",
+                      "maxLength": 2000,
+                      "description": "The column's value as an expression over the row's columns, such as [revenue] - [cost]: literals, [column], + - * / %, comparisons, && || ??, ?: and Math functions."
+                    }
+                  },
+                  "required": [
+                    "field"
+                  ]
+                },
+                "chartView": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "enabled": {
+                      "type": "boolean"
+                    },
+                    "chartType": {
+                      "type": "string",
+                      "enum": [
+                        "column",
+                        "groupedColumn",
+                        "stackedColumn",
+                        "normalizedColumn",
+                        "bar",
+                        "groupedBar",
+                        "stackedBar",
+                        "normalizedBar",
+                        "line",
+                        "scatter",
+                        "bubble",
+                        "pie",
+                        "donut",
+                        "doughnut",
+                        "area",
+                        "stackedArea",
+                        "normalizedArea",
+                        "histogram",
+                        "radarLine",
+                        "radarArea",
+                        "nightingale",
+                        "radialColumn",
+                        "radialBar",
+                        "sunburst",
+                        "rangeBar",
+                        "rangeArea",
+                        "boxPlot",
+                        "treemap",
+                        "heatmap",
+                        "waterfall",
+                        "columnLineCombo",
+                        "areaColumnCombo",
+                        "customCombo"
+                      ]
+                    },
+                    "cellRangeCols": {
+                      "type": "object",
+                      "additionalProperties": {
+                        "type": "array",
+                        "maxItems": 50,
+                        "items": {
+                          "type": "string",
+                          "maxLength": 128
+                        }
+                      }
+                    },
+                    "ignoreCellRange": {
+                      "type": "boolean"
+                    },
+                    "chartNavigatorEnabled": {
+                      "type": "boolean"
+                    },
+                    "chartMiniChartEnabled": {
+                      "type": "boolean"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        ],
+        "permissions": [
+          "core:data:read",
+          "core:data:stream",
+          "core:params:write",
+          "core:export:provide",
+          "core:copilot:context",
+          "core:clipboard:write",
+          "core:download:save",
+          "core:state:write",
+          "core:ui:notify",
+          "core:ui:open-link",
+          "core:ui:button",
+          "core:ui:menu"
+        ],
+        "model": {
+          "traits": {
+            "data": {
+              "bind": "data",
+              "access": "read"
+            },
+            "definition": {
+              "bind": "definition",
+              "access": "read"
+            },
+            "config": {
+              "bind": "config",
+              "access": "read"
+            },
+            "theme": {
+              "bind": "theme",
+              "access": "read"
+            },
+            "adminSettings": {
+              "bind": "adminSettings",
+              "access": "read"
+            },
+            "state": {
+              "bind": "state",
+              "access": "readwrite"
+            },
+            "params": {
+              "bind": "params",
+              "access": "readwrite"
+            },
+            "meta": {
+              "bind": "meta",
+              "access": "read"
+            }
+          }
+        },
+        "settings": {
+          "schema": {
+            "type": "object",
+            "properties": {
+              "licenseKey": {
+                "type": "string",
+                "title": "AgGrid license key",
+                "description": "AgGrid Enterprise license key for this card. It replaces the organization's key.",
+                "maxLength": 1024
+              },
+              "theme": {
+                "type": "string",
+                "title": "AgGrid theme",
+                "description": "The AgGrid theme of this card; it replaces the backend's and the organization's, in the site's light or dark colours: balham (compact), quartz, alpine or material.",
+                "enum": [
+                  "balham",
+                  "quartz",
+                  "alpine",
+                  "material"
+                ]
+              },
+              "floatingFilters": {
+                "type": "boolean",
+                "title": "Floating filters",
+                "description": "A filter box under each column header."
+              }
+            }
+          },
+          "defaults": {}
+        },
+        "grid": {
+          "w": 40,
+          "h": 20,
+          "minW": 10,
+          "minH": 8
+        },
+        "actions": [
+          {
+            "id": "floating-filters",
+            "label": "Floating filters",
+            "icon": "filter",
+            "placement": "navbar",
+            "toggles": "floatingFilters"
+          },
+          {
+            "id": "autosize",
+            "label": "Autosize columns",
+            "icon": "assets/autosize.svg",
+            "placement": "menu"
+          },
+          {
+            "id": "clear-filters",
+            "label": "Clear filters and sort",
+            "icon": "refresh",
+            "placement": "menu"
+          }
+        ]
+      },
+      {
+        "id": "sql",
+        "name": "AgGrid SQL",
+        "description": "A SQL editor with completion for the backend's database: the query is the widget's sql body param, and the result shows in AgGrid.",
+        "category": "Data",
+        "handles": [
+          {
+            "type": "aggrid-sql",
+            "response": {
+              "accepts": "json",
+              "description": "{ schema: { engine, tables }, columns, rows, truncated, elapsedMs } or { error } for the query in the sql body param. The endpoint is POST."
+            }
+          }
+        ],
+        "permissions": [
+          "core:data:read",
+          "core:params:write",
+          "core:state:write",
+          "core:export:provide",
+          "core:copilot:context",
+          "core:ui:button",
+          "core:dashboard:add-widget"
+        ],
+        "model": {
+          "traits": {
+            "data": {
+              "bind": "data",
+              "access": "read"
+            },
+            "config": {
+              "bind": "config",
+              "access": "read"
+            },
+            "theme": {
+              "bind": "theme",
+              "access": "read"
+            },
+            "adminSettings": {
+              "bind": "adminSettings",
+              "access": "read"
+            },
+            "state": {
+              "bind": "state",
+              "access": "readwrite"
+            },
+            "params": {
+              "bind": "params",
+              "access": "readwrite"
+            },
+            "meta": {
+              "bind": "meta",
+              "access": "read"
+            }
+          }
+        },
+        "settings": {
+          "schema": {
+            "type": "object",
+            "properties": {
+              "licenseKey": {
+                "type": "string",
+                "title": "AgGrid license key",
+                "description": "AgGrid Enterprise license key for this card. It replaces the organization's key.",
+                "maxLength": 1024
+              },
+              "theme": {
+                "type": "string",
+                "title": "AgGrid theme",
+                "description": "The AgGrid theme of this card; it replaces the backend's and the organization's, in the site's light or dark colours: balham (compact), quartz, alpine or material.",
+                "enum": [
+                  "balham",
+                  "quartz",
+                  "alpine",
+                  "material"
+                ]
+              }
+            }
+          },
+          "defaults": {}
+        },
+        "grid": {
+          "w": 40,
+          "h": 24,
+          "minW": 12,
+          "minH": 10
+        },
+        "actions": [
+          {
+            "id": "freeze",
+            "label": "Create static widget",
+            "icon": "table",
+            "placement": "navbar"
+          }
+        ]
+      }
+    ],
+    "skills": [
+      {
+        "slug": "ag-grid-widgets",
+        "description": "The five AgGrid widgets and when each fits; how to show rows in the AgGrid table component: the data it takes and how to fill it from loaded tables.",
+        "file": "skills/ag-grid-widgets.md"
       }
     ]
   }

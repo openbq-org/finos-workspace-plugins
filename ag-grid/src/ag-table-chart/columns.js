@@ -1,5 +1,5 @@
 /*
- * OpenBQ's table configuration (`data.table` in an OpenBQ widgets.json, `data["ag-grid"]` here)
+ * OpenBQ's table configuration (`data.table` in an OpenBQ widgets.json, `data["aggrid-table"]` here)
  * as AG Grid column definitions. Formatting, styles and clicks read `params.context`, which the
  * grid shares: { locale, decimals, actions, changes }.
  */
@@ -7,7 +7,7 @@ import { fieldsOf, inferColumnType } from "../infer.js";
 import { columnColorStyle, greenRedStyle } from "./colors.js";
 import { formatValue, headerFromField, titleCase, yearOf } from "./format.js";
 import { fillTemplate, renderMarkdown } from "./markdown.js";
-import { sparklineData, sparklineOptions } from "./sparkline.js";
+import { sparklineOptions, sparklinePoints } from "./sparkline.js";
 
 export const RENDER_FNS = ["greenRed", "titleCase", "hoverCard", "cellOnClick", "columnColor", "showCellChange"];
 
@@ -133,14 +133,14 @@ export function toColDef(def, rows, table = {}) {
     headerName: def.headerName ?? headerFromField(field),
     cellDataType: false,
   };
-  for (const key of ["headerTooltip", "width", "minWidth", "maxWidth", "hide", "pinned", "chartDataType"]) {
+  for (const key of ["headerTooltip", "width", "minWidth", "maxWidth", "hide", "pinned", "chartDataType", "calculatedExpression"]) {
     if (def[key] !== undefined) col[key] = def[key];
   }
   if (typeof def.width === "number") col.flex = 0;
 
   if (def.sparkline) {
     const dataField = def.sparkline.dataField;
-    col.valueGetter = (params) => sparklineData(params.data ? params.data[dataField ?? field] : undefined);
+    col.valueGetter = (params) => sparklinePoints(params.data ? params.data[dataField ?? field] : undefined);
     col.cellRenderer = "agSparklineCellRenderer";
     col.cellRendererParams = { sparklineOptions: sparklineOptions(def.sparkline) };
     col.sortable = false;
@@ -213,9 +213,11 @@ export function toColDef(def, rows, table = {}) {
     classRules["ag-table-chart-cell-up"] = (params) => params.context?.changes?.get(`${params.node?.id}|${field}`) === "up";
     classRules["ag-table-chart-cell-down"] = (params) => params.context?.changes?.get(`${params.node?.id}|${field}`) === "down";
   }
+  const hasCard = hoverCard || (Array.isArray(p.hoverCardData) && p.hoverCardData.length);
+  if (hasCard) classRules["ag-table-chart-has-card"] = () => true;
   if (Object.keys(classRules).length) col.cellClassRules = classRules;
 
-  if (hoverCard || (Array.isArray(p.hoverCardData) && p.hoverCardData.length)) {
+  if (hasCard) {
     col.tooltipValueGetter = () => "hover card";
     col.tooltipComponent = HoverCardTooltip;
     col.tooltipComponentParams = { hoverCard: p.hoverCard ?? {}, hoverCardData: p.hoverCardData };

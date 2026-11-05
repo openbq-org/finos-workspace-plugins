@@ -11,12 +11,21 @@ const BLOCKED = new Set(["__proto__", "prototype", "constructor"]);
 const PUNCTUATION = ["===", "!==", "=>", "==", "!=", "<=", ">=", "&&", "||", "??", "<", ">", "+", "-", "*", "/", "%", "!", "?", ":", "(", ")", "{", "}", "[", "]", ",", ".", ";"];
 const MAX_SOURCE = 2000;
 
-function tokenize(source) {
+function tokenize(source, { columns = false } = {}) {
   const tokens = [];
   let i = 0;
   while (i < source.length) {
     const ch = source[i];
     if (/\s/.test(ch)) { i++; continue; }
+    if (columns && ch === "[") {
+      const end = source.indexOf("]", i + 1);
+      if (end < 0) throw new SyntaxError("unterminated column reference");
+      const name = source.slice(i + 1, end).trim();
+      if (!name) throw new SyntaxError("empty column reference");
+      tokens.push({ kind: "col", value: name });
+      i = end + 1;
+      continue;
+    }
     if (/[0-9]/.test(ch) || (ch === "." && /[0-9]/.test(source[i + 1] ?? ""))) {
       const match = /^(?:\d+\.?\d*|\.\d+)(?:[eE][+-]?\d+)?/.exec(source.slice(i));
       tokens.push({ kind: "num", value: Number(match[0]) });
@@ -78,6 +87,7 @@ function parser(tokens) {
     const token = tokens[pos];
     if (!token) throw new SyntaxError("unexpected end");
     if (token.kind === "num" || token.kind === "str") { pos++; return { type: "lit", value: token.value }; }
+    if (token.kind === "col") { pos++; return { type: "col", name: token.value }; }
     if (token.kind === "id") {
       pos++;
       if (token.value === "true") return { type: "lit", value: true };
@@ -172,6 +182,11 @@ function parser(tokens) {
     return body;
   }
 
+  if (tokens.mode === "expression") {
+    const body = expression();
+    if (pos !== tokens.length) throw new SyntaxError("unexpected trailing input");
+    return { param: null, body };
+  }
   const result = program();
   take(";");
   if (pos !== tokens.length) throw new SyntaxError("unexpected trailing input");
@@ -181,6 +196,7 @@ function parser(tokens) {
 function evaluate(node, scope) {
   switch (node.type) {
     case "lit": return node.value;
+    case "col": return scope.column ? scope.column(node.name) : undefined;
     case "name":
       if (node.name === scope.param) return scope.params;
       if (node.name === "Math") return MATH;
@@ -239,4 +255,12 @@ export function compileFormatter(source) {
     const result = evaluate(body, { param, params });
     return result && typeof result === "object" ? result : {};
   };
+}
+
+export function compileExpression(source) {
+  if (typeof source !== "string" || source.length > MAX_SOURCE) throw new SyntaxError("an expression is a string of at most 2000 characters");
+  const tokens = tokenize(source, { columns: true });
+  tokens.mode = "expression";
+  const { body } = parser(tokens);
+  return (column) => evaluate(body, { param: null, params: undefined, column });
 }
