@@ -1,9 +1,9 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 
-import { experimental, liveApi, makeModel, mount, settle } from "./dom.mjs";
+import { experimental, liveApi, makeModel, mount, notifications, settle } from "./dom.mjs";
 import { STATE_PARAM } from "../src/grid.js";
-import plugin, { cellChanges, normalizeData, PAGINATE_ABOVE } from "../src/table.js";
+import plugin, { cellChanges, chartFilename, chartToDownload, dataUrlBytes, normalizeData, PAGINATE_ABOVE } from "../src/table.js";
 
 const columnDefs = [
   { field: "id", headerName: "ID" },
@@ -129,6 +129,59 @@ test("a chart view opened before its data arrives draws the chart once the rows 
     abort.abort();
     await settle(100);
   }
+});
+
+test("the download button saves the chart that shows, else the chart opened last", () => {
+  assert.equal(chartToDownload(["view", "popup"], { chartId: "view", isOpen: true }), "view");
+  assert.equal(chartToDownload(["view", "popup"], { chartId: "view", isOpen: false }), "popup");
+  assert.equal(chartToDownload(["view"], { chartId: "view", isOpen: false }), "view");
+  assert.equal(chartToDownload(["a", "b"], null), "b");
+  assert.equal(chartToDownload([], { chartId: "gone", isOpen: true }), null);
+  assert.deepEqual([...dataUrlBytes("data:image/png;base64,AAEC")], [0, 1, 2]);
+  assert.equal(dataUrlBytes("data:image/png,raw"), null);
+  assert.equal(chartFilename("", new Date("2026-11-05T10:00:00Z")), "chart 2026-11-05.png");
+});
+
+test("the download button saves the chart view as a PNG, and asks for a chart when there is none", async () => {
+  const definition = {
+    enableCharts: true,
+    showAll: false,
+    chartView: { enabled: true, chartType: "column" },
+    columnsDefs: [{ field: "name", chartDataType: "category" }, { field: "tvl", chartDataType: "series" }],
+  };
+  const { model, el, abort } = await render({ data: [{ name: "Ethereum", tvl: 45e9 }, { name: "Bitcoin", tvl: 35e9 }], definition });
+  const saved = [];
+  const invoke = experimental.invoke;
+  experimental.invoke = async (name, message, options) => {
+    if (name === "core:download:save") saved.push([message, options]);
+    return invoke(name, message);
+  };
+  try {
+    await settle(150);
+    const api = await liveApi(el);
+    assert.equal(api.getGridOption("allowContextMenuWithControlKey"), true, "Control-click opens the menu on a Mac");
+    const [chartId] = api.getChartModels().map((m) => m.chartId);
+    assert.ok(chartId, "the chart view is drawn");
+    api.getChartImageDataURL = (params) => (params.chartId === chartId && params.fileFormat === "image/png" ? "data:image/png;base64,iVBORw0K" : undefined);
+    model.emit("msg:custom", { kind: "workspace-event", name: "action", id: "download-chart" });
+    await settle();
+    assert.equal(saved.length, 1);
+    assert.equal(saved[0][0].mime, "image/png");
+    assert.match(saved[0][0].filename, /^chart \d{4}-\d{2}-\d{2}\.png$/);
+    assert.deepEqual([...saved[0][1].buffers[0].slice(0, 4)], [0x89, 0x50, 0x4e, 0x47]);
+
+    api.getChartModels = () => [];
+    notifications.length = 0;
+    model.emit("msg:custom", { kind: "workspace-event", name: "action", id: "download-chart" });
+    await settle();
+    assert.equal(saved.length, 1);
+    assert.deepEqual(notifications.at(-1), ["core:ui:notify", { level: "info", text: "Open the chart first, then download it." }]);
+  } finally {
+    experimental.invoke = invoke;
+    abort.abort();
+    await settle(100);
+  }
+  assert.equal(model.listenerCount("msg:custom"), 0);
 });
 
 test("a backend's calculated column and cell formulas show in the grid, and sort and export as values", async () => {

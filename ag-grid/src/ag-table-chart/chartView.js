@@ -147,6 +147,7 @@ export function createChartView({ api, gridEl, chartEl, chartView = {}, saved, m
 
   const view = {
     get isOpen() { return open; },
+    get chartId() { return ref?.chartId ?? null; },
     open() {
       if (!ref) {
         try { create(saved?.model); } catch (e) { console.warn("ag-grid createRangeChart:", e.message); }

@@ -24,6 +24,58 @@ import {
 } from "./grid.js";
 
 export const CHANGE_FLASH_MS = 1500;
+export const ACTION_DOWNLOAD_CHART = "download-chart";
+
+/** The chart the download button saves: the chart view while it shows, else the chart opened last, else the hidden chart view. */
+export function chartToDownload(chartIds, view) {
+  const viewId = view?.chartId && chartIds.includes(view.chartId) ? view.chartId : null;
+  if (viewId && view.isOpen) return viewId;
+  return chartIds.filter((id) => id !== viewId).at(-1) ?? viewId;
+}
+
+export function dataUrlBytes(url) {
+  const match = /^data:[^;,]*;base64,(.*)$/.exec(url ?? "");
+  if (!match) return null;
+  const binary = atob(match[1]);
+  const bytes = new Uint8Array(binary.length);
+  for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+  return bytes;
+}
+
+/** The chart is drawn on a transparent background; paints the widget's background under it, or keeps the image as it is. */
+async function onBackground(url, color) {
+  try {
+    const image = new Image();
+    image.src = url;
+    await image.decode();
+    const canvas = document.createElement("canvas");
+    canvas.width = image.naturalWidth;
+    canvas.height = image.naturalHeight;
+    const context = canvas.getContext("2d");
+    context.fillStyle = color;
+    context.fillRect(0, 0, canvas.width, canvas.height);
+    context.drawImage(image, 0, 0);
+    const blob = await new Promise((resolve) => canvas.toBlob(resolve, "image/png"));
+    if (blob) return new Uint8Array(await blob.arrayBuffer());
+  } catch {
+    /* the plain image below */
+  }
+  return dataUrlBytes(url);
+}
+
+function backgroundOf(el, mode) {
+  const own = getComputedStyle(document.body).getPropertyValue("--ws-background").trim();
+  if (own) return own;
+  const grid = el.querySelector(".ag-root-wrapper");
+  const color = grid ? getComputedStyle(grid).backgroundColor : "";
+  if (color && color !== "transparent" && !/rgba\(.*,\s*0\)$/.test(color)) return color;
+  return mode === "dark" ? "#141414" : "#ffffff";
+}
+
+export function chartFilename(name, date = new Date()) {
+  const base = String(name || "chart").trim().replace(/\s+/g, " ").slice(0, 80) || "chart";
+  return `${base} ${date.toISOString().slice(0, 10)}.png`;
+}
 export const PAGINATE_ABOVE = 100;
 export const GRID_EVENTS = [
   "cellClicked",
@@ -216,6 +268,32 @@ export function mountTable({ model, el, signal, experimental, tracker, saved = {
     setPressed();
   }
 
+  const downloadChart = async () => {
+    let chartIds = [];
+    try {
+      chartIds = (api.getChartModels?.() ?? []).map((m) => m.chartId);
+    } catch {
+      chartIds = [];
+    }
+    const chartId = chartToDownload(chartIds, chartView);
+    if (!chartId) {
+      notify("info", chartView ? "Open the chart first, then download it." : "Chart a range of cells first: select cells, right-click or Control-click them, choose Chart Range, then download it.");
+      return;
+    }
+    const url = api.getChartImageDataURL({ chartId, fileFormat: "image/png" });
+    const bytes = url ? await onBackground(url, backgroundOf(el, (model.get("theme") || {}).mode)) : null;
+    if (!bytes?.byteLength) {
+      notify("warning", "The chart could not be drawn as an image.");
+      return;
+    }
+    await experimental.invoke("core:download:save", { filename: chartFilename("chart"), mime: "image/png" }, { buffers: [bytes] });
+  };
+  const onAction = (event) => {
+    if (event?.kind !== "workspace-event" || event.name !== "action" || event.id !== ACTION_DOWNLOAD_CHART || api.isDestroyed()) return;
+    downloadChart().catch((error) => notify("warning", `The chart was not downloaded: ${error?.message ?? error}`));
+  };
+  model.on("msg:custom", onAction);
+
   const flash = (changes) => {
     if (!changes.size) return;
     for (const [key, direction] of changes) context.changes.set(key, direction);
@@ -295,6 +373,7 @@ export function mountTable({ model, el, signal, experimental, tracker, saved = {
   model.on("change:config", onThemeChange);
 
   signal.addEventListener("abort", () => {
+    model.off("msg:custom", onAction);
     model.off("change:data", onDataChange);
     model.off("change:definition", onDataChange);
     model.off("change:theme", onThemeChange);

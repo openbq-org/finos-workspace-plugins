@@ -817,6 +817,12 @@
             "toggles": "floatingFilters"
           },
           {
+            "id": "download-chart",
+            "label": "Download chart as image",
+            "icon": "download",
+            "placement": "navbar"
+          },
+          {
             "id": "autosize",
             "label": "Autosize columns",
             "icon": "assets/autosize.svg",

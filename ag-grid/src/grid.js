@@ -155,6 +155,7 @@ export function baseOptions(model, gridOptions = {}, { serverSide = false } = {}
     animateRows: true,
     suppressScrollOnNewData: true,
     cellSelection: true,
+    allowContextMenuWithControlKey: true,
     enableCharts: true,
     chartThemes: chartThemesFor(mode),
     popupParent: document.body,
