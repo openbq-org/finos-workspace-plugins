@@ -80,7 +80,8 @@ SVG and PNG exports are drawn at 900 by 540. Its colours are the `--mm-series-*`
 text and surfaces come from the same stylesheet.
 
 The plugin sets these Mermaid options. A diagram's own `%%{init: …}%%` directive or front matter
-can change every one of them except `securityLevel` (a pie ignores them), which Mermaid keeps out of a diagram's reach:
+cannot change any of them, nor `themeCSS`, `maxTextSize`, `maxEdges` or `startOnLoad` (see
+[Security](#security)). A pie ignores them:
 
 | Option | Value | Why |
 |---|---|---|
@@ -103,8 +104,8 @@ for any token the host leaves out. It then reads the custom properties `--mm-<na
 mindmap and journey, the branches of a git graph and the series of an XY chart.
 
 To change how diagrams look, edit `entry.css` and nothing else. No colour is written in
-`entry.js` or `diagram.js`. A diagram's own `themeVariables`, in a `%%{init: …}%%` directive or
-front matter, still win over the stylesheet.
+`entry.js` or `diagram.js`. A diagram's own `themeVariables` and `themeCSS` are ignored. Its
+`style`, `classDef` and `linkStyle` statements still colour its nodes and links.
 
 ## What every card has
 
@@ -113,7 +114,8 @@ front matter, still win over the stylesheet.
   pointer. A plain wheel scrolls the dashboard. Dragging pans, and a double click fits the diagram again. A card that is resized keeps a fitted diagram fitted.
 - **Links.** A link that the diagram declares, `click A href "https://example.com"`, is opened with
   the host command `core:ui:open-link`, which opens only `https:` and `mailto:` links, after the
-  user confirms. `click` callbacks and HTML in labels are switched off.
+  user confirms. The plugin keeps only those two kinds of link, and links to a place in the
+  diagram itself, and removes every other `href`. `click` callbacks and HTML in labels are switched off.
 - **Exports.** The card's Export entry offers *Diagram (SVG)*, *Diagram (PNG)* at twice the
   diagram's size (at most 8,192 pixels on a side), and *Source (Mermaid)* as an `.mmd` file. The SVG
   and the PNG are drawn on the stylesheet's `--mm-background`, in the mode that is showing. The source is
@@ -125,13 +127,44 @@ front matter, still win over the stylesheet.
   add the card to a dashboard. The plugin's skill, `skills/mermaid.md`, tells the agent which diagram
   type fits a question and the syntax that draws reliably.
 
+## Security
+
+The diagram text comes from a backend or from the AI agent, so the plugin treats it as untrusted.
+The frame has no network access and its opaque origin has no access to the host's storage. These
+steps stand between the text and the card inside that frame.
+
+- **Mermaid runs at `securityLevel: strict`, with `htmlLabels: false`.** Mermaid's `secure` list
+  names the options a diagram's own directive or front matter may not change: `securityLevel`,
+  `secure`, `startOnLoad`, `maxTextSize`, `maxEdges`, `suppressErrorRendering`, `htmlLabels`,
+  `themeCSS`, `themeVariables`, `fontFamily`, `fontSize` and `layout`.
+- **The text is bounded.** A diagram of more than 50,000 characters or 300 edges is refused with a
+  message, a drawing that takes more than 12 seconds is abandoned, and the message on the card is
+  cut at 2,000 characters. A pie has at most 200 slices, labels of at most 80 characters, and a
+  value of at most 10¹⁵.
+- **Every drawing is sanitized again.** The SVG that Mermaid returns, the SVG of a pie, and each
+  exported SVG go through DOMPurify with the SVG and SVG filter profiles, and then through a
+  stricter pass in `src/sanitize.js`. That pass removes `script`, `foreignObject` and the HTML
+  inside it, `iframe`, `object`, `embed`, `form`, media and `image` elements, and animation
+  elements (`animate`, `set`). It removes `srcdoc`, `src`, `data`, `action`, `ping` and similar
+  attributes, and every `href` or `xlink:href` that is not an `https:` URL, a `mailto:` address or
+  a `#` fragment, or that holds whitespace, a control character, or more than 2,000 characters.
+  It removes `@import`, `expression(`, `behavior`, `-moz-binding` and every `url()` that is not a
+  `#` reference from each `<style>` element and `style` attribute. It refuses a result that is not
+  exactly one `<svg>` element.
+- **Text is text.** The pie's own SVG escapes every label, and the centre of the donut is set with
+  `textContent`.
+- **A link opens only through the host.** The click handler passes `core:ui:open-link` a link that
+  passes the same check, and does nothing for a `#` fragment.
+
+`test/sanitize.test.mjs` covers the sanitizing pass with hostile markup.
+
 ## Not included
 
 - **The ELK layout.** Mermaid 12.3 can lay out flowcharts, class, state and entity-relationship
   diagrams with ELK, and it defaults to it. The `elkjs` package is licensed EPL-2.0 or
   GPL-3.0-or-later, and this plugin bundles only permissive dependencies, so the build replaces the
-  ELK code with a stub. The plugin sets `layout: dagre`, and a diagram that asks for ELK
-  (`layout: elk`) shows "The ELK layout is not part of this plugin."
+  ELK code with a stub. The plugin sets `layout: dagre`, and a diagram's own `layout` setting is
+  ignored.
 - **Icon packs.** An architecture diagram draws Mermaid's built-in icons. Registering an icon pack
   means fetching it, and the frame reaches no host.
 - **A table of rows.** A widget that sets `raw` has no table view in this plugin, which draws
@@ -205,8 +238,10 @@ npm test
 ```
 
 The tests run in Node. `diagram.test.mjs` covers reading the diagram from an answer, the Mermaid
-configuration, fitting, zooming and the export size. `widget.test.mjs` covers the exports and the
-agent's context, and `manifest.test.mjs` the manifest. Drawing needs a browser: check a diagram on
+configuration, fitting, zooming and the export size. `pie.test.mjs` covers the pie's parser,
+its limits and its SVG, and `sanitize.test.mjs` the sanitizing of hostile markup, styles and
+links. `widget.test.mjs` covers the exports and the agent's context, and `manifest.test.mjs` the
+manifest. Drawing needs a browser: check a diagram on
 a dashboard.
 
 ## Deploy

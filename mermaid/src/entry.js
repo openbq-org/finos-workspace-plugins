@@ -1,15 +1,29 @@
+import DOMPurify from "dompurify";
 import mermaid from "mermaid";
 import { parsePie, pieSvg } from "./pie.js";
-import { SERIES, TOKENS, boxOf, configFor, exportSize, fit, modeOf, sourceOf, zoomAt } from "./diagram.js";
+import { isSafeLink, makeSanitizer } from "./sanitize.js";
+import { MAX_SOURCE, RENDER_TIMEOUT_MS, SERIES, TOKENS, boxOf, configFor, exportSize, fit, modeOf, sourceOf, zoomAt } from "./diagram.js";
 
 const SVG_NS = "http://www.w3.org/2000/svg";
+const MAX_MESSAGE = 2000;
+let sanitizer;
+const sanitize = (markup) => (sanitizer ??= makeSanitizer(DOMPurify))(markup);
+const serialize = (node) => new XMLSerializer().serializeToString(node);
+
+function withDeadline(promise, ms) {
+  let timer;
+  const deadline = new Promise((_, reject) => {
+    timer = setTimeout(() => reject(new Error(`the diagram took longer than ${ms / 1000} seconds to draw`)), ms);
+  });
+  return Promise.race([promise, deadline]).finally(() => clearTimeout(timer));
+}
 
 let drawn = null;
 let failure = null;
 let counter = 0;
 
 function standalone(drawing) {
-  if (drawing.pie) return drawing.pie();
+  if (drawing.pie) return serialize(sanitize(drawing.pie()));
   const clone = drawing.node.cloneNode(true);
   clone.removeAttribute("style");
   clone.setAttribute("width", drawing.box.w);
@@ -23,7 +37,7 @@ function standalone(drawing) {
     fill.setAttribute("fill", drawing.background);
     clone.insertBefore(fill, clone.firstChild);
   }
-  return new XMLSerializer().serializeToString(clone);
+  return serialize(sanitize(serialize(clone)));
 }
 
 async function png(svg, box) {
@@ -132,7 +146,7 @@ export default {
       const locale = theme?.locale ?? "en-US";
       const width = el.clientWidth;
       const height = el.clientHeight;
-      canvas.innerHTML = pieSvg(pie, { width, height, colors: { ...colors, background: "" }, locale });
+      canvas.replaceChildren(sanitize(pieSvg(pie, { width, height, colors: { ...colors, background: "" }, locale })));
       canvas.style.transform = "none";
       stage.classList.add("is-static");
       box = null;
@@ -169,18 +183,26 @@ export default {
         clear("The endpoint did not return a Mermaid diagram.");
         return;
       }
-      const theme = applyTheme();
-      const pie = parsePie(source);
-      if (pie) {
-        drawPie(pie, theme);
+      const fail = (error) => {
+        failure = String(error?.message ?? error).slice(0, MAX_MESSAGE);
+        clear(`The diagram could not be drawn.\n\n${failure}`);
+      };
+      if (source.length > MAX_SOURCE) {
+        fail(new Error(`the diagram text has ${source.length} characters; the limit is ${MAX_SOURCE}`));
         return;
       }
-      stage.classList.remove("is-static");
+      const theme = applyTheme();
       try {
+        const pie = parsePie(source);
+        if (pie) {
+          drawPie(pie, theme);
+          return;
+        }
+        stage.classList.remove("is-static");
         mermaid.initialize(configFor(theme, read));
-        const { svg, diagramType } = await mermaid.render(`mermaid-${++counter}`, source);
+        const { svg, diagramType } = await withDeadline(mermaid.render(`mermaid-${++counter}`, source), RENDER_TIMEOUT_MS);
         if (turn !== latest || signal.aborted) return;
-        canvas.innerHTML = svg;
+        canvas.replaceChildren(sanitize(svg));
         const node = canvas.querySelector("svg");
         const next = boxOf(node.getAttribute("viewBox"));
         if (!next) throw new Error("the diagram has no size");
@@ -196,8 +218,7 @@ export default {
         else place();
       } catch (error) {
         if (turn !== latest || signal.aborted) return;
-        failure = String(error?.message ?? error);
-        clear(`The diagram could not be drawn.\n\n${failure}`);
+        fail(error);
       }
     };
 
@@ -246,7 +267,7 @@ export default {
       if (!link) return;
       event.preventDefault();
       const url = link.getAttribute("href") ?? link.getAttribute("xlink:href");
-      if (url && !moved) experimental.invoke("core:ui:open-link", { url }).catch(() => {});
+      if (url && !moved && isSafeLink(url) && !url.startsWith("#")) experimental.invoke("core:ui:open-link", { url }).catch(() => {});
     };
     const onOver = (event) => {
       const target = event.target.closest?.("[data-i]");

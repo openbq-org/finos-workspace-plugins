@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 
-import { MAX_SCALE, MIN_SCALE, TOKENS, boxOf, configFor, exportSize, fit, modeOf, sourceOf, zoomAt } from "../src/diagram.js";
+import { MAX_EDGES, MAX_SCALE, MAX_SOURCE, MIN_SCALE, SECURE_KEYS, TOKENS, boxOf, configFor, exportSize, fit, modeOf, sourceOf, zoomAt } from "../src/diagram.js";
 
 test("the diagram is a string or the diagram key of an object", () => {
   assert.equal(sourceOf("flowchart TD\n  A --> B"), "flowchart TD\n  A --> B");
@@ -49,6 +49,9 @@ test("mermaid is configured strict, with no HTML and the dagre layout, on the ba
     {
       startOnLoad: false,
       securityLevel: "strict",
+      secure: SECURE_KEYS,
+      maxTextSize: MAX_SOURCE,
+      maxEdges: MAX_EDGES,
       suppressErrorRendering: true,
       htmlLabels: false,
       layout: "dagre",
@@ -121,4 +124,10 @@ test("the size of a diagram is read from its view box", () => {
 test("an image is twice the diagram, and never more than 8192 pixels on a side", () => {
   assert.deepEqual(exportSize({ w: 400, h: 300 }), { width: 800, height: 600 });
   assert.deepEqual(exportSize({ w: 10000, h: 500 }), { width: 8192, height: 410 });
+});
+
+test("a diagram's own directives cannot change the keys that decide what it may do", () => {
+  for (const key of ["securityLevel", "secure", "htmlLabels", "themeCSS", "themeVariables", "fontFamily", "layout", "maxTextSize", "maxEdges", "startOnLoad"]) {
+    assert.ok(SECURE_KEYS.includes(key), key);
+  }
 });
