@@ -1,0 +1,98 @@
+{
+  "manifestVersion": 1,
+  "id": "react-flow",
+  "name": "React Flow",
+  "description": "Renders the reactflow widget type with React Flow: flow diagrams, decision trees, pipelines and architecture maps that the user can rearrange and the AI agent can read and rewrite.",
+  "publisher": {
+    "name": "dlee-bq"
+  },
+  "icon": "assets/icon.svg",
+  "host": {
+    "api": 1,
+    "afm": "0.11"
+  },
+  "entry": {
+    "module": "entry.js",
+    "styles": [
+      "entry.css"
+    ]
+  },
+  "contributes": {
+    "widgets": [
+      {
+        "id": "flow",
+        "name": "Flow diagram",
+        "description": "A diagram of nodes and the edges between them, laid out automatically, which the user can move, connect, rename and extend",
+        "category": "Diagrams",
+        "handles": [
+          {
+            "type": "reactflow",
+            "response": {
+              "accepts": "json",
+              "description": "The diagram as {\"nodes\": [...], \"edges\": [...]}, with the optional keys title and direction. The endpoint gets theme=dark or theme=light."
+            }
+          }
+        ],
+        "artifact": {
+          "description": "A flow diagram: steps and the arrows between them, a decision tree, a pipeline or a map of systems. Use it when an order, a branch or a dependency reads better as boxes and arrows than as a list.",
+          "data": {
+            "$include": "graph.schema.json"
+          }
+        },
+        "settings": {
+          "schema": {
+            "type": "object",
+            "properties": {
+              "graph": {
+                "type": "string",
+                "maxLength": 24000,
+                "title": "Diagram",
+                "description": "The diagram as JSON: {\"nodes\": [...], \"edges\": [...]}. The widget writes this setting whenever the user changes the diagram, and the AI agent reads and sets it. Empty means the diagram the endpoint returns."
+              }
+            }
+          },
+          "defaults": {
+            "graph": ""
+          }
+        },
+        "permissions": [
+          "core:data:read",
+          "core:config:write",
+          "core:export:provide",
+          "core:copilot:context",
+          "core:ui:open-link",
+          "core:ui:notify",
+          "core:ui:button",
+          "core:ui:menu"
+        ],
+        "actions": [
+          {
+            "id": "add-node",
+            "label": "Add node",
+            "icon": "assets/add-node.svg",
+            "placement": "navbar"
+          },
+          {
+            "id": "revert",
+            "label": "Revert to source",
+            "icon": "assets/revert.svg",
+            "placement": "menu"
+          }
+        ],
+        "grid": {
+          "w": 20,
+          "h": 14,
+          "minW": 8,
+          "minH": 6
+        }
+      }
+    ],
+    "skills": [
+      {
+        "slug": "flow-diagrams",
+        "description": "How to draw and change a flow diagram with the React Flow component: the shape of the graph, which node shapes and colours to use, and how to edit a diagram that is already on a dashboard.",
+        "file": "skills/flow-diagrams.md"
+      }
+    ]
+  }
+}

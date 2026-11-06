@@ -1,0 +1,36 @@
+name: React Flow
+
+on:
+  push:
+    branches: [main]
+    paths: [react-flow/**, scripts/**, .github/workflows/react-flow.yml]
+  pull_request:
+    paths: [react-flow/**, scripts/**, .github/workflows/react-flow.yml]
+
+jobs:
+  react-flow:
+    name: React Flow
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: react-flow
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
+        with:
+          node-version: 26.12.1
+      - run: npm ci --ignore-scripts
+      - run: npm test
+      - run: npm run build
+      - run: npm run verify
+
+  backend:
+    name: React Flow data backend
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: react-flow/backend
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+      - run: python3 -m venv .venv && .venv/bin/pip install -q -r requirements-dev.txt
+      - run: .venv/bin/python -m pytest -q tests
