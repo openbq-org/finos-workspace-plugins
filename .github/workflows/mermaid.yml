@@ -1,0 +1,25 @@
+name: Mermaid
+
+on:
+  push:
+    branches: [main]
+    paths: [mermaid/**, scripts/**, .github/workflows/mermaid.yml]
+  pull_request:
+    paths: [mermaid/**, scripts/**, .github/workflows/mermaid.yml]
+
+jobs:
+  mermaid:
+    name: Mermaid
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: mermaid
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
+        with:
+          node-version: 26.12.1
+      - run: npm ci --ignore-scripts
+      - run: npm test
+      - run: npm run build
+      - run: npm run verify
