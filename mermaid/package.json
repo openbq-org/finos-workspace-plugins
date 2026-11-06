@@ -1,0 +1,24 @@
+{
+  "name": "workspace-plugin-mermaid",
+  "version": "1.0.0",
+  "private": true,
+  "description": "A FINOS Workspace widget plugin that draws any backend's Mermaid diagram with Mermaid",
+  "author": "dlee-bq",
+  "type": "module",
+  "scripts": {
+    "build": "node build.mjs",
+    "verify": "node ../scripts/verify.mjs",
+    "install:workspace": "node ../scripts/install.mjs",
+    "dev:workspace": "node ../scripts/sync-dev.mjs",
+    "test": "node --test"
+  },
+  "dependencies": {
+    "mermaid": "12.3.0"
+  },
+  "devDependencies": {
+    "esbuild": "0.28.2"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}
