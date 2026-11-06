@@ -6,6 +6,7 @@ package, `dist/<plugin id>/<version>/`, which a deployment places in its plugins
 | Folder | Plugin | Widget types |
 |---|---|---|
 | [`map-widget/`](map-widget/README.md) | Map | `map`: points, regions, shapes and flows from a backend's rows, GeoJSON or KML, on a MapLibre GL JS map with layers, a legend, drawing and measuring |
+| [`mermaid/`](mermaid/README.md) | Mermaid | `mermaid`: flowcharts, sequence, class, state, ER, Gantt and the other Mermaid diagrams, with zoom, pan and SVG and PNG export; pies drawn as a donut |
 
 ## Shared tooling
 
@@ -13,6 +14,7 @@ package, `dist/<plugin id>/<version>/`, which a deployment places in its plugins
 |---|---|
 | `scripts/verify.mjs` | `npm run verify` in a plugin folder: checks the built package as Workspace's discovery does, and prints the version digest. |
 | `scripts/install.mjs` | `npm run install:workspace` in a plugin folder: copies the package into a local plugins directory. |
+| `scripts/sync-dev.mjs` | `npm run dev:workspace` in a plugin folder: replaces the files of a development version, started with Patch, Minor or Major on a `MODE=local` stack, with the build. |
 | `scripts/install-release.sh` | On a server: downloads one plugin's GitHub Release, checks it, and places it in the plugins directory. |
 | `.github/workflows/<plugin>.yml` | Tests and builds a plugin when its folder changes. |
 | `.github/workflows/release.yml` | Publishes one plugin's package for a tag `<plugin folder>-v<version>`. |

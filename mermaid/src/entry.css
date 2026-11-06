@@ -1,0 +1,225 @@
+html,
+body,
+#root {
+  height: 100%;
+  margin: 0;
+}
+
+#root {
+  position: relative;
+}
+
+.mermaid-root[data-mode="dark"] {
+  --ws-background: #0b2432;
+  --ws-foreground: #e7f2f8;
+  --ws-card: #123244;
+  --ws-card-foreground: #e7f2f8;
+  --ws-border: #355867;
+  --ws-accent: #1a4154;
+  --ws-brand-main: #0086bf;
+  --ws-brand-lighter: #00b5e2;
+  --ws-brand-darker: #005e8a;
+  --ws-alert-error: #ef5555;
+  --ws-alert-success: #59cf6d;
+  --ws-alert-warning: #f18a1a;
+  --ws-alert-informative: #3892d9;
+
+  --mm-node-fill: #1a4154;
+  --mm-node-fill-alt: #214e64;
+  --mm-cluster-fill: #0f2b3b;
+  --mm-note-fill: #2b4a3f;
+  --mm-note-border: #59cf6d;
+  --mm-line: #8fb0c2;
+  --mm-series-label: #0b2432;
+
+  --mm-series-1: #00b5e2;
+  --mm-series-2: #5b7cfa;
+  --mm-series-3: #2dd4a7;
+  --mm-series-4: #a07cf0;
+  --mm-series-5: #38a3f5;
+  --mm-series-6: #f2b441;
+  --mm-series-7: #19b8c9;
+  --mm-series-8: #7f8cf5;
+  --mm-series-9: #6ee7c0;
+  --mm-series-10: #d38ae8;
+  --mm-series-11: #4f8fd9;
+  --mm-series-12: #8fa3b5;
+}
+
+.mermaid-root[data-mode="light"] {
+  --ws-background: #ffffff;
+  --ws-foreground: #1a3248;
+  --ws-card: #f4f9fc;
+  --ws-card-foreground: #1a3248;
+  --ws-border: #b7cdd8;
+  --ws-accent: #f4f9fc;
+  --ws-brand-main: #0086bf;
+  --ws-brand-lighter: #00b5e2;
+  --ws-brand-darker: #005e8a;
+  --ws-alert-error: #d93a3a;
+  --ws-alert-success: #2e9e4f;
+  --ws-alert-warning: #d97a0b;
+  --ws-alert-informative: #2a6fc9;
+
+  --mm-node-fill: #ddeef7;
+  --mm-node-fill-alt: #cbe4f1;
+  --mm-cluster-fill: #ebf4f9;
+  --mm-note-fill: #e3f3e6;
+  --mm-note-border: #2e9e4f;
+  --mm-line: #4a6678;
+  --mm-series-label: #ffffff;
+
+  --mm-series-1: #00709f;
+  --mm-series-2: #3d50c2;
+  --mm-series-3: #0b8467;
+  --mm-series-4: #6a3fc0;
+  --mm-series-5: #1769b5;
+  --mm-series-6: #a86f00;
+  --mm-series-7: #0a7f8f;
+  --mm-series-8: #5160cc;
+  --mm-series-9: #1f8a68;
+  --mm-series-10: #9a4fba;
+  --mm-series-11: #2f5a99;
+  --mm-series-12: #5a6c80;
+}
+
+.mermaid-root {
+  --mm-font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --mm-font-size: 14px;
+
+  --mm-background: var(--ws-background);
+  --mm-text-color: var(--ws-card-foreground);
+  --mm-title-color: var(--ws-card-foreground);
+  --mm-line-color: var(--mm-line);
+
+  --mm-primary-color: var(--mm-node-fill);
+  --mm-primary-text-color: var(--ws-card-foreground);
+  --mm-primary-border-color: var(--ws-brand-main);
+  --mm-secondary-color: var(--mm-node-fill-alt);
+  --mm-secondary-text-color: var(--ws-card-foreground);
+  --mm-secondary-border-color: var(--ws-brand-lighter);
+  --mm-tertiary-color: var(--mm-cluster-fill);
+  --mm-tertiary-text-color: var(--ws-card-foreground);
+  --mm-tertiary-border-color: var(--ws-border);
+
+  --mm-main-bkg: var(--mm-node-fill);
+  --mm-node-border: var(--ws-brand-main);
+  --mm-node-text-color: var(--ws-card-foreground);
+  --mm-cluster-bkg: var(--mm-cluster-fill);
+  --mm-cluster-border: var(--ws-border);
+  --mm-edge-label-background: var(--ws-background);
+
+  --mm-note-bkg-color: var(--mm-note-fill);
+  --mm-note-text-color: var(--ws-card-foreground);
+  --mm-note-border-color: var(--mm-note-border);
+
+  --mm-actor-bkg: var(--mm-node-fill);
+  --mm-actor-border: var(--ws-brand-main);
+  --mm-actor-text-color: var(--ws-card-foreground);
+  --mm-actor-line-color: var(--mm-line);
+  --mm-signal-color: var(--ws-card-foreground);
+  --mm-signal-text-color: var(--ws-card-foreground);
+  --mm-label-box-bkg-color: var(--mm-node-fill-alt);
+  --mm-label-box-border-color: var(--ws-brand-lighter);
+  --mm-label-text-color: var(--ws-card-foreground);
+  --mm-loop-text-color: var(--ws-card-foreground);
+  --mm-activation-bkg-color: var(--mm-node-fill-alt);
+  --mm-activation-border-color: var(--ws-brand-lighter);
+  --mm-sequence-number-color: var(--ws-background);
+
+  --mm-pie-legend-text-color: var(--ws-card-foreground);
+  --mm-pie-stroke-color: var(--ws-background);
+
+  --mm-error-bkg-color: var(--ws-alert-error);
+  --mm-error-text-color: var(--ws-card-foreground);
+
+  --mm-task-bkg-color: var(--ws-brand-main);
+  --mm-task-border-color: var(--ws-brand-darker);
+  --mm-task-text-color: #ffffff;
+  --mm-task-text-light-color: #ffffff;
+  --mm-task-text-dark-color: var(--ws-card-foreground);
+  --mm-task-text-outside-color: var(--ws-card-foreground);
+  --mm-active-task-bkg-color: var(--ws-brand-lighter);
+  --mm-active-task-border-color: var(--ws-brand-main);
+  --mm-done-task-bkg-color: var(--mm-series-10);
+  --mm-done-task-border-color: var(--mm-line);
+  --mm-crit-bkg-color: var(--ws-alert-error);
+  --mm-crit-border-color: var(--ws-alert-error);
+  --mm-grid-color: var(--ws-border);
+  --mm-section-bkg-color: var(--mm-cluster-fill);
+  --mm-alt-section-bkg-color: var(--mm-node-fill);
+  --mm-section-bkg-color2: var(--mm-cluster-fill);
+  --mm-today-line-color: var(--ws-alert-warning);
+
+  --mm-attribute-background-color-odd: var(--ws-background);
+  --mm-attribute-background-color-even: var(--mm-node-fill);
+  --mm-class-text: var(--ws-card-foreground);
+
+  --mm-xy-background-color: var(--ws-background);
+  --mm-xy-title-color: var(--ws-card-foreground);
+  --mm-xy-label-color: var(--ws-card-foreground);
+  --mm-xy-line-color: var(--mm-line);
+}
+
+.mermaid-stage {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  cursor: grab;
+  touch-action: none;
+  user-select: none;
+}
+
+.mermaid-stage.is-static {
+  cursor: default;
+  user-select: none;
+}
+
+.mermaid-stage.is-dragging {
+  cursor: grabbing;
+}
+
+.mermaid-canvas {
+  position: absolute;
+  left: 0;
+  top: 0;
+  transform-origin: 0 0;
+}
+
+.mermaid-message {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  margin: 0;
+  padding: 12px;
+  overflow: auto;
+  font: 12px var(--mm-font-family);
+  white-space: pre-wrap;
+  color: var(--ws-card-foreground);
+  opacity: 0.7;
+  pointer-events: none;
+}
+
+.mermaid-message:empty {
+  display: none;
+}
+
+.pie [data-i] {
+  transition: opacity 0.15s;
+}
+
+.pie.has-active [data-i]:not(.active) {
+  opacity: 0.3;
+}
+
+.pie-row rect {
+  transition: fill 0.15s;
+}
+
+.pie-row.active rect {
+  fill: var(--ws-card-foreground);
+  fill-opacity: 0.08;
+}
