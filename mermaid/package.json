@@ -10,13 +10,15 @@
     "verify": "node ../scripts/verify.mjs",
     "install:workspace": "node ../scripts/install.mjs",
     "dev:workspace": "node ../scripts/sync-dev.mjs",
-    "test": "node --test"
+    "test": "node --test",
+    "e2e": "playwright test -c e2e/playwright.config.mjs"
   },
   "dependencies": {
     "dompurify": "3.4.17",
     "mermaid": "12.3.0"
   },
   "devDependencies": {
+    "@playwright/test": "1.65.0",
     "esbuild": "0.28.2",
     "jsdom": "31.0.0"
   },

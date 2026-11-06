@@ -241,8 +241,49 @@ The tests run in Node. `diagram.test.mjs` covers reading the diagram from an ans
 configuration, fitting, zooming and the export size. `pie.test.mjs` covers the pie's parser,
 its limits and its SVG, and `sanitize.test.mjs` the sanitizing of hostile markup, styles and
 links. `widget.test.mjs` covers the exports and the agent's context, and `manifest.test.mjs` the
-manifest. Drawing needs a browser: check a diagram on
-a dashboard.
+manifest. Drawing needs a browser, so the next section tests it on a real Workspace.
+
+### End-to-end test on a real Workspace
+
+`npm run e2e` runs `e2e/mermaid.spec.mjs` with Playwright against a running Workspace, in its real
+sandboxed frame, with the host's real Content Security Policy, the real data proxy, the real card
+menu and the real export dialog. Nothing in it is simulated. It needs:
+
+- The `local/` stack of the Workspace repository, started as that repository's `install-locally`
+  skill says, and a seeded development administrator (`workspace-dev1@example.com`).
+- The plugin approved and enabled on that stack (the `develop-plugins` skill), and the build under test
+  served by it: `npm run build`, then `npm run dev:workspace` into a development version. The first
+  test fails unless the file the stack serves is byte for byte `dist/mermaid/<version>/entry.js`.
+- A Chromium for Playwright (`npx playwright install chromium`), or `E2E_CHROMIUM` set to the path of
+  one that is already installed.
+
+```bash
+E2E_USER_EMAIL=workspace-dev1@example.com E2E_USER_PASSWORD='WorkspaceDev!1' npm run e2e
+```
+
+The test starts a data backend of its own on port 8011 (`E2E_BACKEND_PORT`), which the API reaches
+as `host.docker.internal` (`E2E_BACKEND_HOST`). It creates a role, a data backend and a dashboard
+on the stack, and deletes them when it ends. The stack's address is `http://localhost:1420`
+(`E2E_BASE_URL`) and its API's `http://localhost:8000` (`E2E_API_URL`).
+
+For each diagram in `e2e/hostile.mjs` the backend returns that diagram, the page is reloaded so the
+card starts a new frame, and the test checks, in the frame and in the host:
+
+- no script ran (`window.__pwned`, which every payload sets, is unset in the frame and in the host);
+- the drawing holds no script, event handler, unsafe link, embedded document, `foreignObject`,
+  `@import` or external `url()` (`e2e/audit.mjs`);
+- the frame's CSP never had to block a request to the canary host `evil.example`, which means the
+  plugin removed it first, and the host's own policy report names no such request;
+- a refused diagram (too long, too many edges, too many pie slices, a syntax error) shows its
+  message, at most 2,000 characters;
+- clicking each link in the drawing opens the host's "Opening External Link" dialog for `https:`
+  and `mailto:` links only, and nothing for the others;
+- the SVG and the PNG that the card's Export entry downloads are clean, and the PNG is a PNG.
+
+It also checks, with a real mouse, that a drag that starts on a link pans the diagram and opens
+nothing, that a click on the link opens it, and that Ctrl with the wheel zooms while a plain wheel
+does not. The chat path of the agent is not in this test: it needs a language model, and it draws
+with the same module and the same checks.
 
 ## Deploy
 
