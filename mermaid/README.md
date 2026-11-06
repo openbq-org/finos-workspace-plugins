@@ -9,6 +9,20 @@ Nothing in the plugin imports Workspace code. It talks to Workspace only through
 contract: `plugin.json`, the AFM module in `entry.js`, traits and host commands. The same built
 package serves FINOS Workspace and BQ Workspace.
 
+## In Workspace
+
+Captured from a `local/` stack on the `MODE=local` development version of this plugin, at twice the
+screen resolution.
+
+| | |
+|---|---|
+| ![The agent draws a flowchart in the chat](screenshots/01-chat-artifact.png) | The AI agent answers "Show me a flowchart of how a pull request gets reviewed and merged." with the `mermaid/diagram` component, and the user adds it to the dashboard with the artifact's own button. |
+| ![A dashboard in dark mode](screenshots/02-dashboard-dark.png) | A pie as a donut, a sequence diagram, a flowchart and the agent's flowchart, in dark mode. |
+| ![A dashboard in light mode](screenshots/03-dashboard-light.png) | The same dashboard in light mode. |
+| ![The export dialog](screenshots/04-export-dialog.png) | The card's Export entry: SVG, PNG and the Mermaid source. |
+| ![The admin review](screenshots/05-admin-review.png) | The Deployment page after `plugin approve` through the admin CLI: the checksum matches the manifest, and nothing but the module, its styles, the icon and the licences is served to browsers. |
+| ![Before the skill fix](screenshots/06-before-skill-fix-chat.png) | Before the skill told the agent that cards are wide and short, it drew a top-down flowchart that shrank until it could not be read ([card](screenshots/07-before-skill-fix-dashboard.png)). |
+
 ## The contract
 
 The widget's endpoint returns the diagram as a JSON string, or as an object with the key `diagram`:
