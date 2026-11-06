@@ -236,15 +236,18 @@ export default {
     let moved = false;
     const onPointerDown = (event) => {
       if (!box || event.button !== 0) return;
-      drag = { x: event.clientX, y: event.clientY, view };
+      drag = { x: event.clientX, y: event.clientY, view, id: event.pointerId };
       moved = false;
-      stage.setPointerCapture(event.pointerId);
-      stage.classList.add("is-dragging");
     };
     const onPointerMove = (event) => {
       if (!drag) return;
-      if (Math.abs(event.clientX - drag.x) + Math.abs(event.clientY - drag.y) > 3) moved = true;
-      view = { ...drag.view, x: drag.view.x + event.clientX - drag.x, y: drag.view.y + event.clientY - drag.y };
+      if (!moved) {
+        if (Math.abs(event.clientX - drag.x) + Math.abs(event.clientY - drag.y) <= 3) return;
+        moved = true;
+        stage.setPointerCapture(drag.id);
+        stage.classList.add("is-dragging");
+      }
+      view ={ ...drag.view, x: drag.view.x + event.clientX - drag.x, y: drag.view.y + event.clientY - drag.y };
       fitted = false;
       place();
     };
