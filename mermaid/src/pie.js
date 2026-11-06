@@ -1,3 +1,7 @@
+export const MAX_SLICES = 200;
+export const MAX_LABEL = 80;
+export const MAX_VALUE = 1e15;
+
 const TITLE = /^title\s+(.+)$/i;
 const HEADER = /^pie\b(?:\s+(showData))?(?:\s+title\s+(.+))?$/i;
 const SLICE = /^\s*(?:"([^"]*)"|'([^']*)')\s*:\s*(-?\d+(?:\.\d+)?)\s*$/;
@@ -10,18 +14,22 @@ export function parsePie(source) {
   const start = lines.findIndex((line) => !/^(---|\w+:|\s)/.test(line) || /^pie\b/i.test(line));
   const header = lines[start] ? HEADER.exec(lines[start]) : null;
   if (!header) return null;
-  let title = header[2]?.trim() ?? "";
+  let title = (header[2]?.trim() ?? "").slice(0, MAX_LABEL * 2);
   const slices = [];
   for (const line of lines.slice(start + 1)) {
     const named = TITLE.exec(line);
     if (named) {
-      title = named[1].trim();
+      title = named[1].trim().slice(0, MAX_LABEL * 2);
       continue;
     }
     const slice = SLICE.exec(line);
     if (!slice) continue;
     const value = Number(slice[3]);
-    if (value > 0) slices.push({ label: slice[1] ?? slice[2], value });
+    if (!(value > 0)) continue;
+    if (value > MAX_VALUE) throw new Error(`A pie slice is at most ${MAX_VALUE}.`);
+    if (slices.length >= MAX_SLICES) throw new Error(`A pie has at most ${MAX_SLICES} slices.`);
+    const label = slice[1] ?? slice[2];
+    slices.push({ label: label.length > MAX_LABEL ? `${label.slice(0, MAX_LABEL - 1)}…` : label, value });
   }
   if (!slices.length) return null;
   slices.sort((a, b) => b.value - a.value);

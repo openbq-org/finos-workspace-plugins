@@ -13,10 +13,12 @@
     "test": "node --test"
   },
   "dependencies": {
+    "dompurify": "3.4.17",
     "mermaid": "12.3.0"
   },
   "devDependencies": {
-    "esbuild": "0.28.2"
+    "esbuild": "0.28.2",
+    "jsdom": "31.0.0"
   },
   "engines": {
     "node": ">=20"

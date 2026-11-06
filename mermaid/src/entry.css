@@ -223,3 +223,7 @@ body,
   fill: var(--ws-card-foreground);
   fill-opacity: 0.08;
 }
+
+.mermaid-canvas text.journey-section {
+  fill: var(--ws-card-foreground) !important;
+}

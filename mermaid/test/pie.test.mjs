@@ -55,3 +55,11 @@ test("a single slice is a full ring, and too many slices end in a count of the r
 test("an export has no hover data", () => {
   assert.ok(!pieSvg(parsePie(SOURCE), { width: 900, height: 540, colors: COLORS, interactive: false }).includes("data-slices"));
 });
+
+test("a pie with too many slices, an absurd value or a very long label is refused or clipped", () => {
+  const many = "pie\n" + Array.from({ length: 201 }, (_, i) => `  "s${i}" : 1`).join("\n");
+  assert.throws(() => parsePie(many), /at most 200 slices/);
+  assert.throws(() => parsePie('pie\n  "a" : 1000000000000000000'), /slice is at most/);
+  const long = parsePie(`pie\n  "${"x".repeat(500)}" : 1`);
+  assert.ok(long.slices[0].label.length <= 80);
+});

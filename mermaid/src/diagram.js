@@ -1,5 +1,24 @@
 const FENCE = /^\s*```[^\n]*\n([\s\S]*?)\n?```\s*$/;
 
+export const MAX_SOURCE = 50_000;
+export const MAX_EDGES = 300;
+export const RENDER_TIMEOUT_MS = 12_000;
+
+export const SECURE_KEYS = [
+  "secure",
+  "securityLevel",
+  "startOnLoad",
+  "maxTextSize",
+  "maxEdges",
+  "suppressErrorRendering",
+  "htmlLabels",
+  "themeCSS",
+  "themeVariables",
+  "fontFamily",
+  "fontSize",
+  "layout",
+];
+
 export const MIN_SCALE = 0.1;
 export const MAX_SCALE = 20;
 
@@ -132,6 +151,9 @@ export function configFor(theme, read) {
   return {
     startOnLoad: false,
     securityLevel: "strict",
+    secure: SECURE_KEYS,
+    maxTextSize: MAX_SOURCE,
+    maxEdges: MAX_EDGES,
     suppressErrorRendering: true,
     htmlLabels: false,
     layout: "dagre",
