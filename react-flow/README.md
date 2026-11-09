@@ -96,11 +96,19 @@ A diagram holds at most 300 nodes and 600 edges, and at most 24,000 characters o
 
 - **The canvas.** Drag the background to pan and use the mouse wheel or a pinch to zoom. The diagram
   is fitted to the card when it opens, at 80% scale or more, and a diagram larger than the card is
-  panned.
+  panned. It is fitted again whenever the card changes size, until the user pans or zooms. A double
+  click on the background fits it again.
 - **Editing.** Dragging moves a box, dragging from an edge of a box draws an arrow, a double click
   renames a box, and Delete removes what is selected. Every change is saved to the widget's `graph`
   setting about half a second later. Editing needs the permission `core:config:write`: without it
   the card pans, zooms and selects only.
+- **The selection bar.** Selecting one box or one arrow opens a bar at the bottom of the card. For a
+  box it has the label, a note and a link, the shape (rectangle, rounded, pill, decision or
+  circle), the colour, whether the box is a **Start** (arrows only leave it), a **Middle** or an
+  **End** (arrows only enter it), and a delete button. For an arrow it has the label, the colour,
+  and whether the line is dashed, moving or has a head. A text field is applied on Enter or when it
+  loses focus, and Escape cancels it. A link must start with `https:` or `mailto:`. **Add node**
+  selects the box it adds, so the bar is open for the new box.
 - **The card's own buttons.** The widget declares two actions, which FINOS Workspace draws itself:
   **Add node** is a button in the card's header and puts a new box at the free spot nearest the
   middle of the view that is fully visible, and **Revert to source** is an item in the card's
@@ -117,9 +125,8 @@ A diagram holds at most 300 nodes and 600 edges, and at most 24,000 characters o
   changes, when it is asked about the dashboard.
 - **The diagram in the chat.** The widget is also an agent component. The AI agent draws a diagram
   under its answer from nodes and edges it writes, and the user can add the card to a dashboard. A
-  card in the chat is read-only. The plugin's
-  skill, `skills/flow-diagrams.md`, tells the agent which shapes and colours to use and how to
-  change a diagram that is already on a dashboard.
+  card in the chat is read-only. The plugin's skill, `skills/flow-diagrams.md`, tells the agent
+  which shapes and colours to use and how to change a diagram that is already on a dashboard.
 
 ## Model traits
 
@@ -201,16 +208,19 @@ npm test
 Node. `graph.test.ts` covers reading a diagram from an answer, from JSON text and from junk, the
 bounds of every field, and that `src/graph.schema.json` and the TypeScript types declare the same
 fields. `layout.test.ts` covers the sizes, the automatic layout, the diagrams it leaves alone and where a
-new node goes, and `manifest.test.ts` the manifest, including the card actions and their icons.
+new node goes, `edit.test.ts` what the selection bar changes on a box and on an arrow and that it
+survives a save, and `manifest.test.ts` the manifest, including the card actions and their icons.
 Drawing needs a browser, which the next section uses.
 
 ## Screenshots
 
 `e2e/screenshots.spec.mjs` drives a running Workspace with Playwright and writes the images in
-`screenshots/` at twice the page's resolution: the two example diagrams on a dashboard, the Add
-node button with its tooltip, the result of Add node, the card's options menu with Revert to
-source, and the same dashboard in light mode. It needs the plugin approved, enabled and running on
-the stack, an administrator, and an empty dashboard of theirs to draw on:
+`screenshots/` at twice the page's resolution: the three example diagrams on a dashboard, the Add
+node button with its tooltip, the result of Add node, the selection bar for a box and for an
+arrow, the card's options menu with Revert to source, and the same dashboard in light mode. It
+checks that every diagram is centred in its card, and that what the bar sets is still there after
+the dashboard is loaded again. It needs the plugin approved, enabled and running on the stack, an
+administrator, and an empty dashboard of theirs to draw on:
 
 ```bash
 E2E_USER_EMAIL=<admin email> E2E_USER_PASSWORD=<password> E2E_DASHBOARD_ID=<dashboard uuid> npm run e2e
@@ -218,7 +228,7 @@ E2E_USER_EMAIL=<admin email> E2E_USER_PASSWORD=<password> E2E_DASHBOARD_ID=<dash
 
 The suite serves `backend/flows.json` itself, registers it under **Connections** as *React Flow
 examples* if it is not there yet, grants it to a temporary role that it deletes at the end, and
-adds the two widgets to the dashboard if they are not on it. `E2E_BASE_URL` (default
+adds the example widgets to the dashboard if they are not on it. `E2E_BASE_URL` (default
 `http://localhost:1420`) and `E2E_API_URL` (default `http://localhost:8000`) name the stack,
 `E2E_BACKEND_HOST` (default `host.docker.internal`) how the stack reaches the suite's backend, and
 `E2E_CHROMIUM` a Chromium to run instead of Playwright's own.

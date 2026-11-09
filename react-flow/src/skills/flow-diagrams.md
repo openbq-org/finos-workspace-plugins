@@ -45,4 +45,4 @@ The diagram is the widget's `graph` setting, a JSON string. Both the user and yo
 2. Parse that string, change the nodes and edges, and write the whole diagram back with `update_widget`, as `config.graph` with the JSON encoded as a string.
 3. Keep each node's `x` and `y` when you change a diagram the user has arranged, so the boxes stay where they put them. Leave them out only when you want the diagram laid out again.
 
-The user moves, connects, renames, adds and deletes boxes on the card, and every change is saved to the same setting, so read it again before you change it.
+The user moves, connects, renames, adds and deletes boxes on the card, and sets a box's shape, colour, note, link and ends and an arrow's label, colour and line with the bar that opens when they select one. Every change is saved to the same setting, so read it again before you change it, and leave the fields you are not changing as they are.

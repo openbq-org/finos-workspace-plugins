@@ -117,6 +117,8 @@ function defined<T extends object>(value: T): T {
 
 const LINK = /^(https|mailto):/i;
 
+export const isLink = (url: string) => LINK.test(url);
+
 function parseNode(value: unknown): FlowNode | null {
   const source = record(value);
   if (!source) return null;

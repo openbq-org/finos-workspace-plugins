@@ -2,10 +2,13 @@ import {
   addEdge,
   applyEdgeChanges,
   applyNodeChanges,
+  getNodesBounds,
+  getViewportForBounds,
   Handle,
   MarkerType,
   Position,
   ReactFlow,
+  useUpdateNodeInternals,
   type Connection,
   type Edge,
   type EdgeChange,
@@ -17,6 +20,8 @@ import {
 } from "@xyflow/react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createRoot } from "react-dom/client";
+import { SelectionBar, type Target } from "./bar.tsx";
+import { patchEdge, patchNode, resizedPosition } from "./edit.ts";
 import {
   MAX_GRAPH_CHARS,
   parseGraph,
@@ -48,6 +53,8 @@ const HANDLES: Record<Direction, { source: Position; target: Position }> = {
 
 let live: FlowGraph | null = null;
 
+const FIT = { padding: 0.08, minZoom: 0.8, maxZoom: 1.1 };
+
 function toCanvasNodes(graph: FlowGraph, data: Pick<NodeData, "rename" | "open">) {
   const direction = graph.direction ?? "TB";
   return graph.nodes.map((node): FlowNodeType => {
@@ -63,8 +70,8 @@ function toCanvasNodes(graph: FlowGraph, data: Pick<NodeData, "rename" | "open">
   });
 }
 
-function toCanvasEdges(graph: FlowGraph): Edge[] {
-  return graph.edges.map((edge, index) => ({
+function toCanvasEdge(edge: FlowEdge, index = 0): Edge {
+  return {
     id: edge.id ?? `e${index}-${edge.source}-${edge.target}`,
     source: edge.source,
     target: edge.target,
@@ -73,8 +80,24 @@ function toCanvasEdges(graph: FlowGraph): Edge[] {
     markerEnd: edge.arrow === false ? undefined : { type: MarkerType.ArrowClosed },
     className: `flow-edge flow-accent-${edge.accent ?? "neutral"}${edge.dashed ? " flow-edge-dashed" : ""}`,
     data: { accent: edge.accent, dashed: edge.dashed, arrow: edge.arrow },
-  }));
+  };
 }
+
+function fromCanvasEdge(edge: Edge): FlowEdge {
+  const stored = (edge.data ?? {}) as Partial<FlowEdge>;
+  return {
+    id: edge.id,
+    source: edge.source,
+    target: edge.target,
+    label: typeof edge.label === "string" ? edge.label : undefined,
+    accent: stored.accent,
+    dashed: stored.dashed,
+    animated: edge.animated === true ? true : undefined,
+    arrow: stored.arrow,
+  };
+}
+
+const toCanvasEdges = (graph: FlowGraph): Edge[] => graph.edges.map(toCanvasEdge);
 
 function fromCanvas(base: FlowGraph, nodes: FlowNodeType[], edges: Edge[]): FlowGraph {
   return {
@@ -84,29 +107,19 @@ function fromCanvas(base: FlowGraph, nodes: FlowNodeType[], edges: Edge[]): Flow
       x: node.position.x,
       y: node.position.y,
     })),
-    edges: edges.map((edge): FlowEdge => {
-      const stored = (edge.data ?? {}) as Partial<FlowEdge>;
-      return {
-        id: edge.id,
-        source: edge.source,
-        target: edge.target,
-        label: typeof edge.label === "string" ? edge.label : undefined,
-        accent: stored.accent,
-        dashed: stored.dashed,
-        animated: edge.animated === true ? true : undefined,
-        arrow: stored.arrow,
-      };
-    }),
+    edges: edges.map(fromCanvasEdge),
   };
 }
 
-function FlowNodeView({ data, selected }: NodeProps<FlowNodeType>) {
+function FlowNodeView({ id, data, selected }: NodeProps<FlowNodeType>) {
   const { node, direction } = data;
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(node.label);
   const handles = HANDLES[direction];
+  const updateInternals = useUpdateNodeInternals();
 
   useEffect(() => setDraft(node.label), [node.label]);
+  useEffect(() => updateInternals(id), [id, node.kind, node.shape, direction, updateInternals]);
 
   const commit = () => {
     setEditing(false);
@@ -196,6 +209,8 @@ function Widget({ model, experimental }: { model: AnyModel; experimental: Experi
   const [nodes, setNodes] = useState<FlowNodeType[]>([]);
   const [edges, setEdges] = useState<Edge[]>([]);
   const flow = useRef<ReactFlowInstance<FlowNodeType, Edge> | null>(null);
+  const stage = useRef<HTMLDivElement | null>(null);
+  const fitted = useRef(true);
   const applied = useRef("");
   const configRef = useRef<Record<string, unknown>>({});
   configRef.current = config ?? {};
@@ -207,13 +222,83 @@ function Widget({ model, experimental }: { model: AnyModel; experimental: Experi
     [canNotify, experimental],
   );
 
-  const rename = useCallback((id: string, label: string) => {
+  const nodesNow = useRef<FlowNodeType[]>([]);
+  nodesNow.current = nodes;
+
+  const fit = useCallback(async (duration = 0) => {
+    const element = stage.current;
+    const instance = flow.current;
+    if (!element || !instance || !nodesNow.current.length) return false;
+    if (!element.clientWidth || !element.clientHeight) return false;
+    const viewport = getViewportForBounds(
+      getNodesBounds(nodesNow.current),
+      element.clientWidth,
+      element.clientHeight,
+      FIT.minZoom,
+      FIT.maxZoom,
+      FIT.padding,
+    );
+    return instance.setViewport(viewport, { duration });
+  }, []);
+
+  const refit = useCallback(() => {
+    let tries = 0;
+    const attempt = () => {
+      if (!fitted.current) return;
+      void fit().then((done) => {
+        if (!done && tries++ < 120) requestAnimationFrame(attempt);
+      });
+    };
+    requestAnimationFrame(attempt);
+  }, [fit]);
+
+  const showAll = useCallback(() => {
+    fitted.current = true;
+    void fit(200);
+  }, [fit]);
+
+  useEffect(() => {
+    const element = stage.current;
+    if (!element) return;
+    let frame = 0;
+    const observer = new ResizeObserver(() => {
+      cancelAnimationFrame(frame);
+      frame = requestAnimationFrame(refit);
+    });
+    observer.observe(element);
+    return () => {
+      cancelAnimationFrame(frame);
+      observer.disconnect();
+    };
+  }, [refit, base !== null]);
+
+  const updateNode = useCallback((id: string, patch: Partial<FlowNode>) => {
     setNodes((current) =>
-      current.map((node) =>
-        node.id === id ? { ...node, data: { ...node.data, node: { ...node.data.node, label } } } : node,
+      current.map((item) => {
+        if (item.id !== id) return item;
+        const next = patchNode(item.data.node, patch);
+        const from = sizeOf(item.data.node);
+        const to = sizeOf(next);
+        return {
+          ...item,
+          width: to.width,
+          height: to.height,
+          position: resizedPosition(item.position, from, to),
+          data: { ...item.data, node: next },
+        };
+      }),
+    );
+  }, []);
+
+  const updateEdge = useCallback((id: string, patch: Partial<FlowEdge>) => {
+    setEdges((current) =>
+      current.map((item) =>
+        item.id === id ? { ...item, ...toCanvasEdge(patchEdge(fromCanvasEdge(item), patch)) } : item,
       ),
     );
   }, []);
+
+  const rename = useCallback((id: string, label: string) => updateNode(id, { label }), [updateNode]);
 
   const open = useCallback(
     (url: string) => {
@@ -236,7 +321,8 @@ function Widget({ model, experimental }: { model: AnyModel; experimental: Experi
     live = base;
     setNodes(toCanvasNodes(base, { rename, open }));
     setEdges(toCanvasEdges(base));
-  }, [base, rename, open]);
+    refit();
+  }, [base, rename, open, refit]);
 
   useEffect(() => {
     if (!base) return;
@@ -297,7 +383,7 @@ function Widget({ model, experimental }: { model: AnyModel; experimental: Experi
           ...sizeOf(existing.data.node),
         }));
         return [
-          ...current,
+          ...current.map((existing) => ({ ...existing, selected: false })),
           {
             id: node.id,
             type: "flow",
@@ -340,6 +426,16 @@ function Widget({ model, experimental }: { model: AnyModel; experimental: Experi
     return () => model.off("msg:custom", onMessage);
   }, [model, revert, addNode]);
 
+  const pickedNodes = nodes.filter((item) => item.selected);
+  const pickedEdges = edges.filter((item) => item.selected);
+  const picked: Target | null =
+    pickedNodes.length === 1 && pickedEdges.length === 0 && pickedNodes[0]
+      ? { kind: "node", node: pickedNodes[0].data.node }
+      : pickedEdges.length === 1 && pickedNodes.length === 0 && pickedEdges[0]
+        ? { kind: "edge", edge: fromCanvasEdge(pickedEdges[0]) }
+        : null;
+  const pickedId = pickedNodes[0]?.id ?? pickedEdges[0]?.id ?? "";
+
   if (!base)
     return (
       <p className="flow-message" style={cssVariables(theme) as React.CSSProperties}>
@@ -349,11 +445,23 @@ function Widget({ model, experimental }: { model: AnyModel; experimental: Experi
     );
 
   return (
-    <div className="flow-stage" style={cssVariables(theme) as React.CSSProperties}>
+    <div
+      ref={stage}
+      className="flow-stage"
+      style={cssVariables(theme) as React.CSSProperties}
+      onDoubleClick={(event) => {
+        if ((event.target as HTMLElement).classList.contains("react-flow__pane")) showAll();
+      }}
+    >
       <ReactFlow
         onInit={(instance) => {
           flow.current = instance;
+          refit();
         }}
+        onMoveStart={(event) => {
+          if (event) fitted.current = false;
+        }}
+        zoomOnDoubleClick={false}
         nodes={nodes}
         edges={edges}
         nodeTypes={NODE_TYPES}
@@ -366,10 +474,23 @@ function Widget({ model, experimental }: { model: AnyModel; experimental: Experi
         elementsSelectable
         deleteKeyCode={editable ? ["Backspace", "Delete"] : null}
         minZoom={0.15}
-        fitView
-        fitViewOptions={{ padding: 0.08, minZoom: 0.8, maxZoom: 1.1 }}
         proOptions={{ hideAttribution: true }}
-      />
+      >
+        {editable && picked ? (
+          <SelectionBar
+            key={`${picked.kind}-${pickedId}`}
+            target={picked}
+            onNode={(patch) => updateNode(pickedId, patch)}
+            onEdge={(patch) => updateEdge(pickedId, patch)}
+            onDelete={() =>
+              flow.current?.deleteElements(
+                picked.kind === "node" ? { nodes: [{ id: pickedId }] } : { edges: [{ id: pickedId }] },
+              )
+            }
+            warn={(text) => notify("warning", text)}
+          />
+        ) : null}
+      </ReactFlow>
     </div>
   );
 }
