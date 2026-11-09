@@ -17,6 +17,8 @@ const DASHBOARD_ID = process.env.E2E_DASHBOARD_ID;
 
 const ORDER = WIDGETS.reactflow_order_flow.name;
 const PIPELINE = WIDGETS.reactflow_release_pipeline.name;
+const ESCALATION = WIDGETS.reactflow_escalation.name;
+const ALL = [ORDER, PIPELINE, ESCALATION];
 
 test.describe.configure({ mode: "serial" });
 test.skip(
@@ -148,7 +150,7 @@ test.beforeAll(async ({ browser }, testInfo) => {
   const agent = page.getByRole("button", { name: "Close Agent" });
   if (await agent.isVisible().catch(() => false)) await agent.click();
 
-  const anyTitle = page.locator("p").filter({ hasText: new RegExp(`^(${ORDER}|${PIPELINE})$`) }).first();
+  const anyTitle = page.locator("p").filter({ hasText: new RegExp(`^(${ALL.join("|")})$`) }).first();
   const emptyState = page.getByRole("button", { name: "Add widgets" }).first();
   await expect(anyTitle.or(emptyState)).toBeVisible({ timeout: 30000 });
   await page.waitForTimeout(1500);
@@ -156,9 +158,11 @@ test.beforeAll(async ({ browser }, testInfo) => {
   const missing = [];
   const onDashboard = async (name) =>
     (await page.locator("p").filter({ hasText: new RegExp(`^${name}$`) }).count()) > 0;
-  for (const name of [ORDER, PIPELINE]) if (!(await onDashboard(name))) missing.push(name);
+  for (const name of ALL) if (!(await onDashboard(name))) missing.push(name);
   if (missing.length) {
-    await page.getByRole("button", { name: "Add widgets" }).first().click();
+    const toolbar = page.getByTestId("dashboard-toolbar-add-widget-button");
+    const empty = page.getByRole("button", { name: "Add widgets" }).first();
+    await (await toolbar.isVisible().catch(() => false) ? toolbar : empty).click();
     const menu = page.getByRole("dialog");
     for (const name of missing) {
       await menu.getByPlaceholder("Search for widgets").fill(name);
@@ -170,7 +174,7 @@ test.beforeAll(async ({ browser }, testInfo) => {
     await expect(menu).toBeHidden();
     await page.waitForTimeout(5000);
     await page.reload();
-    for (const name of [ORDER, PIPELINE])
+    for (const name of ALL)
       await expect(page.locator("p").filter({ hasText: new RegExp(`^${name}$`) }).first()).toBeVisible({ timeout: 30000 });
   }
 });
@@ -184,12 +188,28 @@ test.afterAll(async () => {
   }
 });
 
+async function margins(frame) {
+  return frame.evaluate(() => {
+    const stage = document.querySelector(".flow-stage").getBoundingClientRect();
+    const boxes = [...document.querySelectorAll(".react-flow__node")].map((node) => node.getBoundingClientRect());
+    return {
+      horizontal: Math.abs(Math.min(...boxes.map((box) => box.left)) - stage.left - (stage.right - Math.max(...boxes.map((box) => box.right)))),
+      vertical: Math.abs(Math.min(...boxes.map((box) => box.top)) - stage.top - (stage.bottom - Math.max(...boxes.map((box) => box.bottom)))),
+    };
+  });
+}
+
 test("two diagrams on a dashboard", async () => {
   await openDashboard();
   await drawn(ORDER);
   await revert(ORDER);
   await drawn(ORDER);
   await drawn(PIPELINE);
+  await drawn(ESCALATION);
+  for (const name of ALL) {
+    const frame = await frameOf(name);
+    await expect.poll(async () => Object.values(await margins(frame)).every((gap) => gap <= 8), { timeout: 8000, message: `${name} is centred in its card` }).toBe(true);
+  }
   await page.evaluate(() => window.scrollTo(0, 0));
   await page.mouse.move(2, 2);
   await page.waitForTimeout(500);
@@ -217,6 +237,60 @@ test("Add node puts a box in the middle of the view", async () => {
   await shoot("03-add-node-result", card(ORDER));
 });
 
+const nodeBar = (frame) => frame.locator('[data-flow-bar="node"]');
+const edgeBar = (frame) => frame.locator('[data-flow-bar="edge"]');
+
+async function typeInto(bar, label, text) {
+  const field = bar.getByLabel(label, { exact: true });
+  await field.fill(text);
+  await field.press("Enter");
+}
+
+test("the selection bar styles the new box", async () => {
+  await openDashboard();
+  const frame = await drawn(ORDER);
+  await frame.locator(".flow-node").filter({ hasText: "New step" }).click();
+  const bar = nodeBar(frame);
+  await expect(bar).toBeVisible();
+
+  await typeInto(bar, "Label", "Quality check");
+  await typeInto(bar, "Note", "Reviewer sign-off");
+  await bar.locator('[data-flow-shape="diamond"]').click();
+  await bar.locator('[data-flow-accent="warning"]').click();
+  await bar.locator('[data-flow-kind="default"]').click();
+
+  const styled = frame.locator(".flow-node.flow-shape-diamond.flow-accent-warning").filter({ hasText: "Quality check" });
+  await expect(styled).toBeVisible();
+  await expect(styled).toContainText("Reviewer sign-off");
+  await page.waitForTimeout(1500);
+  await shoot("04-node-style-bar", card(ORDER));
+
+  await openDashboard();
+  const reloaded = await drawn(ORDER);
+  await expect(
+    reloaded.locator(".flow-node.flow-shape-diamond.flow-accent-warning").filter({ hasText: "Quality check" }),
+  ).toBeVisible();
+});
+
+test("the selection bar styles an arrow", async () => {
+  await openDashboard();
+  const frame = await drawn(ORDER);
+  await frame.locator(".react-flow__edge-textwrapper").filter({ hasText: "clear" }).click();
+  const bar = edgeBar(frame);
+  await expect(bar).toBeVisible();
+
+  await typeInto(bar, "Label", "all clear");
+  await bar.locator('[data-flow-accent="positive"]').click();
+  await bar.getByRole("button", { name: "Moving" }).click();
+  await expect(frame.locator(".react-flow__edge.animated")).toHaveCount(2);
+  await page.waitForTimeout(1500);
+  await shoot("05-arrow-style-bar", card(ORDER));
+
+  await openDashboard();
+  const reloaded = await drawn(ORDER);
+  await expect(reloaded.locator(".react-flow__edge-text").filter({ hasText: "all clear" })).toBeVisible();
+});
+
 test("Revert to source in the card's menu", async () => {
   await openDashboard();
   await drawn(ORDER);
@@ -225,7 +299,7 @@ test("Revert to source in the card's menu", async () => {
   const item = page.getByRole("menuitem", { name: "Revert to source" });
   await expect(item).toBeVisible();
   await page.waitForTimeout(400);
-  await shoot("04-card-menu", card(ORDER));
+  await shoot("06-card-menu", card(ORDER));
   await item.click();
   await drawn(ORDER);
   await page.waitForTimeout(500);
@@ -238,7 +312,8 @@ test("the same diagrams in light mode", async () => {
   await page.goto(`/app/${DASHBOARD_ID}`);
   await drawn(ORDER);
   await drawn(PIPELINE);
-  await shoot("05-dashboard-light");
+  await drawn(ESCALATION);
+  await shoot("07-dashboard-light");
   await page.goto("/app/settings");
   await page.getByText("Dark mode", { exact: true }).click();
   await page.waitForTimeout(500);
