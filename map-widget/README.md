@@ -139,6 +139,21 @@ npm run typecheck
 npm test
 ```
 
+The end-to-end suite runs the build in a real Workspace stack: it needs the plugin approved, enabled and in development on a local stack, and an administrator.
+
+```bash
+E2E_USER_EMAIL=<administrator> E2E_USER_PASSWORD=<password> npm run e2e
+```
+
+| Variable | Meaning |
+| --- | --- |
+| `E2E_BASE_URL`, `E2E_API_URL` | the app and the API, default `http://localhost:1420` and `http://localhost:8000` |
+| `E2E_BACKEND_PORT`, `E2E_BACKEND_HOST`, `E2E_BACKEND_LISTEN` | where the suite's data backend listens and how the API reaches it, default `8041`, `host.docker.internal` and `0.0.0.0` |
+| `E2E_CHROMIUM` | the path of a Chromium to use instead of Playwright's own |
+| `E2E_BUNDLE` | the `entry.js` that the stack must serve, default the build of `package.json` |
+
+`map.spec.mjs` drives the card (actions, data table, static maps, presets, drawing, tags and export), and `hostile.spec.mjs` sends rows, files and map sources that a backend must not be trusted with. The suite creates a role, a data backend and a dashboard, and deletes them.
+
 Output in `dist/map-widget/<version>/`:
 
 | File | Content |
