@@ -98,7 +98,10 @@ const DataRow = memo(function DataRow({
   }, [key, onNote]);
   const onKey = useCallback(
     (event: KeyboardEvent) => {
-      if (event.key === "Enter") save();
+      if (event.key === "Enter") {
+        event.preventDefault();
+        save();
+      }
       if (event.key !== "Escape") return;
       event.stopPropagation();
       cancel();

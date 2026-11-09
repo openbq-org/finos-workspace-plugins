@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { bindHost, copyText, readAsset, readAssetJson } from "~/host";
+import { addWidget, bindHost, copyText, notify, readAsset, readAssetJson } from "~/host";
 
 afterEach(() => bindHost(null));
 
@@ -30,6 +30,23 @@ describe("the host", () => {
       { text: "40.1, -74.2" },
       undefined,
     );
+  });
+
+  it("adds a widget of the plugin to the dashboard with its data", async () => {
+    const invoke = vi.fn(async () => answer("{}"));
+    bindHost(invoke);
+    await addWidget("map", { points: [] });
+    expect(invoke).toHaveBeenCalledWith("core:dashboard:add-widget", { widget: "map", data: { points: [] } }, undefined);
+  });
+
+  it("shows a notice, and does not fail when the host will not", async () => {
+    const invoke = vi.fn(async () => {
+      throw new Error("rate limited");
+    });
+    bindHost(invoke);
+    notify("success", "View copied.");
+    await Promise.resolve();
+    expect(invoke).toHaveBeenCalledWith("core:ui:notify", { level: "success", text: "View copied." }, undefined);
   });
 
   it("fails clearly when it is not connected", async () => {

@@ -360,3 +360,12 @@ describe("layers that measure the same thing", () => {
     expect(other.scale?.stops).not.toBe(gh.scale?.stops);
   });
 });
+
+describe("the sources a backend declared, which the map refused", () => {
+  it("are on the scene, with the reason of each", () => {
+    const refused = [{ backend: "widget", widget: "map", id: "script", reason: "it does not start with http:// or https://" }];
+    const built = scene({ points: [{ lat: 1, lon: 1 }] }, { held: { sources: [], ambiguous: [], refused } });
+    expect(built.refused).toEqual(refused);
+    expect(scene({ points: [{ lat: 1, lon: 1 }] }).refused).toEqual([]);
+  });
+});

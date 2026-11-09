@@ -92,7 +92,7 @@ export function mapNoteLines(
   spec: MapSpec,
   scene:
     | (Pick<Scene, "unshaped" | "ambiguous" | "outside" | "abroad" | "elsewhere"> &
-        Partial<Pick<Scene, "backdrop">>)
+        Partial<Pick<Scene, "backdrop" | "refused">>)
     | null,
   beyond: MapBeyond = false,
   noBuildings = false,
@@ -109,6 +109,7 @@ export function mapNoteLines(
   unmatched.push(...(scene?.unshaped ?? []));
   missing += scene?.unshaped.length ?? 0;
   const unsure = scene?.ambiguous ?? [];
+  const refused = scene?.refused ?? [];
   return [
     missing
       ? `${count(missing, "region is", "regions are")} not on the map: ${listed(unmatched, missing)}`
@@ -139,6 +140,13 @@ export function mapNoteLines(
       : beyond
         ? STREET_NOTE
         : "",
+    refused.length
+      ? `${count(refused.length, "map source is", "map sources are")} not drawn: ${listed(
+          refused.map(({ id, reason }) => `${id ?? "a source"}: ${reason.replace(/\.$/, "")}`),
+          refused.length,
+          "; ",
+        )}`
+      : "",
     noBuildings ? BUILDINGS_NOTE : "",
     ...(scene?.elsewhere ?? []).map(
       (name) =>

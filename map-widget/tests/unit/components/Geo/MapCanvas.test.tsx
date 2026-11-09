@@ -2,6 +2,7 @@ import { act, fireEvent, render, screen, within } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import MapCanvas from "~/components/Geo/MapCanvas";
 import { FRAME_MS } from "~/components/Geo/TimeSlider";
+import { getDriver } from "~/cardActions";
 import { mapSpec } from "~/lib/geo/mapSpec";
 import { expectNoUseAfterRemove, FakeMap, fakeLibrary, pointerAt } from "./fakeMap";
 import { sets, states, world } from "./scene/support";
@@ -524,5 +525,79 @@ describe("a map that says what it opens with", () => {
     mount({ spec: ASKS, view: { boundariesOff: ["us-states"], panel: "open" } });
     fireEvent.click(screen.getByRole("button", { name: "Layers" }));
     expect(states().checked).toBe(false);
+  });
+});
+
+describe("the card of the widget around the map", () => {
+  const PARIS = { center: [2.35, 48.85] as [number, number], zoom: 5 };
+
+  it("gets the buttons of the view and where the map is looking, from the map that is drawn", () => {
+    const { map } = mount({ spec: mapSpec({ ...TWO, view: PARIS }) });
+    const driver = getDriver();
+    expect(driver).not.toBeNull();
+    map.center = [2.5, 48.9];
+    map.zoom = 7.5;
+    map.bearing = 12;
+    map.pitch = 30;
+    expect(driver?.camera()).toEqual({ latitude: 48.9, longitude: 2.5, zoom: 7.5, bearing: 12, pitch: 30 });
+    act(() => driver?.fit());
+    expect(map.fitBounds).toHaveBeenCalledTimes(1);
+    map.jumpTo.mockClear();
+    act(() => driver?.reset());
+    expect(map.jumpTo).toHaveBeenCalledWith(expect.objectContaining(PARIS));
+  });
+
+  it("fits the data with both buttons on a map that opens on its data", () => {
+    const { map } = mount();
+    const fitted = map.fitBounds.mock.calls.length;
+    act(() => getDriver()?.fit());
+    act(() => getDriver()?.reset());
+    expect(map.fitBounds).toHaveBeenCalledTimes(fitted + 2);
+  });
+
+  it("gives the buttons up with the map", () => {
+    const { unmount } = mount();
+    expect(getDriver()).not.toBeNull();
+    unmount();
+    expect(getDriver()).toBeNull();
+  });
+
+  describe("and the data table that it opens", () => {
+    const table = () => screen.queryByRole("region", { name: "Data of map Sites" });
+    const toggle = () => screen.getByRole("button", { name: "Show data" });
+
+    it("is open when it is asked to be, and says so on its button", () => {
+      mount({ dataOpen: true });
+      expect(table()).not.toBeNull();
+      expect(toggle().getAttribute("aria-pressed")).toBe("true");
+    });
+
+    it("tells whoever asked when the reader switches it, and stays as it is asked to be", () => {
+      const onDataOpenChange = vi.fn();
+      const { rerender } = mount({ dataOpen: false, onDataOpenChange });
+      fireEvent.click(toggle());
+      expect(onDataOpenChange).toHaveBeenLastCalledWith(true);
+      expect(table()).toBeNull();
+      rerender(<MapCanvas spec={TWO} name="Sites" onFail={vi.fn()} dataOpen onDataOpenChange={onDataOpenChange} />);
+      expect(table()).not.toBeNull();
+      fireEvent.click(toggle());
+      expect(onDataOpenChange).toHaveBeenLastCalledWith(false);
+      expect(table()).not.toBeNull();
+    });
+
+    it("closes with Escape and tells whoever asked", () => {
+      const onDataOpenChange = vi.fn();
+      mount({ dataOpen: true, onDataOpenChange });
+      fireEvent.keyDown(screen.getByRole("heading", { name: "Data of the map" }), { key: "Escape" });
+      expect(onDataOpenChange).toHaveBeenLastCalledWith(false);
+    });
+
+    it("is the map's own when nobody asks", () => {
+      mount();
+      fireEvent.click(toggle());
+      expect(table()).not.toBeNull();
+      fireEvent.click(toggle());
+      expect(table()).toBeNull();
+    });
   });
 });

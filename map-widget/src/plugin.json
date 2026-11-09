@@ -449,7 +449,10 @@
           "core:config:write",
           "core:clipboard:write",
           "core:download:save",
-          "core:ui:notify"
+          "core:ui:notify",
+          "core:ui:button",
+          "core:ui:menu",
+          "core:dashboard:add-widget"
         ],
         "model": {
           "traits": {
@@ -500,6 +503,10 @@
             "viewPitch": {
               "bind": "config:pitch",
               "access": "readwrite"
+            },
+            "dataTable": {
+              "bind": "config:dataTable",
+              "access": "readwrite"
             }
           }
         },
@@ -547,11 +554,49 @@
                 "description": "Tilt of the view in degrees, from 0 to 85.",
                 "minimum": 0,
                 "maximum": 85
+              },
+              "dataTable": {
+                "type": "boolean",
+                "title": "Data table",
+                "description": "Show the marks of the map as a table instead of the map."
               }
             }
           },
           "defaults": {}
-        }
+        },
+        "actions": [
+          {
+            "id": "data-table",
+            "label": "Data table",
+            "icon": "table",
+            "placement": "navbar",
+            "toggles": "dataTable"
+          },
+          {
+            "id": "static",
+            "label": "Create static map",
+            "icon": "assets/static-map.svg",
+            "placement": "navbar"
+          },
+          {
+            "id": "fit",
+            "label": "Show all data",
+            "icon": "assets/fit.svg",
+            "placement": "menu"
+          },
+          {
+            "id": "reset-view",
+            "label": "Reset view",
+            "icon": "refresh",
+            "placement": "menu"
+          },
+          {
+            "id": "copy-view",
+            "label": "Copy view",
+            "icon": "copy",
+            "placement": "menu"
+          }
+        ]
       }
     ],
     "skills": [

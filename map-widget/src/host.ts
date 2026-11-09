@@ -39,8 +39,15 @@ export const copyText = async (text: string): Promise<void> => {
   await call("core:clipboard:write", { text });
 };
 
-export const notify = (level: "info" | "warning" | "error", text: string): void => {
+export const notify = (
+  level: "info" | "success" | "warning" | "error",
+  text: string,
+): void => {
   void call("core:ui:notify", { level, text }).catch(() => {});
+};
+
+export const addWidget = async (widget: string, data: unknown): Promise<void> => {
+  await call("core:dashboard:add-widget", { widget, data });
 };
 
 export const saveFile = async (

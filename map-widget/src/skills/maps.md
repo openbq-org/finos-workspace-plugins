@@ -42,6 +42,8 @@ Set `view` to open the map where the question is. `view.center` is `{ "lat", "lo
 
 A map widget on the dashboard keeps its view in the settings `latitude`, `longitude`, `zoom`, `bearing` and `pitch`, and they follow the map as the user moves it. `read_widget` gives them as `ui_args.config`. To move the map, call `update_widget` with `ui_args_json` such as `{"config": {"latitude": 48.8566, "longitude": 2.3522, "zoom": 12}}`; zoom is 0 (the world) to 24, 4 a country, 10 a city, 15 streets. Set `latitude` and `longitude` together; `zoom` alone zooms where the map is.
 
+To show the marks of a map on the dashboard as a table, call `update_widget` with `{"config": {"dataTable": true}}`; `false` shows the map again.
+
 ## Rules
 
 - A map has at most 200 points, or 250 regions. When there are more rows, aggregate them first (by state, country or city) instead of sending every row.

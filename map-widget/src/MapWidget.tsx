@@ -11,7 +11,10 @@ import { type MapViewState, mapViewState } from "~/lib/geo/mapViewState";
 import { makeWidgetMap } from "~/lib/geo/widgetMapMake";
 import { setSettings } from "~/settings";
 import { setTheme } from "~/theme";
-import { type Model, setShown } from "./widget";
+import { runAction } from "./actions";
+import { type CameraNow, getDriver } from "./cardActions";
+import { notify } from "./host";
+import { MAX_STATE_BYTES, type Model, setShown } from "./widget";
 
 interface Stored {
   mapNotes?: MapNotes;
@@ -34,13 +37,29 @@ function useStored(model: Model) {
   const stored = useTrait<Stored | null>(model, "state");
   const latest = useRef<Stored>({});
   latest.current = stored ?? {};
+  const asked = useRef<{ written: string; at: number } | null>(null);
+  useEffect(() => {
+    const mine = asked.current;
+    if (!mine) return;
+    if (Date.now() - mine.at >= ECHO_WINDOW_MS) asked.current = null;
+    else if (JSON.stringify(stored ?? {}) !== mine.written) {
+      asked.current = null;
+      notify("warning", NOT_KEPT);
+    }
+  }, [stored]);
   const keep = useCallback(
     (key: keyof Stored, value: unknown) => {
       const { [key]: _before, ...rest } = latest.current;
       const empty = Array.isArray(value)
         ? !value.length
         : !Object.keys(value as object).length;
-      latest.current = empty ? rest : { ...rest, [key]: value };
+      const next = empty ? rest : { ...rest, [key]: value };
+      if (stateBytes(next) > MAX_STATE_BYTES) {
+        if (key !== "mapView") notify("warning", FULL);
+        return;
+      }
+      latest.current = next;
+      asked.current = key === "mapView" ? null : { written: JSON.stringify(next), at: Date.now() };
       model.set("state", latest.current);
       model.save_changes();
     },
@@ -48,6 +67,21 @@ function useStored(model: Model) {
   );
   return { stored: stored ?? {}, keep };
 }
+
+const stateBytes = (state: Stored) => new TextEncoder().encode(JSON.stringify(state)).byteLength;
+
+const FULL =
+  "The tags and shapes of this map take all the 64 KiB that a dashboard keeps for it. This change was not saved: remove a tag or a shape first.";
+
+const NOT_KEPT =
+  "The dashboard did not keep this change: it is read-only, for example because it is shared with you.";
+
+const cameraOfNow = ({ latitude, longitude, zoom, bearing, pitch }: CameraNow): MapViewState["camera"] => ({
+  center: [longitude, latitude],
+  zoom,
+  bearing,
+  pitch,
+});
 
 const finite = (value: unknown): value is number =>
   typeof value === "number" && Number.isFinite(value);
@@ -61,7 +95,7 @@ const VIEW_TRAITS = {
 } as const;
 type ViewKey = keyof typeof VIEW_TRAITS;
 type ViewValues = Partial<Record<ViewKey, number>>;
-const REFUSAL_WINDOW_MS = 5000;
+const ECHO_WINDOW_MS = 1500;
 
 const round = (value: number, places: number) => Number(value.toFixed(places));
 
@@ -118,7 +152,7 @@ function useViewSync(model: Model) {
     if (mine) {
       if (key === mine.written) return;
       own.current = null;
-      if (key === mine.before && Date.now() - mine.at < REFUSAL_WINDOW_MS) return;
+      if (key === mine.before && Date.now() - mine.at < ECHO_WINDOW_MS) return;
     }
     setTarget(targetOf(view));
   }, [key]);
@@ -139,6 +173,47 @@ function useViewSync(model: Model) {
     [model],
   );
   return { target, writeView };
+}
+
+function useCardActions(model: Model) {
+  useEffect(() => {
+    const onEvent = (event: unknown) => {
+      const { kind, name, id } = (event ?? {}) as Record<string, unknown>;
+      if (kind === "workspace-event" && name === "action" && typeof id === "string")
+        void runAction(id);
+    };
+    model.on("msg:custom", onEvent);
+    return () => model.off("msg:custom", onEvent);
+  }, [model]);
+}
+
+function useDataTable(model: Model) {
+  const setting = useTrait<unknown>(model, "dataTable");
+  const wanted = setting === true;
+  const [open, setOpen] = useState(wanted);
+  const own = useRef<{ written: boolean; before: boolean; at: number } | null>(null);
+  const latest = useRef(wanted);
+  useEffect(() => {
+    const before = latest.current;
+    latest.current = wanted;
+    const mine = own.current;
+    if (mine) {
+      if (wanted === mine.written) return;
+      own.current = null;
+      if (wanted === mine.before && Date.now() - mine.at < ECHO_WINDOW_MS) return;
+    }
+    if (wanted !== before) setOpen(wanted);
+  }, [wanted]);
+  const change = useCallback(
+    (next: boolean) => {
+      setOpen(next);
+      own.current = { written: next, before: latest.current, at: Date.now() };
+      model.set("dataTable", next);
+      model.save_changes();
+    },
+    [model],
+  );
+  return { open, change };
 }
 
 const payloadOf = (data: unknown): unknown =>
@@ -190,6 +265,8 @@ export default function MapWidget({ model }: { model: Model }) {
   const meta = useTrait<{ name?: string; title?: string } | undefined>(model, "meta");
   const { stored, keep } = useStored(model);
   const { target, writeView } = useViewSync(model);
+  const dataTable = useDataTable(model);
+  useCardActions(model);
   const tilesUrl = useTrait<unknown>(model, "mapTilesUrl");
   const tilesProvider = useTrait<unknown>(model, "mapTilesProvider");
   const adminSources = useTrait<unknown>(model, "mapSources");
@@ -235,7 +312,8 @@ export default function MapWidget({ model }: { model: Model }) {
   const onViewChange = useCallback(
     (next: MapViewState) => {
       const kept = mapViewState(next);
-      writeView(kept.camera);
+      const now = kept.camera ? undefined : getDriver()?.camera();
+      writeView(kept.camera ?? (now ? cameraOfNow(now) : undefined));
       keep("mapView", kept);
     },
     [keep, writeView],
@@ -259,6 +337,8 @@ export default function MapWidget({ model }: { model: Model }) {
           view={stored.mapView}
           onViewChange={onViewChange}
           target={target}
+          dataOpen={dataTable.open}
+          onDataOpenChange={dataTable.change}
         />
       </div>
     );

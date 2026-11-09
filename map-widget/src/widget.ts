@@ -18,6 +18,8 @@ export interface Shown {
   view: unknown;
 }
 
+export const MAX_STATE_BYTES = 64 * 1024;
+
 let shown: Shown | null = null;
 
 export const setShown = (next: Shown | null): void => {

@@ -395,7 +395,8 @@ describe("the tag of the user in a row", () => {
     const field = screen.getByLabelText("Your tag for Houston");
     expect(document.activeElement).toBe(field);
     fireEvent.change(field, { target: { value: "depot" } });
-    fireEvent.keyDown(field, { key: "Enter" });
+    const unhandled = fireEvent.keyDown(field, { key: "Enter" });
+    expect(unhandled, "the browser must not press the button that takes the focus").toBe(false);
     expect(onNote).toHaveBeenCalledTimes(1);
     expect(onNote).toHaveBeenCalledWith(key(built, "Houston"), "depot");
     expect(screen.queryByRole("textbox")).toBeNull();

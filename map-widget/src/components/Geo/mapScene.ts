@@ -243,6 +243,7 @@ export function buildScene(input: SceneInput): Scene {
     scale: layers.find((layer) => layer.scale)?.scale ?? null,
     unshaped: [...draft.unshaped],
     ambiguous: draft.ambiguous,
+    refused: input.held?.refused ?? [],
     pictures: draft.pictures,
     pointer: draft.pointer,
     hover: draft.hover,

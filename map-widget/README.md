@@ -64,12 +64,36 @@ Limits: 20,000 points, 4,000 regions, 3,500 lines and areas, 2 MB of JSON, 4 MB 
 - **Controls:** layer panel, legend, data table, tags, drawing and measuring.
 - **Export:** KML, KMZ and GeoJSON, with the user's tags, drawn shapes and region names.
 - **Agent context:** counts, value range, categories, what is in view (`shows`) and the first 300 rows (place, label, value, tag). No shape geometry.
-- **State:** tags, drawn shapes, layer visibility, opacity, boundaries and camera, kept in the widget `state` (64 KiB at most).
-- **View settings:** `latitude`, `longitude`, `zoom`, `bearing`, `pitch`, bound as readwrite `config` traits. They follow the map as the reader moves it. A change from the settings form or from the agent (`update_widget`) moves the map. The agent reads them with `read_widget` (`ui_args.config`).
+- **State:** tags, drawn shapes, layer visibility, opacity, boundaries and camera, kept in the widget `state` (64 KiB at most). A change that would pass 64 KiB is not sent, and the reader is told. A change the dashboard refuses, as a shared dashboard does, is reported once.
+- **View settings:** `latitude`, `longitude`, `zoom`, `bearing`, `pitch`, bound as readwrite `config` traits. They follow the map as the reader moves it or resets it. A change from the settings form, a preset or the agent (`update_widget`) moves the map. The agent reads them with `read_widget` (`ui_args.config`).
+- **Data table setting:** `dataTable`, a boolean `config` trait. It shows the marks as a table, from the card's button, the map's own button, the settings form or the agent.
+- **Card actions:** buttons and menu items in the card, listed below.
+- **Presets:** the presets of the card's Settings keep the view, the data table, the tags and the drawn shapes. They need no permission.
 - **Chat:** an `artifact` for points by latitude and longitude, or US states or countries with a value. `view` sets where it opens. The card can be added to a dashboard as a widget.
 - **Skill:** `maps` (`src/skills/maps.md`).
 - **Boundaries:** US states, counties, countries, first-level regions, metro areas, congressional districts, ZIP codes and cities, carried in `assets/geo/` (10 MB) and loaded on demand. Sources: [`vendor/geo/README.md`](vendor/geo/README.md).
 - **Labels:** Noto Sans glyphs from `assets/basemap/fonts/`, read through the `workspace-asset://` protocol.
+
+## Card actions
+
+Declared in `contributes.widgets[0].actions`; they need a FINOS Workspace with card actions ([finos-labs/finos-workspace#81](https://github.com/finos-labs/finos-workspace/pull/81)).
+
+| Action | Where | What it does |
+| --- | --- | --- |
+| Data table | header button, toggles the setting `dataTable` | shows the marks as a table; pressed while it shows |
+| Create static map | header button, `core:dashboard:add-widget` | adds a standalone map to the dashboard |
+| Show all data | menu item | fits the map to all its marks |
+| Reset view | menu item | returns to the view the map opened on |
+| Copy view | menu item, `core:clipboard:write` | copies `latitude, longitude, zoom z` |
+
+The icons are the host's (`table`, `refresh`, `copy`) or `assets/fit.svg` and `assets/static-map.svg`.
+
+**Create static map** copies the places and the view into a map that no backend feeds, as the artifact of the chat does:
+- the first 200 points and the first 250 US states or countries, with label, tag and value;
+- the title, the value label and where the reader is looking (zoom 19 and pitch 60 at most);
+- a notice on the new card that lists what was not copied; the card is named `<name> (static)`.
+
+On a shared dashboard the Data table button is disabled and Create static map is refused by the host.
 
 ## Basemap and map sources
 
@@ -84,13 +108,14 @@ With no readable tiles the map is drawn on the boundary files.
 Map sources are extra layers: raster tiles, vector tiles, PMTiles, GeoJSON, images and elevation.
 - Declared in `data.map.sources` or in the admin setting *Map sources* (a JSON list).
 - `https` only; the host must be in the frame policy. No headers or credentials are sent.
+- A refused source is named in the map's note ("6 map sources are not drawn: id: reason"), and nothing is requested for it.
 - Vector layer colour: `{"value": "#rrggbb"}` or `{"property", "scale", "domain"}`. The admin setting also takes `"#rrggbb"`.
 
 ## Permissions
 
-`core:data:read`, `core:export:provide`, `core:copilot:context`, `core:state:write`, `core:config:write`, `core:clipboard:write`, `core:download:save`, `core:ui:notify`.
+`core:data:read`, `core:export:provide`, `core:copilot:context`, `core:state:write`, `core:config:write`, `core:clipboard:write`, `core:download:save`, `core:ui:notify`, `core:ui:button`, `core:ui:menu`, `core:dashboard:add-widget`.
 
-`core:config:write` requires a FINOS Workspace host that accepts it.
+`core:config:write` and the card actions require a FINOS Workspace host that has them. When an admin removes `core:ui:button` or `core:ui:menu`, the buttons or the items leave the card.
 
 The frame reaches only the tile service.
 
@@ -121,6 +146,7 @@ Output in `dist/map-widget/<version>/`:
 | `entry.js` | `src/entry.tsx` as one module, with the MapLibre worker embedded and started from a Blob URL as a classic worker |
 | `entry.css` | MapLibre styles and `src/styles.css` |
 | `assets/icon.svg` | icon |
+| `assets/fit.svg`, `assets/static-map.svg` | icons of the card actions |
 | `assets/geo/` | boundary files from `vendor/geo/` |
 | `assets/basemap/world.pmtiles` | world basemap, zoom 0 to 6 |
 | `assets/basemap/fonts/` | glyphs |

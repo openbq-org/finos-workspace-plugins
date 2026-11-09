@@ -94,6 +94,23 @@ describe("mapNote", () => {
     );
   });
 
+  it("names the map sources that were refused, and why, instead of leaving them out without a word", () => {
+    const plain = mapSpec({ points: [{ lat: 1, lon: 1 }] });
+    const refused = (items: { id?: string; reason: string }[]) =>
+      mapNote(plain, { unshaped: [], ambiguous: [], outside: 0, refused: items.map((item) => ({ backend: "widget", widget: "map", ...item })) });
+    expect(refused([])).toBeNull();
+    expect(refused([{ id: "script", reason: "it does not start with http:// or https://" }])).toBe(
+      "1 map source is not drawn: script: it does not start with http:// or https://.",
+    );
+    expect(refused([{ id: "a", reason: "r1." }, { reason: "r2" }])).toBe(
+      "2 map sources are not drawn: a: r1; a source: r2.",
+    );
+    const many = [...Array(NAMED + 3)].map((_, index) => ({ id: `s${index}`, reason: "r" }));
+    expect(refused(many)).toBe(
+      `${NAMED + 3} map sources are not drawn: ${many.slice(0, NAMED).map(({ id }) => `${id}: r`).join("; ")}; ...`,
+    );
+  });
+
   it("says what tells two regions apart in the words of their set: a county is not told apart by a country", () => {
     const note = (set: string, code: string, candidates: string[]) =>
       mapNote(mapSpec({ points: [{ lat: 1, lon: 1 }] }), {

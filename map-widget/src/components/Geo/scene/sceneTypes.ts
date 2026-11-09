@@ -4,6 +4,7 @@ import type {
   LayerSpecification,
   StyleSpecification,
 } from "maplibre-gl";
+import type { RefusedHeldSource } from "~/lib/geo/heldMapSources";
 import type { MapContextId } from "~/lib/geo/mapContext";
 import type { MapImage } from "~/lib/geo/mapLayers";
 import type { MapMarker, MapPoint } from "~/lib/geo/mapMarkTypes";
@@ -90,6 +91,7 @@ export interface Scene {
   bounds: MapBounds | null;
   unshaped: string[];
   ambiguous: { set: RegionSetId; code: string; candidates: string[] }[];
+  refused: readonly RefusedHeldSource[];
   pictures: ScenePicture[];
   outside: number;
   abroad?: number;

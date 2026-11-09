@@ -5,6 +5,7 @@ import type { DrawnShape } from "~/lib/geo/mapShapes";
 import type { MapSpec } from "~/lib/geo/mapSpecTypes";
 import type { MapCamera, MapViewState } from "~/lib/geo/mapViewState";
 import { hostedBasemapUrl } from "~/lib/geo/basemapUrl";
+import { setDriver } from "~/cardActions";
 import { useSettings } from "~/settings";
 import { surfaceOf, useTheme } from "~/theme";
 import {
@@ -75,6 +76,10 @@ export interface MapViewProps {
 
 
   target?: MapTarget | null;
+
+  dataOpen?: boolean;
+
+  onDataOpenChange?: (open: boolean) => void;
 }
 
 const MapCanvas = memo(function MapCanvas({
@@ -92,6 +97,8 @@ const MapCanvas = memo(function MapCanvas({
   slot,
   keepsCamera = false,
   target,
+  dataOpen: dataOpenGiven,
+  onDataOpenChange,
 }: Omit<MapViewProps, "spec"> & {
   spec: MapSpec;
 
@@ -353,7 +360,30 @@ const MapCanvas = memo(function MapCanvas({
     notes: kept,
     onNotesChange,
   });
-  const { dataOpen, toggleData, closeData } = useMapDataTable(map);
+  const { dataOpen, toggleData, closeData } = useMapDataTable(
+    map,
+    dataOpenGiven,
+    onDataOpenChange,
+  );
+  const opening = scene?.opening;
+  useEffect(() => {
+    if (!map) return;
+    setDriver({
+      fit: opening ? fitAll : reset,
+      reset,
+      camera: () => {
+        const center = map.getCenter();
+        return {
+          latitude: center.lat,
+          longitude: center.lng,
+          zoom: map.getZoom(),
+          bearing: map.getBearing(),
+          pitch: map.getPitch(),
+        };
+      },
+    });
+    return () => setDriver(null);
+  }, [map, opening, fitAll, reset]);
   const label = useMemo(() => described(name, spec), [name, spec]);
   const covered = useMapStill({
     slot,
