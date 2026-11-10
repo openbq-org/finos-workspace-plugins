@@ -40,7 +40,7 @@ def infinite(name: str, description: str, endpoint: str, params: list, definitio
 
 WIDGETS = {
     "aggrid_positions": widget(
-        "Editable table",
+        "Positions, recalculated by the backend",
         "aggrid-table with gridEvents: edit a quantity or a price, the backend gets the cellValueChanged event and answers with the book recalculated",
         "aggrid-table",
         "/ag-grid/positions",
@@ -50,7 +50,7 @@ WIDGETS = {
         gridData={"w": 40, "h": 10},
     ),
     "aggrid_ssrm": widget(
-        "Server-side table",
+        "Trades, server-side",
         "aggrid-ssrm: 20,000 trades paged, sorted, filtered, grouped, aggregated and pivoted by the backend; prices change through server-side transactions",
         "aggrid-ssrm",
         "/ag-grid/trades/ssrm",
@@ -60,34 +60,34 @@ WIDGETS = {
         gridData={"w": 40, "h": 24},
     ),
     "aggrid_infinite_state": infinite(
-        "Infinite table (grid state)",
+        "Trades, infinite (grid state)",
         "aggrid-infinite over a POST endpoint: each block is the gridState body param, answered with rowData and rowCount",
         "/ag-grid/trades/infinite/state",
         [STATE_PARAM],
         method="POST",
     ),
     "aggrid_infinite_rest": infinite(
-        "Infinite table (offset and limit)",
+        "Trades, infinite (offset and limit)",
         "aggrid-infinite over GET ?offset&limit&sort&order, answered with items and total",
         "/ag-grid/trades/infinite/rest",
         [hidden("offset"), hidden("limit", value=50), hidden("sort", "text", ""), hidden("order", "text", "")],
     ),
     "aggrid_infinite_list": infinite(
-        "Infinite table (skip and top)",
+        "Trades, infinite (skip and top)",
         "aggrid-infinite over GET ?skip&top, answered with a plain list and no total: a short block ends the table",
         "/ag-grid/trades/infinite/list",
         [hidden("skip"), hidden("top", value=50)],
         {"requestParams": {"offset": "skip", "limit": "top"}},
     ),
     "aggrid_streaming": widget(
-        "Streaming table",
+        "Live instruments",
         "aggrid-streaming: a WebSocket sends a snapshot, then price updates, new instruments and removals by row id",
         "aggrid-streaming",
         "/ag-grid/instruments",
         data={"aggrid-streaming": {"showAll": False, "columnsDefs": INSTRUMENT_COLUMNS}, "streamEndpoint": "/ag-grid/instruments/stream"},
     ),
     "aggrid_sql": widget(
-        "SQL query",
+        "Trades SQL",
         "aggrid-sql: SQLite over the trades and desks, with completion from the backend's schema",
         "aggrid-sql",
         "/ag-grid/sql",
