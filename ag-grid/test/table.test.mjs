@@ -289,6 +289,63 @@ test("the card's actions show floating filters, clear the filters and sort, and 
   assert.equal(model.listenerCount("change:config"), 0);
 });
 
+test("the Filters tool panel is AG Grid 34's, and the Advanced Filter replaces it and the column filters while it is on", async () => {
+  const warnings = [];
+  const warn = console.warn;
+  console.warn = (...args) => warnings.push(args.join(" "));
+  const { model, el, abort } = await render({ data: { columnDefs, rowData: rows } });
+  try {
+    const api = await liveApi(el);
+    assert.deepEqual(api.getGridOption("sideBar").toolPanels, ["columns", "filters-new"]);
+    assert.equal(api.getGridOption("enableFilterHandlers"), true);
+    assert.notEqual(api.getGridOption("enableAdvancedFilter"), true);
+    api.openToolPanel("filters-new");
+    await settle();
+    assert.equal(api.getOpenedToolPanel(), "filters-new");
+
+    model.push("config", { advancedFilter: true });
+    await settle();
+    assert.equal(api.getGridOption("enableAdvancedFilter"), true);
+    assert.deepEqual(api.getGridOption("sideBar").toolPanels, ["columns"]);
+    assert.ok(el.querySelector(".ag-advanced-filter"), "the expression bar shows above the grid");
+    const advanced = { filterType: "join", type: "OR", conditions: [
+      { filterType: "text", colId: "name", type: "equals", filter: "Bob" },
+      { filterType: "number", colId: "sales", type: "greaterThan", filter: 1000 },
+    ] };
+    api.setAdvancedFilterModel(advanced);
+    await settle();
+    assert.deepEqual(api.getRenderedNodes().map((n) => n.id).sort(), ["1", "2"]);
+    assert.deepEqual(model.get("state").filterModel, advanced);
+    await settle(400);
+    assert.deepEqual(model.get("state").grid?.filter?.advancedFilterModel, advanced, "the filter is saved with the card");
+
+    model.push("config", { advancedFilter: false });
+    await settle();
+    assert.equal(api.getGridOption("enableAdvancedFilter"), false);
+    assert.deepEqual(api.getGridOption("sideBar").toolPanels, ["columns", "filters-new"]);
+    assert.equal(api.getDisplayedRowCount(), 3);
+    assert.equal(el.querySelector(".ag-advanced-filter"), null);
+  } finally {
+    console.warn = warn;
+    abort.abort();
+  }
+  assert.deepEqual(warnings.filter((w) => /AG Grid/.test(w)), []);
+});
+
+test("a card saved with the Advanced Filter on opens with it, its filter applied", async () => {
+  const advanced = { filterType: "text", colId: "name", type: "startsWith", filter: "c" };
+  const { el, abort } = await render({ data: { columnDefs, rowData: rows }, config: { advancedFilter: true }, state: { grid: { filter: { advancedFilterModel: advanced } } } });
+  try {
+    const api = await liveApi(el);
+    assert.equal(api.getGridOption("enableAdvancedFilter"), true);
+    assert.deepEqual(api.getGridOption("sideBar").toolPanels, ["columns"]);
+    assert.deepEqual(api.getAdvancedFilterModel(), advanced);
+    assert.equal(api.getDisplayedRowCount(), 1);
+  } finally {
+    abort.abort();
+  }
+});
+
 test("a card that never toggled floating filters keeps the backend's choice", async () => {
   const { el, abort } = await render({ data: { columnDefs, rowData: rows, gridOptions: { defaultColDef: { floatingFilter: true } } } });
   try {

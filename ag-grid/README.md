@@ -18,7 +18,9 @@ package serves FINOS Workspace and BQ Workspace.
 
 ## What every widget has
 
-- **AG Grid Enterprise.** The side bar has the Columns and Filters panels. Cells can be selected
+- **AG Grid Enterprise.** The side bar has the Columns panel and AG Grid 34's Filters tool panel,
+  where the user adds a filter per column and reads each filter's summary
+  (`enableFilterHandlers: true`, which the panel requires). Cells can be selected
   as ranges, and the status bar shows the row count and the aggregation of the selected cells.
   Integrated charts are on: a selected range is charted from the context menu.
 - **Grouping, aggregation and pivot.** Every column can be a row group, a value or a pivot, from
@@ -46,6 +48,16 @@ package serves FINOS Workspace and BQ Workspace.
   (`core:ui:button`, `core:ui:menu`) and sends the widget an `action` event when the user picks
   one. Until a card's button is used, the backend's `defaultColDef.floatingFilter` decides. The
   autosize item's icon is the package's `assets/autosize.svg`.
+- **Advanced Filter.** The table, server-side and streaming widgets have an **Advanced filter**
+  button, which switches the card's `advancedFilter` setting. While it is on, a bar above the grid
+  takes one filter over all the columns, typed as an expression (`[Desk] = "FX" AND [Quantity] >
+  40000`) or made in AG Grid's filter builder, and it replaces the column filters and the Filters
+  tool panel, as AG Grid requires. The filter is saved with the card. The server-side widget sends
+  it to the backend as `filterModel`, a tree of `{ filterType: "join", type: "AND" | "OR",
+  conditions }` and `{ filterType, colId, type, filter }` conditions. The infinite widget has no
+  Advanced Filter, because AG Grid's infinite row model does not support it.
+- **Download chart.** The table widget's **Download chart as image** button saves the chart view,
+  or else the chart opened last, as a PNG (`core:download:save`).
 
 ## Two-way communication with the backend
 
@@ -250,6 +262,11 @@ endpoint takes, as hidden params, and the widget fills the ones it finds:
 `definition.requestParams` maps one of these to the endpoint's own name, for example
 `{ "offset": "skip", "limit": "top" }`. `blockSize` (default 100) is the number of rows each
 request asks for, and `maxBlocksInCache` (default 20) is the number of blocks the grid keeps.
+
+The grid offers only what reaches the endpoint. Without `gridState` or `filterModel` among the
+declared params, the columns have no filters and the side bar has no Filters panel. Without
+`gridState`, `sortModel` or `sort`, the columns do not sort. A filter or a sort the endpoint is
+never told would leave the rows unchanged.
 
 The answer is a list of records, or an object with its rows under `rowData`, `rows`, `items`,
 `results`, `records`, `value` or `data`, or in a pandas format. The total number of rows is read

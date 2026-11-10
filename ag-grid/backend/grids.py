@@ -68,9 +68,9 @@ WIDGETS = {
     ),
     "aggrid_infinite_rest": infinite(
         "Trades, infinite (offset and limit)",
-        "aggrid-infinite over GET ?offset&limit&sort&order, answered with items and total",
+        "aggrid-infinite over GET ?offset&limit&sort&order&filterModel, answered with items and total",
         "/ag-grid/trades/infinite/rest",
-        [hidden("offset"), hidden("limit", value=50), hidden("sort", "text", ""), hidden("order", "text", "")],
+        [hidden("offset"), hidden("limit", value=50), hidden("sort", "text", ""), hidden("order", "text", ""), hidden("filterModel", "text", "")],
     ),
     "aggrid_infinite_list": infinite(
         "Trades, infinite (skip and top)",

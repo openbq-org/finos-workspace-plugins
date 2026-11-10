@@ -6,12 +6,14 @@ import {
   createGrid,
   createStateChannel,
   createTracker,
+  FILTERS_TOOL_PANEL,
   gridOptionsFor,
   idFieldOf,
   rowIdGetter,
   rowsOf,
   setLicense,
   sortModelOf,
+  withoutFilterPanels,
   STATE_PARAM,
 } from "./grid.js";
 import { createParamRequests } from "./requests.js";
@@ -58,6 +60,22 @@ export function requestPatch(request, { declared, definition = {}, channel }) {
   return { patch, seq: sent?.seq };
 }
 
+/** What the endpoint can be told: a filter, a sort. A grid offers only what reaches the endpoint. */
+export function capabilitiesOf(declared, definition = {}) {
+  const mapping = definition.requestParams && typeof definition.requestParams === "object" ? definition.requestParams : {};
+  const has = (field) => declared.has(typeof mapping[field] === "string" && mapping[field] ? mapping[field] : field);
+  const state = has(STATE_PARAM);
+  return { filters: state || has("filterModel"), sorting: state || has("sortModel") || has("sort") };
+}
+
+export function limitColumns(defs, { filters, sorting }) {
+  if (filters && sorting) return defs;
+  return defs.map((def) => {
+    if (Array.isArray(def.children)) return { ...def, children: limitColumns(def.children, { filters, sorting }) };
+    return { ...def, ...(filters ? {} : { filter: false, floatingFilter: false }), ...(sorting ? {} : { sortable: false, sort: null }) };
+  });
+}
+
 export function blockOf(data, request, definition = {}) {
   if (data && typeof data === "object" && !Array.isArray(data) && typeof data.error === "string") return { error: data.error };
   const object = data && typeof data === "object" && !Array.isArray(data) ? data : null;
@@ -80,12 +98,21 @@ export function blockOf(data, request, definition = {}) {
 
 export function optionsFor({ model, definition, columnDefs, gridOptions = {}, datasource, initialState }) {
   const blockSize = definition.blockSize ?? DEFAULT_BLOCK_SIZE;
-  return gridOptionsFor({
+  const can = capabilitiesOf(new Set(Object.keys(model.get("params") || {})), definition);
+  const sideBar = { toolPanels: [{ id: "columns", labelDefault: "Columns", labelKey: "columns", iconKey: "columns", toolPanel: "agColumnsToolPanel", toolPanelParams: { suppressRowGroups: true, suppressValues: true, suppressPivots: true, suppressPivotMode: true } }, FILTERS_TOOL_PANEL], defaultToolPanel: "" };
+  const options = gridOptionsFor({
     model,
     serverSide: true,
     gridOptions: {
       ...gridOptions,
-      defaultColDef: { enableRowGroup: false, enablePivot: false, enableValue: false, ...(gridOptions.defaultColDef || {}) },
+      defaultColDef: {
+        enableRowGroup: false,
+        enablePivot: false,
+        enableValue: false,
+        ...(gridOptions.defaultColDef || {}),
+        ...(can.filters ? {} : { filter: false, floatingFilter: false }),
+        ...(can.sorting ? {} : { sortable: false }),
+      },
     },
     rowModelType: "infinite",
     datasource,
@@ -96,11 +123,14 @@ export function optionsFor({ model, definition, columnDefs, gridOptions = {}, da
     rowGroupPanelShow: "never",
     pivotPanelShow: "never",
     statusBar: { statusPanels: [] },
-    sideBar: { toolPanels: [{ id: "columns", labelDefault: "Columns", labelKey: "columns", iconKey: "columns", toolPanel: "agColumnsToolPanel", toolPanelParams: { suppressRowGroups: true, suppressValues: true, suppressPivots: true, suppressPivotMode: true } }, "filters"], defaultToolPanel: "" },
-    columnDefs,
-    ...(initialState && typeof initialState === "object" ? { initialState } : {}),
+    sideBar,
+    columnDefs: limitColumns(columnDefs, can),
+    ...(initialState && typeof initialState === "object" ? { initialState: can.filters ? initialState : { ...initialState, filter: undefined } } : {}),
     ...(typeof definition.wsRowIdColumn === "string" ? { getRowId: rowIdGetter(idFieldOf(definition)) } : {}),
   });
+  if (!can.filters) options.sideBar = withoutFilterPanels(options.sideBar);
+  if (!can.filters && options.defaultColDef) options.defaultColDef = { ...options.defaultColDef, filter: false, floatingFilter: false };
+  return options;
 }
 
 export function createDatasource({ model, definition, channel, say, signal, timeoutMs, graceMs }) {

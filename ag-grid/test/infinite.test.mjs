@@ -3,7 +3,7 @@ import { test } from "node:test";
 
 import { liveApi, makeModel, mount, settle } from "./dom.mjs";
 import { createStateChannel, STATE_PARAM } from "../src/grid.js";
-import plugin, { blockOf, optionsFor, requestPatch } from "../src/infinite.js";
+import plugin, { blockOf, capabilitiesOf, optionsFor, requestPatch } from "../src/infinite.js";
 
 const request = { startRow: 100, endRow: 150, sortModel: [{ colId: "price", sort: "desc" }], filterModel: { desk: { filterType: "text", type: "equals", filter: "FX" } } };
 const trades = Array.from({ length: 120 }, (_, i) => ({ id: `T${i}`, desk: i % 2 ? "FX" : "Rates", price: i }));
@@ -49,6 +49,28 @@ test("the infinite grid keeps grouping and pivot off and asks for one block at a
   assert.equal(options.rowGroupPanelShow, "never");
   assert.equal(options.defaultColDef.enableRowGroup, false);
   assert.equal(options.defaultColDef.enablePivot, false);
+});
+
+test("an infinite grid offers filters and sorting only when its endpoint is told them", () => {
+  const can = (names, definition) => capabilitiesOf(new Set(names), definition);
+  assert.deepEqual(can([STATE_PARAM]), { filters: true, sorting: true });
+  assert.deepEqual(can(["offset", "limit", "sort", "order", "filterModel"]), { filters: true, sorting: true });
+  assert.deepEqual(can(["offset", "limit", "sort", "order"]), { filters: false, sorting: true });
+  assert.deepEqual(can(["skip", "top"], { requestParams: { offset: "skip", limit: "top" } }), { filters: false, sorting: false });
+  assert.deepEqual(can(["where"], { requestParams: { filterModel: "where" } }), { filters: true, sorting: false });
+
+  const columnDefs = [{ field: "traded", filter: "agDateColumnFilter" }, { headerName: "Deal", children: [{ field: "price", filter: "agNumberColumnFilter", sort: "asc" }] }];
+  const blind = optionsFor({ model: makeModel({ params: { skip: 0, top: 50 } }), definition: { requestParams: { offset: "skip", limit: "top" } }, columnDefs, datasource: {} });
+  assert.equal(blind.defaultColDef.filter, false);
+  assert.equal(blind.defaultColDef.sortable, false);
+  assert.equal(blind.columnDefs[0].filter, false);
+  assert.equal(blind.columnDefs[1].children[0].filter, false);
+  assert.equal(blind.columnDefs[1].children[0].sort, null);
+  assert.deepEqual(blind.sideBar.toolPanels.map((p) => p.id ?? p), ["columns"]);
+
+  const told = optionsFor({ model: makeModel({ params: { offset: 0, limit: 50, filterModel: "" } }), definition: {}, columnDefs, datasource: {} });
+  assert.equal(told.columnDefs[0].filter, "agDateColumnFilter");
+  assert.deepEqual(told.sideBar.toolPanels.map((p) => p.id ?? p), ["columns", "filters-new"]);
 });
 
 function restHost(values) {

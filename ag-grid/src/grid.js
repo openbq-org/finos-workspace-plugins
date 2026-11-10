@@ -159,7 +159,8 @@ export function baseOptions(model, gridOptions = {}, { serverSide = false } = {}
     enableCharts: true,
     chartThemes: chartThemesFor(mode),
     popupParent: document.body,
-    sideBar: { toolPanels: ["columns", "filters"], defaultToolPanel: "" },
+    sideBar: { toolPanels: ["columns", FILTERS_TOOL_PANEL], defaultToolPanel: "" },
+    enableFilterHandlers: true,
     rowGroupPanelShow: "always",
     pivotPanelShow: "always",
     suppressAggFuncInHeader: true,
@@ -260,15 +261,82 @@ export function floatingFiltersOf(model) {
   return typeof on === "boolean" ? on : undefined;
 }
 
+export function advancedFilterOf(model) {
+  const on = model?.get("config")?.advancedFilter;
+  return typeof on === "boolean" ? on : undefined;
+}
+
+/** The Filters Tool Panel of AG Grid 34: the user adds a filter per column and sees each filter's summary. */
+export const FILTERS_TOOL_PANEL = "filters-new";
+const FILTER_PANELS = new Set(["filters", FILTERS_TOOL_PANEL, "agFiltersToolPanel", "agNewFiltersToolPanel"]);
+
+export function isFilterPanel(panel) {
+  return typeof panel === "string" ? FILTER_PANELS.has(panel) : FILTER_PANELS.has(panel?.toolPanel) || FILTER_PANELS.has(panel?.id);
+}
+
+/** The side bar without its filter panels, which AG Grid does not offer while the Advanced Filter is on. */
+export function withoutFilterPanels(sideBar) {
+  if (!sideBar) return sideBar;
+  if (sideBar === true) return { toolPanels: ["columns"], defaultToolPanel: "" };
+  if (typeof sideBar === "string") return isFilterPanel(sideBar) ? false : sideBar;
+  if (Array.isArray(sideBar)) return sideBar.filter((panel) => !isFilterPanel(panel));
+  if (!Array.isArray(sideBar.toolPanels)) return sideBar;
+  return {
+    ...sideBar,
+    toolPanels: sideBar.toolPanels.filter((panel) => !isFilterPanel(panel)),
+    ...(isFilterPanel(sideBar.defaultToolPanel) ? { defaultToolPanel: "" } : {}),
+  };
+}
+
+function copyOf(sideBar) {
+  if (Array.isArray(sideBar)) return [...sideBar];
+  if (sideBar && typeof sideBar === "object") return { ...sideBar, ...(Array.isArray(sideBar.toolPanels) ? { toolPanels: [...sideBar.toolPanels] } : {}) };
+  return sideBar;
+}
+
+/** The Advanced Filter works on the client-side and server-side row models only. */
+export function allowsAdvancedFilter(rowModelType) {
+  return rowModelType === undefined || rowModelType === "clientSide" || rowModelType === "serverSide";
+}
+
+const fullSideBars = new WeakMap();
+
 export function gridOptionsFor({ model, gridOptions = {}, serverSide = false, base = baseOptions(model, gridOptions, { serverSide }), ...own }) {
   const backend = backendOptions(gridOptions);
   const floatingFilter = floatingFiltersOf(model);
-  return {
+  const options = {
     ...base,
     ...own,
     ...backend,
     defaultColDef: { ...DEFAULT_COL_DEF, ...(backend.defaultColDef || {}), ...(floatingFilter === undefined ? {} : { floatingFilter }) },
   };
+  if (!allowsAdvancedFilter(options.rowModelType)) {
+    delete options.enableAdvancedFilter;
+    return options;
+  }
+  const advanced = advancedFilterOf(model);
+  if (advanced !== undefined) options.enableAdvancedFilter = advanced;
+  fullSideBars.set(options, options.sideBar);
+  if (options.enableAdvancedFilter === true) options.sideBar = withoutFilterPanels(options.sideBar);
+  return options;
+}
+
+export function filterModelOf(api) {
+  if (api.getGridOption("enableAdvancedFilter") === true && allowsAdvancedFilter(api.getGridOption("rowModelType"))) return api.getAdvancedFilterModel() ?? {};
+  return api.getFilterModel();
+}
+
+/** Turns the Advanced Filter on or off, hiding the side bar's filter panels while it is on. */
+export function setAdvancedFilter(api, on) {
+  if (!fullSideBars.has(api) || api.isDestroyed() || api.getGridOption("enableAdvancedFilter") === on) return;
+  const full = fullSideBars.get(api);
+  if (on) {
+    api.setGridOption("sideBar", withoutFilterPanels(full));
+    api.setGridOption("enableAdvancedFilter", true);
+  } else {
+    api.setGridOption("enableAdvancedFilter", false);
+    api.setGridOption("sideBar", copyOf(full));
+  }
 }
 
 export const ACTION_AUTOSIZE = "autosize";
@@ -276,6 +344,8 @@ export const ACTION_CLEAR_FILTERS = "clear-filters";
 
 export function attachCardActions(api, model) {
   const onConfig = () => {
+    const advanced = advancedFilterOf(model);
+    if (advanced !== undefined) setAdvancedFilter(api, advanced);
     const floatingFilter = floatingFiltersOf(model);
     if (floatingFilter === undefined || api.isDestroyed()) return;
     const defaultColDef = api.getGridOption("defaultColDef") || {};
@@ -298,7 +368,9 @@ export function attachCardActions(api, model) {
 }
 
 export function createGrid(el, options) {
-  return agCreateGrid(el, options);
+  const api = agCreateGrid(el, options);
+  if (fullSideBars.has(options)) fullSideBars.set(api, fullSideBars.get(options));
+  return api;
 }
 
 const numberFormat = new Intl.NumberFormat(undefined, { maximumFractionDigits: 6 });
@@ -464,7 +536,7 @@ export function createTracker(model, extra = {}) {
         record("rowDataUpdated", { rowCount: state.rowCount });
       },
       filterChanged: () => {
-        state.filterModel = api.getFilterModel();
+        state.filterModel = filterModelOf(api);
         record("filterChanged", { filterModel: state.filterModel });
       },
       sortChanged: () => {
@@ -519,7 +591,7 @@ export function gridStateOf(api, event) {
   });
   return {
     event,
-    filterModel: api.getFilterModel(),
+    filterModel: filterModelOf(api),
     sortModel: sortModelOf(api),
     rowGroupCols: columnsOf(grouping.rowGroups),
     pivotCols: columnsOf(grouping.pivots),
@@ -584,7 +656,7 @@ export function copilotContextOf(api, extra = {}) {
     columnCount: columns.length,
     columns,
     selectionCount: api.getSelectedNodes().length,
-    filterModel: api.getFilterModel(),
+    filterModel: filterModelOf(api),
     sortModel: sortModelOf(api),
     grouping: groupingOf(api),
     stats: numericStats(rows, columns),

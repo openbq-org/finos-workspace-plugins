@@ -11,6 +11,7 @@ import {
   createStateChannel,
   createTracker,
   fieldsOf,
+  FILTERS_TOOL_PANEL,
   gridOptionsFor,
   gridStateOf,
   idFieldOf,
@@ -213,7 +214,7 @@ export function mountTable({ model, el, signal, experimental, tracker, saved = {
     rowData: [],
     context,
     enableCharts: chartsOn,
-    ...(table.enableAdvanced === false ? { sideBar: false } : table.enableAdvanced === true ? { sideBar: { toolPanels: ["columns", "filters"], defaultToolPanel: "columns" } } : {}),
+    ...(table.enableAdvanced === false ? { sideBar: false } : table.enableAdvanced === true ? { sideBar: { toolPanels: ["columns", FILTERS_TOOL_PANEL], defaultToolPanel: "columns" } } : {}),
   };
   const api = createGrid(gridEl, gridOptionsFor({ model, gridOptions: currentGridOptions, ...own }));
   const detach = tracker.attach(api);

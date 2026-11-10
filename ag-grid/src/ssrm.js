@@ -7,6 +7,7 @@ import {
   createGrid,
   createStateChannel,
   createTracker,
+  filterModelOf,
   gridOptionsFor,
   groupingOf,
   idFieldOf,
@@ -107,7 +108,7 @@ export default {
         return {
           columns: columnFieldsOf(api),
           rowsAtThisLevel: api.getDisplayedRowCount(),
-          filterModel: api.getFilterModel(),
+          filterModel: filterModelOf(api),
           sortModel: sortModelOf(api),
           grouping: groupingOf(api),
         };

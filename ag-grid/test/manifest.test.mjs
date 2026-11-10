@@ -51,7 +51,7 @@ test("every skill is a markdown file under src/skills, and the artifact has a cl
 });
 
 test("the grid widgets have the card's floating filters button and its two menu items, and the SQL widget creates a static table", () => {
-  const icons = new Set(["download", "filter", "refresh", "table"]);
+  const icons = new Set(["download", "filter", "refresh", "sliders", "table"]);
   for (const widget of widgets) {
     const actions = widget.actions ?? [];
     const placed = (placement) => actions.some((a) => a.placement === placement);
@@ -65,12 +65,14 @@ test("the grid widgets have the card's floating filters button and its two menu 
   for (const id of ["table", "ssrm", "infinite", "streaming"]) {
     assert.deepEqual(widgets.find((w) => w.id === id).actions.map((a) => [a.id, a.placement, a.toggles ?? null]), [
       ["floating-filters", "navbar", "floatingFilters"],
+      ...(id === "infinite" ? [] : [["advanced-filter", "navbar", "advancedFilter"]]),
       ...(id === "table" ? [["download-chart", "navbar", null]] : []),
       ["autosize", "menu", null],
       ["clear-filters", "menu", null],
     ]);
   }
   assert.ok(widgets.find((w) => w.id === "table").permissions.includes("core:download:save"));
+  for (const widget of widgets) assert.ok(widget.actions.filter((a) => a.placement === "navbar").length <= 3, `${widget.id} has at most three card buttons`);
   const sql = widgets.find((w) => w.id === "sql");
   assert.deepEqual(sql.actions.map((a) => a.id), ["freeze"]);
   assert.ok(sql.permissions.includes("core:dashboard:add-widget"));

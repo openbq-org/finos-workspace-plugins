@@ -4,6 +4,7 @@ import { test } from "node:test";
 import { makeModel } from "./dom.mjs";
 import {
   baseOptions,
+  withoutFilterPanels,
   baseThemeName,
   baseThemeOf,
   compactColumnDefs,
@@ -51,12 +52,39 @@ test("the base theme is the card's, then the backend's, then the organization's,
   assert.equal(baseThemeOf(makeModel({ adminSettings: { theme: "alpine" } })), "alpine");
 });
 
+test("the Advanced Filter card setting reaches the client-side and server-side grids, never the infinite one", () => {
+  const model = makeModel({ config: { advancedFilter: true } });
+  const table = gridOptionsFor({ model, columnDefs: [] });
+  assert.equal(table.enableAdvancedFilter, true);
+  assert.deepEqual(table.sideBar.toolPanels, ["columns"]);
+  const ssrm = gridOptionsFor({ model, serverSide: true, rowModelType: "serverSide", columnDefs: [] });
+  assert.equal(ssrm.enableAdvancedFilter, true);
+  const infinite = gridOptionsFor({ model, rowModelType: "infinite", gridOptions: { enableAdvancedFilter: true }, columnDefs: [] });
+  assert.equal(infinite.enableAdvancedFilter, undefined);
+  assert.deepEqual(infinite.sideBar.toolPanels, ["columns", "filters-new"]);
+  const off = gridOptionsFor({ model: makeModel({}), columnDefs: [] });
+  assert.equal(off.enableAdvancedFilter, undefined);
+  assert.deepEqual(off.sideBar.toolPanels, ["columns", "filters-new"]);
+});
+
+test("withoutFilterPanels keeps every other panel, in each form a side bar takes", () => {
+  assert.equal(withoutFilterPanels(false), false);
+  assert.deepEqual(withoutFilterPanels(true).toolPanels, ["columns"]);
+  assert.equal(withoutFilterPanels("filters"), false);
+  assert.equal(withoutFilterPanels("columns"), "columns");
+  assert.deepEqual(withoutFilterPanels(["columns", "filters", "filters-new"]), ["columns"]);
+  assert.deepEqual(
+    withoutFilterPanels({ toolPanels: [{ id: "columns", toolPanel: "agColumnsToolPanel" }, { id: "f", toolPanel: "agNewFiltersToolPanel" }], defaultToolPanel: "filters-new" }),
+    { toolPanels: [{ id: "columns", toolPanel: "agColumnsToolPanel" }], defaultToolPanel: "" },
+  );
+});
+
 test("every grid groups, pivots, aggregates and charts; a backend's options win, its theme name and cell expressions do not reach AG Grid", () => {
   const model = makeModel({});
   const options = gridOptionsFor({ model, gridOptions: { theme: "alpine", enableCellExpressions: true, pagination: true, defaultColDef: { editable: true } }, columnDefs: [] });
   assert.equal(options.rowGroupPanelShow, "always");
   assert.equal(options.pivotPanelShow, "always");
-  assert.deepEqual(options.sideBar.toolPanels, ["columns", "filters"]);
+  assert.deepEqual(options.sideBar.toolPanels, ["columns", "filters-new"]);
   assert.equal(options.enableCharts, true);
   assert.equal(options.cellSelection, true);
   assert.equal(options.enableCellExpressions, undefined);

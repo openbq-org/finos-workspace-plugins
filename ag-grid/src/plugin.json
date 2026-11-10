@@ -737,6 +737,11 @@
                 "type": "boolean",
                 "title": "Floating filters",
                 "description": "A filter box under each column header."
+              },
+              "advancedFilter": {
+                "type": "boolean",
+                "title": "Advanced filter",
+                "description": "One filter over all the columns, typed as an expression or made in the filter builder. It replaces the column filters and the Filters tool panel while it is on."
               }
             }
           },
@@ -815,6 +820,13 @@
             "icon": "filter",
             "placement": "navbar",
             "toggles": "floatingFilters"
+          },
+          {
+            "id": "advanced-filter",
+            "label": "Advanced filter",
+            "icon": "sliders",
+            "placement": "navbar",
+            "toggles": "advancedFilter"
           },
           {
             "id": "download-chart",
@@ -937,6 +949,11 @@
                 "type": "boolean",
                 "title": "Floating filters",
                 "description": "A filter box under each column header."
+              },
+              "advancedFilter": {
+                "type": "boolean",
+                "title": "Advanced filter",
+                "description": "One filter over all the columns, typed as an expression or made in the filter builder. It replaces the column filters and the Filters tool panel while it is on."
               }
             }
           },
@@ -955,6 +972,13 @@
             "icon": "filter",
             "placement": "navbar",
             "toggles": "floatingFilters"
+          },
+          {
+            "id": "advanced-filter",
+            "label": "Advanced filter",
+            "icon": "sliders",
+            "placement": "navbar",
+            "toggles": "advancedFilter"
           },
           {
             "id": "autosize",
@@ -2321,6 +2345,11 @@
                 "type": "boolean",
                 "title": "Floating filters",
                 "description": "A filter box under each column header."
+              },
+              "advancedFilter": {
+                "type": "boolean",
+                "title": "Advanced filter",
+                "description": "One filter over all the columns, typed as an expression or made in the filter builder. It replaces the column filters and the Filters tool panel while it is on."
               }
             }
           },
@@ -2339,6 +2368,13 @@
             "icon": "filter",
             "placement": "navbar",
             "toggles": "floatingFilters"
+          },
+          {
+            "id": "advanced-filter",
+            "label": "Advanced filter",
+            "icon": "sliders",
+            "placement": "navbar",
+            "toggles": "advancedFilter"
           },
           {
             "id": "autosize",

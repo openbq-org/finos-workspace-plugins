@@ -158,6 +158,38 @@ def test_ssrm_groups_aggregates_and_pivots(client):
     assert all("EMEA|notional" in r for r in pivot["rowData"])
 
 
+def test_ssrm_applies_the_advanced_filter(client):
+    advanced = {
+        "filterType": "join",
+        "type": "AND",
+        "conditions": [
+            {"filterType": "text", "colId": "desk", "type": "equals", "filter": "FX"},
+            {
+                "filterType": "join",
+                "type": "OR",
+                "conditions": [
+                    {"filterType": "number", "colId": "quantity", "type": "greaterThan", "filter": 40000},
+                    {"filterType": "dateString", "colId": "traded", "type": "lessThan", "filter": "2026-01-15"},
+                ],
+            },
+        ],
+    }
+    answer = client.post("/ag-grid/trades/ssrm", json=request(filterModel=advanced, endRow=1000)).json()
+    expected = [t for t in trades.TRADES if t["desk"] == "FX" and (t["quantity"] > 40000 or t["traded"][:10] < "2026-01-15")]
+    assert answer["rowCount"] == len(expected) > 0
+    assert all(r["desk"] == "FX" and (r["quantity"] > 40000 or r["traded"][:10] < "2026-01-15") for r in answer["rowData"])
+
+    one = client.post("/ag-grid/trades/ssrm", json=request(filterModel={"filterType": "text", "colId": "region", "type": "startsWith", "filter": "em"})).json()
+    assert one["rowCount"] == sum(1 for t in trades.TRADES if t["region"].lower().startswith("em"))
+
+    unknown = client.post("/ag-grid/trades/ssrm", json=request(filterModel={"filterType": "text", "colId": "nope", "type": "equals", "filter": "x"})).json()
+    assert "nope" in unknown["error"]
+    deep = {"filterType": "text", "colId": "desk", "type": "equals", "filter": "FX"}
+    for _ in range(trades.MAX_ADVANCED_DEPTH + 1):
+        deep = {"filterType": "join", "type": "AND", "conditions": [deep]}
+    assert "nested deeper" in client.post("/ag-grid/trades/ssrm", json=request(filterModel=deep)).json()["error"]
+
+
 def test_ssrm_says_what_it_refuses(client):
     answer = client.post("/ag-grid/trades/ssrm", json=request(endRow=5000)).json()
     assert answer["seq"] == 7
@@ -212,6 +244,12 @@ def test_the_infinite_backends_answer_blocks_in_their_own_shapes(client):
     rest = client.get("/ag-grid/trades/infinite/rest", params={"offset": 0, "limit": 25, "sort": "quantity", "order": "asc"}).json()
     assert rest["total"] == trades.TRADE_COUNT and len(rest["items"]) == 25
     assert [r["quantity"] for r in rest["items"]] == sorted(r["quantity"] for r in rest["items"])
+    day = trades.TRADES[3]["traded"][:10]
+    on_day = {"traded": {"filterType": "date", "type": "equals", "dateFrom": f"{day} 00:00:00", "dateTo": None}}
+    filtered = client.get("/ag-grid/trades/infinite/rest", params={"offset": 0, "limit": 50, "filterModel": json.dumps(on_day)}).json()
+    assert filtered["total"] == sum(1 for t in trades.TRADES if t["traded"][:10] == day) > 0
+    assert {r["traded"][:10] for r in filtered["items"]} == {day}
+    assert "not JSON" in client.get("/ag-grid/trades/infinite/rest", params={"filterModel": "{"}).json()["error"]
 
     listed = client.get("/ag-grid/trades/infinite/list", params={"skip": trades.TRADE_COUNT - 10, "top": 50}).json()
     assert isinstance(listed, list) and len(listed) == 10

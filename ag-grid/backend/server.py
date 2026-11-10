@@ -101,12 +101,25 @@ async def infinite_state(request: Request) -> JSONResponse:
         return JSONResponse({"error": str(error), **({"seq": state["seq"]} if "seq" in state else {})})
 
 
+def filter_model_of(request: Request) -> dict:
+    text = request.query_params.get("filterModel")
+    if not text:
+        return {}
+    try:
+        model = json.loads(text)
+    except ValueError as error:
+        raise trades.RequestError("filterModel is not JSON.") from error
+    if not isinstance(model, dict):
+        raise trades.RequestError("filterModel is not an object.")
+    return model
+
+
 async def infinite_rest(request: Request) -> JSONResponse:
     try:
         offset, limit = number(request, "offset", 0), number(request, "limit", 50)
         sort = request.query_params.get("sort")
         order = "desc" if request.query_params.get("order") == "desc" else "asc"
-        rows, total = trades.block(offset, offset + limit, [{"colId": sort, "sort": order}] if sort else [])
+        rows, total = trades.block(offset, offset + limit, [{"colId": sort, "sort": order}] if sort else [], filter_model_of(request))
         return JSONResponse({"items": rows, "total": total})
     except trades.RequestError as error:
         return JSONResponse({"error": str(error)})

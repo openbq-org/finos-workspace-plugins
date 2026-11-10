@@ -135,7 +135,37 @@ def _condition_passes(row: dict, field: str, model: dict) -> bool:
     raise RequestError(f"The filter on {field} is not one this backend reads.")
 
 
+MAX_ADVANCED_DEPTH = 8
+MAX_ADVANCED_CONDITIONS = 50
+FIELDS = frozenset(TRADES[0]) if TRADES else frozenset()
+
+
+def _advanced_passes(row: dict, model: object, depth: int = 0) -> bool:
+    """One node of the Advanced Filter's model: a join of conditions, or one column's condition."""
+    if not isinstance(model, dict):
+        raise RequestError("The advanced filter holds a condition that is not an object.")
+    if depth > MAX_ADVANCED_DEPTH:
+        raise RequestError(f"The advanced filter is nested deeper than {MAX_ADVANCED_DEPTH} levels.")
+    kind = model.get("filterType")
+    if kind == "join":
+        conditions = model.get("conditions")
+        if not isinstance(conditions, list) or len(conditions) > MAX_ADVANCED_CONDITIONS:
+            raise RequestError(f"An advanced filter join holds a list of at most {MAX_ADVANCED_CONDITIONS} conditions.")
+        results = [_advanced_passes(row, condition, depth + 1) for condition in conditions]
+        return any(results) if model.get("type") == "OR" else all(results)
+    field = model.get("colId")
+    if field not in FIELDS:
+        raise RequestError(f"The advanced filter names a column this backend does not have: {field}.")
+    if kind in ("date", "dateString"):
+        return _ordered_passes(_day(row.get(field)), model.get("type", ""), _day(model.get("filter")), None)
+    if kind in ("text", "number"):
+        return _condition_passes(row, field, model)
+    raise RequestError(f"The advanced filter on {field} is not one this backend reads.")
+
+
 def passes(row: dict, filter_model: dict) -> bool:
+    if filter_model.get("filterType") == "join" or "colId" in filter_model:
+        return _advanced_passes(row, filter_model)
     for field, model in filter_model.items():
         if not isinstance(model, dict):
             raise RequestError(f"The filter on {field} is not an object.")

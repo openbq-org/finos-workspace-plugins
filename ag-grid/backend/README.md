@@ -39,13 +39,13 @@ One example of each widget type ([grids.py](grids.py)), in the category *AgGrid 
 
 | Widget | Type | Route | Shows |
 |---|---|---|---|
-| Editable table | `aggrid-table` | `POST /ag-grid/positions` | `gridEvents: ["cellValueChanged"]`: an edited quantity or price goes to the backend in `gridState`, which answers with the book recalculated ([positions.py](positions.py)). A calculated column, *Notional at -20%*, and target prices written as `=` expressions. |
-| Server-side table | `aggrid-ssrm` | `POST /ag-grid/trades/ssrm` | 20,000 generated trades, paged, sorted, filtered, grouped, aggregated and pivoted by the backend ([trades.py](trades.py)). The WebSocket `/ag-grid/trades/updates` sends server-side transactions that move prices. |
-| Infinite table (grid state) | `aggrid-infinite` | `POST /ag-grid/trades/infinite/state` | Each block is the `gridState` body param, answered with `rowData` and `rowCount`. |
-| Infinite table (offset and limit) | `aggrid-infinite` | `GET /ag-grid/trades/infinite/rest` | Hidden `offset`, `limit`, `sort` and `order` query params, answered with `items` and `total`. |
-| Infinite table (skip and top) | `aggrid-infinite` | `GET /ag-grid/trades/infinite/list` | Hidden `skip` and `top` params, mapped with `requestParams`, answered with a plain list and no total: a short block ends the table. |
-| Streaming table | `aggrid-streaming` | `GET /ag-grid/instruments` | The first rows; the WebSocket `/ag-grid/instruments/stream` sends a snapshot, then price updates, new instruments and removals by row id ([instruments.py](instruments.py)). |
-| SQL query | `aggrid-sql` | `POST /ag-grid/sql` | SQLite over the trades and desks ([sqldb.py](sqldb.py)), opened read-only, with an authorizer that allows one read, and a time limit. |
+| Positions, recalculated by the backend | `aggrid-table` | `POST /ag-grid/positions` | `gridEvents: ["cellValueChanged"]`: an edited quantity or price goes to the backend in `gridState`, which answers with the book recalculated ([positions.py](positions.py)). A calculated column, *Notional at -20%*, and target prices written as `=` expressions. |
+| Trades, server-side | `aggrid-ssrm` | `POST /ag-grid/trades/ssrm` | 20,000 generated trades, paged, sorted, filtered (column filters or the Advanced Filter), grouped, aggregated and pivoted by the backend ([trades.py](trades.py)). The WebSocket `/ag-grid/trades/updates` sends server-side transactions that move prices. |
+| Trades, infinite (grid state) | `aggrid-infinite` | `POST /ag-grid/trades/infinite/state` | Each block is the `gridState` body param, answered with `rowData` and `rowCount`. |
+| Trades, infinite (offset and limit) | `aggrid-infinite` | `GET /ag-grid/trades/infinite/rest` | Hidden `offset`, `limit`, `sort`, `order` and `filterModel` (the grid's filters as JSON) query params, answered with `items` and `total`. |
+| Trades, infinite (skip and top) | `aggrid-infinite` | `GET /ag-grid/trades/infinite/list` | Hidden `skip` and `top` params, mapped with `requestParams`, answered with a plain list and no total: a short block ends the table. It takes no filter or sort, so the grid offers neither. |
+| Live instruments | `aggrid-streaming` | `GET /ag-grid/instruments` | The first rows; the WebSocket `/ag-grid/instruments/stream` sends a snapshot, then price updates, new instruments and removals by row id ([instruments.py](instruments.py)). |
+| Trades SQL | `aggrid-sql` | `POST /ag-grid/sql` | SQLite over the trades and desks ([sqldb.py](sqldb.py)), opened read-only, with an authorizer that allows one read, and a time limit. |
 
 ## Run it
 
