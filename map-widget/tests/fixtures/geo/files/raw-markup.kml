@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<kml xmlns="http://www.opengis.net/kml/2.2">
+<Document>
+  <Placemark>
+    <name>Parcel 12</name>
+    <description>Owner: <b>Smith</b> since 1990<br>Zoned <i>R-2</i> &amp; taxed<br/>a &lt; b</description>
+    <Point><coordinates>-77.0459,38.8929</coordinates></Point>
+  </Placemark>
+  <Placemark>
+    <name>Parcel 13</name>
+    <description><table><tr><td>Owner</td><td><kml:b>Jones</kml:b></td></tr></table><p>Vacant<!-- </description> --></description>
+    <Point><coordinates>-77.05,38.9</coordinates></Point>
+  </Placemark>
+</Document>
+</kml>

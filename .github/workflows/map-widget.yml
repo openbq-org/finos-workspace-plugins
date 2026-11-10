@@ -1,0 +1,25 @@
+name: Map widget
+
+on:
+  push:
+    branches: [main]
+    paths: [map-widget/**, .github/workflows/map-widget.yml]
+  pull_request:
+    paths: [map-widget/**, .github/workflows/map-widget.yml]
+
+jobs:
+  map-widget:
+    name: Map
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: map-widget
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
+        with:
+          node-version: 26.12.1
+      - run: npm ci --ignore-scripts
+      - run: npm run build
+      - run: npm run typecheck
+      - run: npm test
