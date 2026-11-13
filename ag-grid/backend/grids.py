@@ -95,4 +95,14 @@ WIDGETS = {
         params=[SQL_PARAM],
         gridData={"w": 40, "h": 28},
     ),
+    "aggrid_sql_pages": widget(
+        "Trades SQL, paged on the server",
+        "aggrid-sql with serverSide: every page, sort and filter of the result is a request with the query and the grid state",
+        "aggrid-sql",
+        "/ag-grid/sql-pages",
+        method="POST",
+        params=[SQL_PARAM, STATE_PARAM],
+        data={"aggrid-sql": {"serverSide": True, "pageSize": 100}},
+        gridData={"w": 40, "h": 28},
+    ),
 }

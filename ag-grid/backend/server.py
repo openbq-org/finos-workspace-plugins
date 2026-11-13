@@ -141,6 +141,18 @@ async def instrument_rows(_request: Request) -> JSONResponse:
     return JSONResponse(instruments.snapshot_rows())
 
 
+async def sql_pages(request: Request) -> JSONResponse:
+    body = await body_of(request)
+    try:
+        state = json.loads(body.get("gridState") or "{}")
+    except ValueError:
+        state = {}
+    try:
+        return JSONResponse(sqldb.page(body.get("sql", ""), state if isinstance(state, dict) else {}))
+    except sqldb.QueryError as error:
+        return JSONResponse({"schema": sqldb.schema(), "seq": state.get("seq") if isinstance(state, dict) else None, "error": str(error)})
+
+
 async def sql(request: Request) -> JSONResponse:
     body = await body_of(request)
     try:
@@ -164,6 +176,7 @@ app = Starlette(
         Route("/ag-grid/instruments", instrument_rows, methods=["GET"]),
         WebSocketRoute("/ag-grid/instruments/stream", instruments.stream),
         Route("/ag-grid/sql", sql, methods=["POST"]),
+        Route("/ag-grid/sql-pages", sql_pages, methods=["POST"]),
     ],
     middleware=[Middleware(CORSMiddleware, allow_origins=ORIGINS, allow_methods=["GET", "POST", "OPTIONS"], allow_headers=["*"])],
 )

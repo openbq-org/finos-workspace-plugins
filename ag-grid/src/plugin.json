@@ -1869,7 +1869,8 @@
           "core:copilot:context",
           "core:state:write",
           "core:ui:button",
-          "core:ui:menu"
+          "core:ui:menu",
+          "core:export:provide"
         ],
         "model": {
           "traits": {
@@ -1948,6 +1949,20 @@
                 "type": "boolean",
                 "title": "Active filters bar",
                 "description": "The filters that are on, above the grid, each with a button that removes it. On unless turned off."
+              },
+              "pageSize": {
+                "type": "string",
+                "title": "Rows per page",
+                "description": "Rows per page and per request. auto follows the widget's pageSize (100 by default). Takes effect when the card opens again.",
+                "enum": [
+                  "auto",
+                  "50",
+                  "100",
+                  "200",
+                  "500",
+                  "1000",
+                  "5000"
+                ]
               }
             }
           },
@@ -2570,7 +2585,8 @@
           "core:copilot:context",
           "core:state:write",
           "core:ui:button",
-          "core:ui:menu"
+          "core:ui:menu",
+          "core:export:provide"
         ],
         "model": {
           "traits": {
@@ -4290,6 +4306,23 @@
             "response": {
               "accepts": "json",
               "description": "{ schema: { engine, tables }, columns, rows, truncated, elapsedMs } or { error } for the query in the sql body param. The endpoint is POST."
+            },
+            "definition": {
+              "type": "object",
+              "additionalProperties": false,
+              "description": "The SQL widget's options.",
+              "properties": {
+                "serverSide": {
+                  "type": "boolean",
+                  "description": "The result is paged, sorted and filtered on the server: each request has the query (sql or query) and the gridState body param, and the answer is { rowData, rowCount }."
+                },
+                "pageSize": {
+                  "type": "integer",
+                  "minimum": 10,
+                  "maximum": 5000,
+                  "description": "Rows per page and per request when serverSide (100 by default)."
+                }
+              }
             }
           }
         ],
@@ -4300,7 +4333,9 @@
           "core:export:provide",
           "core:copilot:context",
           "core:ui:button",
-          "core:dashboard:add-widget"
+          "core:dashboard:add-widget",
+          "core:clipboard:write",
+          "core:ui:notify"
         ],
         "model": {
           "traits": {

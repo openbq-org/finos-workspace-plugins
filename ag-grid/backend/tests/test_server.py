@@ -61,7 +61,7 @@ def test_every_widget_answers_and_follows_the_plugins_definition(client):
     jsonschema = pytest.importorskip("jsonschema")
     known = handles()
     widgets = client.get("/widgets.json").json()
-    assert len(widgets) == 22
+    assert len(widgets) == 23
     assert {w["type"] for w in widgets.values()} == set(known)
     for key, widget in widgets.items():
         handle = known[widget["type"]]
@@ -255,3 +255,19 @@ def test_the_infinite_backends_answer_blocks_in_their_own_shapes(client):
     assert isinstance(listed, list) and len(listed) == 10
 
     assert "whole number" in client.get("/ag-grid/trades/infinite/rest", params={"offset": "x"}).json()["error"]
+
+
+def test_server_side_sql_pages_sorts_and_filters_a_query(client):
+    query = "SELECT id, desk, quantity FROM trades"
+    first = client.post("/ag-grid/sql-pages", json={"sql": query, "gridState": ""}).json()
+    assert len(first["rowData"]) == 100 and first["rowCount"] > 100
+    state = {"seq": 3, "startRow": 0, "endRow": 5, "sortModel": [{"colId": "quantity", "sort": "desc"}], "filterModel": {"desk": {"filterType": "text", "type": "equals", "filter": "FX"}}}
+    page = client.post("/ag-grid/sql-pages", json={"sql": query, "gridState": json.dumps(state)}).json()
+    assert page["seq"] == 3 and len(page["rowData"]) == 5
+    assert {r["desk"] for r in page["rowData"]} == {"FX"}
+    quantities = [r["quantity"] for r in page["rowData"]]
+    assert quantities == sorted(quantities, reverse=True)
+    bad = client.post("/ag-grid/sql-pages", json={"sql": query, "gridState": json.dumps({"sortModel": [{"colId": "x; drop", "sort": "asc"}]})}).json()
+    assert "no column" in bad["error"]
+    refused = client.post("/ag-grid/sql-pages", json={"sql": "DELETE FROM trades", "gridState": ""}).json()
+    assert "error" in refused

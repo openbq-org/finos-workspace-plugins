@@ -298,7 +298,19 @@ After that, every block the grid needs is a request in `gridState`: AG Grid's
 the pivot columns, joined with `|`. An answer `{ "error": "..." }` shows the message on the card.
 The widget sends one request at a time and gives up on one after 35 seconds.
 
-`definition.pageSize` (default 100) is the page and block size. With `wsRowIdColumn` and a
+**A backend that answers rows only.** The first answer may be the first page itself,
+`{ "rowData": [...], "rowCount": 250 }`, with no `columnDefs`: the columns are then the fields of
+its rows, with headers made from their names (`trade_id` is *Trade Id*), and that answer is the
+grid's first block, so the grid asks for nothing more until the user scrolls, sorts, filters or
+groups. `pivotFields` is read as `pivotResultFields`. A backend written for AG Grid's request as
+the whole POST body reads it from the `gridState` body param instead, because Workspace sends
+widget params, not a body of the widget's own: in Python,
+`request = json.loads(body["gridState"] or "{}")`. Its own params go in the query string or the
+body as their `in` says.
+
+`definition.pageSize` (default 100), or the card's `pageSize` setting, is the page and block size;
+the setting takes effect when the card opens again. The columns size to their content when the
+row groups, values or pivot change. With `wsRowIdColumn` and a
 `data.streamEndpoint`, a WebSocket can change the rows the grid already has, with messages
 `{ "op": "transaction", "route": [...], "add": [...], "update": [...], "remove": [...] }` and
 `{ "op": "refresh", "route": [...], "purge": true }`.
@@ -382,6 +394,31 @@ pass 380,000 bytes, which keeps the copy under Workspace's limit. The button is 
 `freeze` action (`core:ui:button`), and the copy is made with the command
 `core:dashboard:add-widget`, which Workspace takes only right after the click. A static copy is an
 AgGrid table, so it has the table's buttons and menu items.
+
+**Parameters.** A query may name parameters as `{{name}}`, such as
+`SELECT * FROM trades WHERE desk = {{desk}} AND quantity > {{min_qty}}`. The **Parameters** button
+defines them: a name, a label, a type (`text`, `number`, `date`, `boolean` or `list`, with its
+options and whether several can be picked) and a default. Each defined parameter gets a control
+above the editor, and its value goes into the query as a SQL literal before it is sent: a text
+quoted with its quotes doubled, a number that must be a number, a date that must be `YYYY-MM-DD`,
+`TRUE` or `FALSE`, and a list as `'a', 'b'`. A value that does not fit stops the run with a message,
+so a parameter cannot change the query's shape. Placeholders without a definition are counted on a
+pulsing badge, which opens the definitions with their names filled in. The definitions, values,
+query, the editor's height and whether it is hidden are saved with the card.
+
+**Running and copying.** Shift+Enter, Ctrl+Enter or ⌘+Enter runs the query; after an edit or a
+parameter change the Run button pulses and the status says so. **Copy query** and **Copy table**
+(tab-separated, with headers) use the clipboard. A result of one text longer than 100 characters
+shows as formatted text instead of a grid. A backend may name the query param `query` instead of
+`sql`.
+
+**Paged on the server** (`data["aggrid-sql"].serverSide: true`, with `pageSize`): for results too
+large for the browser. The widget declares the `gridState` body param too, and the backend answers
+a query with its first page, `{ "rowData": [...], "rowCount": 25000 }`. The grid then uses AG
+Grid's server-side row model: every page, sort and filter is a request with the query and the grid
+state, as the server-side widget sends it. The example backend's `/ag-grid/sql-pages` wraps the
+query as a subquery and applies the filters, sort and rows around it, with the column names checked
+against the query's own and the values bound as parameters.
 
 ## The table component in the chat
 

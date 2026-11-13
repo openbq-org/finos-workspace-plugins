@@ -9,6 +9,8 @@ import {
   rawCsv,
   createStateChannel,
   createTracker,
+  displaySettingsOf,
+  fieldsOf,
   filterModelOf,
   gridOptionsFor,
   groupingOf,
@@ -19,6 +21,7 @@ import {
   STATE_PARAM,
   withExpressions,
 } from "./grid.js";
+import { headerFromField } from "./ag-table-chart/format.js";
 import { ANSWER_TIMEOUT_MS, createParamRequests, REFUSAL_GRACE_MS } from "./requests.js";
 
 export const DEFAULT_PAGE_SIZE = 100;
@@ -34,7 +37,7 @@ export function ssrmRowId(idField) {
 }
 
 export function optionsFor({ model, definition, columnDefs, gridOptions = {}, datasource, initialState }) {
-  const pageSize = definition.pageSize ?? DEFAULT_PAGE_SIZE;
+  const pageSize = displaySettingsOf(model).pageSize ?? definition.pageSize ?? DEFAULT_PAGE_SIZE;
   return gridOptionsFor({
     model,
     serverSide: true,
@@ -53,6 +56,22 @@ export function optionsFor({ model, definition, columnDefs, gridOptions = {}, da
   });
 }
 
+/**
+ * The columns of the first answer: its `columnDefs`, or else the fields of its `rowData`, as a
+ * backend that answers rows only (with `rowCount`) has them. Null until one of them is there.
+ */
+export function startColumnsOf(data) {
+  if (!data || typeof data !== "object" || Array.isArray(data)) return null;
+  if (Array.isArray(data.columnDefs)) return data.columnDefs;
+  if (!Array.isArray(data.rowData) || !data.rowData.length) return null;
+  return fieldsOf(data.rowData).map((field) => ({ field, headerName: headerFromField(field) }));
+}
+
+/** True when a getRows request asks for what the first answer already holds: the first rows, with no grouping, filter or sort. */
+export function isFirstBlock(request) {
+  return (request.startRow ?? 0) === 0 && !request.rowGroupCols?.length && !request.groupKeys?.length && !request.pivotMode && !request.sortModel?.length && !Object.keys(request.filterModel ?? {}).length;
+}
+
 export function answerOf(data) {
   if (!data || typeof data !== "object" || Array.isArray(data)) return { error: "The endpoint did not answer with an object." };
   if (typeof data.error === "string") return { error: data.error };
@@ -62,19 +81,29 @@ export function answerOf(data) {
     success: {
       rowData: data.rowData,
       ...(typeof data.rowCount === "number" ? { rowCount: data.rowCount } : {}),
-      ...(Array.isArray(data.pivotResultFields) ? { pivotResultFields: data.pivotResultFields } : {}),
+      ...(Array.isArray(data.pivotResultFields ?? data.pivotFields) ? { pivotResultFields: data.pivotResultFields ?? data.pivotFields } : {}),
     },
   };
 }
 
-export function createDatasource({ model, channel, say, signal, timeoutMs = ANSWER_TIMEOUT_MS, graceMs = REFUSAL_GRACE_MS }) {
+export function createDatasource({ model, channel, say, signal, timeoutMs = ANSWER_TIMEOUT_MS, graceMs = REFUSAL_GRACE_MS, first = null }) {
   const requests = createParamRequests({ model, signal, timeoutMs, graceMs });
   const fail = (params, error) => {
     say(error);
     params.fail();
   };
+  let held = first;
   return {
     getRows(params) {
+      const ready = held;
+      held = null;
+      if (ready && isFirstBlock(params.request)) {
+        const answer = answerOf(ready);
+        if (!answer.error) {
+          params.success(answer.success);
+          return;
+        }
+      }
       if (!channel.declared) return fail(params, `The widget declares no ${STATE_PARAM} body parameter in widgets.json.`);
       const next = channel.next({ event: { type: "getRows" }, ...params.request });
       if (next.error) return fail(params, next.error);
@@ -142,10 +171,15 @@ export default {
 
     const start = () => {
       const data = model.get("data");
-      if (api || !data || typeof data !== "object" || !Array.isArray(data.columnDefs)) return;
+      const startColumns = api ? null : startColumnsOf(data);
+      if (!startColumns) return;
       gridOptions = data.gridOptions && typeof data.gridOptions === "object" ? data.gridOptions : {};
-      const datasource = createDatasource({ model, channel, say, signal });
-      api = createGrid(gridEl, optionsFor({ model, definition, columnDefs: compactColumnDefs(withExpressions(data.columnDefs, [], { cellExpressions: cellExpressionsOf(gridOptions, definition) }), []), gridOptions, datasource, initialState: saved.grid }));
+      const rowsOnly = !Array.isArray(data.columnDefs);
+      const sample = rowsOnly ? data.rowData : [];
+      const datasource = createDatasource({ model, channel, say, signal, first: rowsOnly && !saved.grid ? data : null });
+      api = createGrid(gridEl, optionsFor({ model, definition, columnDefs: compactColumnDefs(withExpressions(startColumns, sample, { cellExpressions: cellExpressionsOf(gridOptions, definition) }), sample), gridOptions, datasource, initialState: saved.grid }));
+      const resize = () => api && !api.isDestroyed() && api.autoSizeAllColumns();
+      for (const name of ["columnRowGroupChanged", "columnValueChanged", "columnPivotChanged", "columnPivotModeChanged"]) api.addEventListener(name, () => setTimeout(resize, 0));
       detach = tracker.attach(api);
       detachActions = attachCardActions(api, model);
       filterBar = mountFilterBar(api, root, { before: gridEl, enabled: () => (model.get("config") || {}).filterBar !== false });

@@ -163,3 +163,29 @@ test("a widget without the gridState param says so", async () => {
   assert.match(el.querySelector(".ag-strip").textContent, /declares no gridState/);
   abort.abort();
 });
+
+test("a backend that answers rows only: columns from its rows, its first answer as the first block, pivotFields", async () => {
+  const { startColumnsOf, isFirstBlock } = await import("../src/ssrm.js");
+  assert.deepEqual(startColumnsOf({ rowData: [{ trade_id: 1, qty: 2 }], rowCount: 9 }), [{ field: "trade_id", headerName: "Trade Id" }, { field: "qty", headerName: "Qty" }]);
+  assert.equal(startColumnsOf({ rowData: [] }), null);
+  assert.equal(isFirstBlock({ startRow: 0, endRow: 100, rowGroupCols: [], groupKeys: [], sortModel: [], filterModel: {} }), true);
+  assert.equal(isFirstBlock({ startRow: 0, sortModel: [{ colId: "a", sort: "asc" }] }), false);
+  assert.deepEqual(answerOf({ rowData: [], pivotFields: ["a|b"] }).success.pivotResultFields, ["a|b"]);
+
+  const rowsOnly = (state) => ({ seq: state.seq, rowData: rows.slice(state.startRow, state.endRow), rowCount: rows.length });
+  const model = hostModel({ data: { rowData: rows.slice(0, 100), rowCount: rows.length }, config: { pageSize: "50" } }, { answer: rowsOnly });
+  const { el, abort } = mount();
+  plugin.initialize({ model });
+  await plugin.render({ model, el, signal: abort.signal });
+  try {
+    await settle(300);
+    const api = await liveApi(el);
+    assert.deepEqual(api.getColumns().map((c) => c.getColId()), ["id", "desk", "qty"]);
+    assert.equal(api.getGridOption("cacheBlockSize"), 50, "the card's page size");
+    assert.equal(model.requests.length, 0, "the first block came from the answer the host already had");
+    assert.equal(api.getDisplayedRowAtIndex(0)?.data?.id, "T0");
+  } finally {
+    abort.abort();
+    await settle(50);
+  }
+});

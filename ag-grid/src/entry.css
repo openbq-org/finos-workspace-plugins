@@ -453,3 +453,60 @@ body[data-mode="light"] {
 .ag-grid-formulas-save { background: var(--ws-accent); border-color: var(--ws-accent); color: #ffffff; }
 .ag-grid-formulas-save:disabled { opacity: 0.5; cursor: not-allowed; }
 .ag-cell.ag-grid-formula-cell { font-style: italic; }
+
+/* Phase 4: SQL parameters, tools and the long-text result. */
+.sx-tool,
+.sx-missing {
+  flex: none;
+  font: inherit;
+  font-size: 11px;
+  color: inherit;
+  background: transparent;
+  border: 1px solid var(--ws-border);
+  border-radius: 6px;
+  padding: 2px 8px;
+  cursor: pointer;
+}
+
+.sx-missing { border-color: #ea580c; color: #ea580c; animation: sx-pulse 1.6s ease-in-out infinite; }
+.sx-missing[hidden] { display: none; }
+.sx-run.sx-stale { animation: sx-pulse 1.6s ease-in-out infinite; }
+
+@keyframes sx-pulse {
+  0%, 100% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--ws-accent) 0%, transparent); }
+  50% { box-shadow: 0 0 0 3px color-mix(in srgb, var(--ws-accent) 35%, transparent); }
+}
+
+.sx-params,
+.sx-param-editor {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 8px;
+  border-bottom: 1px solid var(--ws-border);
+}
+
+.sx-params[hidden],
+.sx-param-editor[hidden],
+.sx-editor[hidden] { display: none; }
+.sx-param-editor { flex-direction: column; align-items: stretch; }
+.sx-param { display: inline-flex; align-items: center; gap: 4px; }
+.sx-param-label { font-size: 11px; opacity: 0.8; }
+
+.sx-param-input {
+  font: inherit;
+  font-size: 12px;
+  color: inherit;
+  background: transparent;
+  border: 1px solid var(--ws-border);
+  border-radius: 4px;
+  padding: 2px 4px;
+}
+
+.sx-param-rows { display: flex; flex-direction: column; gap: 4px; }
+.sx-param-row { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; }
+.sx-param-check { display: inline-flex; align-items: center; gap: 2px; font-size: 11px; }
+.sx-param-actions { display: flex; align-items: center; gap: 8px; }
+.sx-editor { resize: vertical; }
+.sx-markdown { padding: 8px 12px; overflow: auto; height: 100%; box-sizing: border-box; }

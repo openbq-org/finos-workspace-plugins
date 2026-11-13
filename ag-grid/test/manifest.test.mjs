@@ -158,3 +158,11 @@ test("every icon the manifest names under assets/ is copied into the package", (
   const icons = new Set(widgets.flatMap((w) => (w.actions ?? []).map((a) => a.icon)).filter((icon) => icon.startsWith("assets/")));
   for (const icon of icons) assert.ok(build.includes(`"${icon}"`), `${icon} is not in build.mjs`);
 });
+
+test("every widget whose module offers exports has the permission the host needs to show them", async () => {
+  for (const [id, module] of Object.entries(WIDGETS)) {
+    const widget = widgets.find((w) => w.id === id);
+    const exposed = module.initialize({ model: { get: () => undefined, on() {}, off() {} } });
+    assert.equal(typeof exposed?.exportOptions === "function", widget.permissions.includes("core:export:provide"), `${id}: exports and core:export:provide go together`);
+  }
+});
