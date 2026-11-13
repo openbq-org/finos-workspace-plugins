@@ -1,6 +1,6 @@
 {
   "name": "workspace-plugin-ag-grid",
-  "version": "3.5.0",
+  "version": "3.6.0",
   "private": true,
   "description": "A FINOS Workspace widget plugin with five AgGrid widgets: a table, a server-side table, an infinite table, a streaming grid and a SQL editor, all on AG Grid Enterprise with integrated charts",
   "author": "dlee-bq",

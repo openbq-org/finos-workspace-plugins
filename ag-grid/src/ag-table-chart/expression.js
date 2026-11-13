@@ -7,6 +7,39 @@
  */
 
 const MATH = { abs: Math.abs, min: Math.min, max: Math.max, round: Math.round, floor: Math.floor, ceil: Math.ceil, sign: Math.sign };
+
+function numbersOf(args) {
+  return args.flat().map((v) => (typeof v === "string" && v.trim() !== "" ? Number(v) : v)).filter((v) => typeof v === "number" && Number.isFinite(v));
+}
+
+/**
+ * The functions of a formula, over a row: SUM, AVG, MIN, MAX and COUNT of their numeric arguments
+ * (others are skipped), ABS, ROUND(x, places) and IF(test, then, else). Names ignore case.
+ */
+export const FUNCTIONS = {
+  SUM: (...args) => numbersOf(args).reduce((a, b) => a + b, 0),
+  AVG: (...args) => {
+    const values = numbersOf(args);
+    return values.length ? values.reduce((a, b) => a + b, 0) / values.length : null;
+  },
+  MIN: (...args) => {
+    const values = numbersOf(args);
+    return values.length ? Math.min(...values) : null;
+  },
+  MAX: (...args) => {
+    const values = numbersOf(args);
+    return values.length ? Math.max(...values) : null;
+  },
+  COUNT: (...args) => numbersOf(args).length,
+  ABS: (x) => (typeof x === "number" ? Math.abs(x) : null),
+  ROUND: (x, places = 0) => {
+    if (typeof x !== "number") return null;
+    const factor = 10 ** Math.max(0, Math.min(12, Math.trunc(places)));
+    return Math.round(x * factor) / factor;
+  },
+  IF: (test, then, otherwise = null) => (test ? then : otherwise),
+};
+const CALLABLE = new Set([...Object.values(MATH), ...Object.values(FUNCTIONS)]);
 const BLOCKED = new Set(["__proto__", "prototype", "constructor"]);
 const PUNCTUATION = ["===", "!==", "=>", "==", "!=", "<=", ">=", "&&", "||", "??", "<", ">", "+", "-", "*", "/", "%", "!", "?", ":", "(", ")", "{", "}", "[", "]", ",", ".", ";"];
 const MAX_SOURCE = 2000;
@@ -200,6 +233,7 @@ function evaluate(node, scope) {
     case "name":
       if (node.name === scope.param) return scope.params;
       if (node.name === "Math") return MATH;
+      if (scope.functions && Object.hasOwn(FUNCTIONS, node.name.toUpperCase())) return FUNCTIONS[node.name.toUpperCase()];
       return undefined;
     case "get": {
       const object = evaluate(node.object, scope);
@@ -211,7 +245,7 @@ function evaluate(node, scope) {
     }
     case "call": {
       const fn = evaluate(node.callee, scope);
-      if (!Object.values(MATH).includes(fn)) throw new TypeError("only Math functions can be called");
+      if (!CALLABLE.has(fn)) throw new TypeError("only Math functions and SUM, AVG, MIN, MAX, COUNT, ABS, ROUND and IF can be called");
       return fn(...node.args.map((arg) => evaluate(arg, scope)));
     }
     case "obj": return Object.fromEntries(node.entries.map(([key, value]) => [key, evaluate(value, scope)]));
@@ -262,5 +296,5 @@ export function compileExpression(source) {
   const tokens = tokenize(source, { columns: true });
   tokens.mode = "expression";
   const { body } = parser(tokens);
-  return (column) => evaluate(body, { param: null, params: undefined, column });
+  return (column) => evaluate(body, { param: null, params: undefined, column, functions: true });
 }

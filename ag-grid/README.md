@@ -220,6 +220,7 @@ whose keys or values do not fit sees the problem, with its JSON pointer, when it
 | `columnState`, `filterModel` | The layout and the filters a new card opens with. `columnState` holds parts of an AG Grid grid state (`sort`, `rowGroup`, `pivot`, `aggregation`, `columnOrder`, `columnVisibility`, `columnPinning`, `columnSizing`, `columnGroup`, `filter`, `sideBar`), directly or under `default`; `filterModel` is an AG Grid filter model keyed by column. Only the parts named change: a column's own `rowGroup` stays unless `columnState` sets the row groups. Once a user changes the card, its own saved layout is used instead. |
 | `wsRowIdColumn` | The field that identifies a row across refreshes (default `id`), so changed rows are applied as transactions and `showCellChange` knows which cell moved. |
 | `gridEvents`, `enableCellExpressions` | As above. |
+| `enableFormulas` | The Formulas panel, below. On unless `false`. |
 
 **Cell clicks** (`renderFn: "cellOnClick"`):
 
@@ -249,8 +250,19 @@ the formatter's params only: `(params) => ({ ... })`, `params => { return {...} 
 `! - + * / %`, comparisons, `&& || ??`, `?:` and `Math.abs/min/max/round/floor/ceil/sign`.
 Anything else is ignored with a console warning.
 
-**Not supported:** OpenBQ's `enableFormulas`, because AG Grid 34.3 has no formula engine (use
-`enableCellExpressions` instead), and the clickable links inside a hover card, which show as text.
+**Formulas** (`enableFormulas`, on unless `false`): the side bar's **Formulas** panel adds columns
+that a user computes from the others, such as `[Revenue] - [Cost]` or
+`ROUND(AVG([Q1], [Q2], [Q3], [Q4]), 2)`. A formula names a column by its header or its field, in
+brackets, in any case, and may name another formula. It takes `+ - * / %`, comparisons and the
+functions `SUM`, `AVG`, `MIN`, `MAX` and `COUNT` (of their numeric arguments), `ABS`,
+`ROUND(x, places)` and `IF(test, then, else)`. The panel checks a formula as it is typed and names
+an unknown column. The columns sort, filter, group, aggregate, pivot, chart and export like the
+others, and they are saved with the card (in its `state`, at most 20) and shown to the AI agent. A
+formula whose column is gone shows `#ERROR`. The plugin evaluates formulas with its own expression
+engine, never as code. A backend whose `gridOptions.sideBar` replaces the side bar has no Formulas
+panel.
+
+**Not supported:** the clickable links inside a hover card, which show as text.
 
 ## The server-side widget (`aggrid-ssrm`)
 

@@ -296,7 +296,7 @@ test("the Filters tool panel is AG Grid 34's, and the Advanced Filter replaces i
   const { model, el, abort } = await render({ data: { columnDefs, rowData: rows } });
   try {
     const api = await liveApi(el);
-    assert.deepEqual(api.getGridOption("sideBar").toolPanels, ["columns", "filters-new"]);
+    assert.deepEqual(api.getGridOption("sideBar").toolPanels.map((p) => p.id ?? p), ["columns", "filters-new", "formulas"]);
     assert.equal(api.getGridOption("enableFilterHandlers"), true);
     assert.notEqual(api.getGridOption("enableAdvancedFilter"), true);
     api.openToolPanel("filters-new");
@@ -306,7 +306,7 @@ test("the Filters tool panel is AG Grid 34's, and the Advanced Filter replaces i
     model.push("config", { advancedFilter: true });
     await settle();
     assert.equal(api.getGridOption("enableAdvancedFilter"), true);
-    assert.deepEqual(api.getGridOption("sideBar").toolPanels, ["columns"]);
+    assert.deepEqual(api.getGridOption("sideBar").toolPanels.map((p) => p.id ?? p), ["columns", "formulas"]);
     assert.ok(el.querySelector(".ag-advanced-filter"), "the expression bar shows above the grid");
     const advanced = { filterType: "join", type: "OR", conditions: [
       { filterType: "text", colId: "name", type: "equals", filter: "Bob" },
@@ -322,7 +322,7 @@ test("the Filters tool panel is AG Grid 34's, and the Advanced Filter replaces i
     model.push("config", { advancedFilter: false });
     await settle();
     assert.equal(api.getGridOption("enableAdvancedFilter"), false);
-    assert.deepEqual(api.getGridOption("sideBar").toolPanels, ["columns", "filters-new"]);
+    assert.deepEqual(api.getGridOption("sideBar").toolPanels.map((p) => p.id ?? p), ["columns", "filters-new", "formulas"]);
     assert.equal(api.getDisplayedRowCount(), 3);
     assert.equal(el.querySelector(".ag-advanced-filter"), null);
   } finally {
@@ -338,7 +338,7 @@ test("a card saved with the Advanced Filter on opens with it, its filter applied
   try {
     const api = await liveApi(el);
     assert.equal(api.getGridOption("enableAdvancedFilter"), true);
-    assert.deepEqual(api.getGridOption("sideBar").toolPanels, ["columns"]);
+    assert.deepEqual(api.getGridOption("sideBar").toolPanels.map((p) => p.id ?? p), ["columns", "formulas"]);
     assert.deepEqual(api.getAdvancedFilterModel(), advanced);
     assert.equal(api.getDisplayedRowCount(), 1);
   } finally {

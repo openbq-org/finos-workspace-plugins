@@ -433,6 +433,10 @@
                   "type": "string",
                   "maxLength": 16,
                   "description": "The text of an empty cell, such as - or n/a. Empty by default."
+                },
+                "enableFormulas": {
+                  "type": "boolean",
+                  "description": "The Formulas panel of the side bar, where a user adds columns computed from the others, such as [Revenue] / [Shares]. On unless false."
                 }
               },
               "$defs": {
@@ -2903,6 +2907,10 @@
                   "type": "string",
                   "maxLength": 16,
                   "description": "The text of an empty cell, such as - or n/a. Empty by default."
+                },
+                "enableFormulas": {
+                  "type": "boolean",
+                  "description": "The Formulas panel of the side bar, where a user adds columns computed from the others, such as [Revenue] / [Shares]. On unless false."
                 }
               },
               "$defs": {

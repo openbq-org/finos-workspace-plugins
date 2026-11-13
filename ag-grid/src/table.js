@@ -1,6 +1,7 @@
 import { createChartView } from "./ag-table-chart/chartView.js";
 import { agTableChartColumnDefs, changeTrackedColumns, transpose } from "./ag-table-chart/columns.js";
 import { mountFilterBar } from "./filterBar.js";
+import { FormulasPanel, formulaColumnDefs, formulaColumnsOf, savedFormulas } from "./formulas.js";
 import {
   applyPresetState,
   applyTheme,
@@ -110,6 +111,15 @@ export function chartFilename(name, date = new Date()) {
   return `${base} ${date.toISOString().slice(0, 10)}.png`;
 }
 export const PAGINATE_ABOVE = 100;
+export const FORMULAS_PANEL = "formulas";
+
+/** The table's side bar: the Columns and Filters panels and, unless the definition turns it off, Formulas. */
+export function sideBarFor(table, formulasPanel) {
+  if (table.enableAdvanced === false) return { sideBar: false };
+  const panels = ["columns", FILTERS_TOOL_PANEL, ...(formulasPanel ? [formulasPanel] : [])];
+  if (table.enableAdvanced === true) return { sideBar: { toolPanels: panels, defaultToolPanel: "columns" } };
+  return formulasPanel ? { sideBar: { toolPanels: panels, defaultToolPanel: "" } } : {};
+}
 export const GRID_EVENTS = [
   "cellClicked",
   "cellDoubleClicked",
@@ -153,9 +163,11 @@ export function cellChanges(oldRows, newRows, tracked, idField = "id", deltas = 
  * The grid's rows and columns from an answer and the table configuration. `transposed`, the card's
  * own choice from its menu, replaces the definition's `transpose` when it is a boolean.
  */
-export function normalizeData(data, definition, transposed) {
+export function normalizeData(data, definition, transposed, formulas = []) {
   const table = definition && typeof definition === "object" ? definition : {};
   const transposing = typeof transposed === "boolean" ? transposed : table.transpose === true;
+  const withFormulas = (defs) => (formulas.length ? [...defs, ...formulaColumnDefs(formulas, defs)] : defs);
+  const formulasKey = formulas.length ? `|f${JSON.stringify(formulas)}` : "";
   const object = data && typeof data === "object" && !Array.isArray(data) ? data : null;
   const gridOptions = object?.gridOptions && typeof object.gridOptions === "object" ? object.gridOptions : {};
 
@@ -166,21 +178,21 @@ export function normalizeData(data, definition, transposed) {
   const cellExpressions = cellExpressionsOf(gridOptions, table);
   if (object && Array.isArray(object.columnDefs)) {
     const rowData = Array.isArray(object.rowData) ? object.rowData : [];
-    const columnDefs = compactColumnDefs(withExpressions(object.columnDefs, rowData, { cellExpressions }), rowData);
-    const columnsKey = JSON.stringify({ columnDefs: object.columnDefs, cellExpressions });
+    const columnDefs = compactColumnDefs(withExpressions(withFormulas(object.columnDefs), rowData, { cellExpressions }), rowData);
+    const columnsKey = JSON.stringify({ columnDefs: object.columnDefs, cellExpressions }) + formulasKey;
     if (transposing) {
-      return { ...transpose(rowData, columnDefs.filter((c) => !c.children)), gridOptions, table, transposed: true, columnsKey: `${columnsKey}|t|${rowData.length}` };
+      return { ...transpose(rowData, columnDefs.filter((c) => !c.children)), baseColumnDefs: columnDefs, gridOptions, table, transposed: true, columnsKey: `${columnsKey}|t|${rowData.length}` };
     }
-    return { rowData, columnDefs, gridOptions, table, transposed: false, columnsKey };
+    return { rowData, columnDefs, baseColumnDefs: columnDefs, gridOptions, table, transposed: false, columnsKey };
   }
 
   const rows = rowsOf(data);
-  const columnDefs = withExpressions(agTableChartColumnDefs(rows, table), rows, { cellExpressions });
-  const columnsKey = JSON.stringify({ table, fields: fieldsOf(rows) });
+  const columnDefs = withExpressions(withFormulas(agTableChartColumnDefs(rows, table)), rows, { cellExpressions });
+  const columnsKey = JSON.stringify({ table, fields: fieldsOf(rows) }) + formulasKey;
   if (transposing) {
-    return { ...transpose(rows, columnDefs), gridOptions, table, transposed: true, columnsKey: `${columnsKey}|${rows.length}` };
+    return { ...transpose(rows, columnDefs), baseColumnDefs: columnDefs, gridOptions, table, transposed: true, columnsKey: `${columnsKey}|${rows.length}` };
   }
-  return { rowData: rows, columnDefs, gridOptions, table, transposed: false, columnsKey };
+  return { rowData: rows, columnDefs, baseColumnDefs: columnDefs, gridOptions, table, transposed: false, columnsKey };
 }
 
 function element(className, style = {}) {
@@ -195,8 +207,11 @@ export function mountTable({ model, el, signal, experimental, tracker, saved = {
 
   const definition = model.get("definition") || {};
   let transposedChoice = typeof saved.transposed === "boolean" ? saved.transposed : undefined;
-  const initial = normalizeData(model.get("data"), definition, transposedChoice);
+  const formulasOn = definition.enableFormulas !== false;
+  let formulas = formulasOn ? savedFormulas(saved.formulas) : [];
+  const initial = normalizeData(model.get("data"), definition, transposedChoice, formulas);
   const table = initial.table;
+  let baseColumnDefs = initial.baseColumnDefs ?? [];
   let settings = displaySettingsOf(model);
   let currentParams = model.get("params") || {};
   const activeRules = activeRowRules(table.columnsDefs);
@@ -271,6 +286,27 @@ export function mountTable({ model, el, signal, experimental, tracker, saved = {
   container.appendChild(body);
   el.appendChild(container);
 
+  function formulasPanel() {
+    return {
+      id: FORMULAS_PANEL,
+      labelDefault: "Formulas",
+      labelKey: "formulas",
+      iconKey: "aggregation",
+      toolPanel: FormulasPanel,
+      toolPanelParams: {
+        formulas: () => formulas,
+        columns: () => formulaColumnsOf(baseColumnDefs),
+        save: (list) => {
+          formulas = savedFormulas(list);
+          tracker.state.formulas = formulas;
+          tracker.persist();
+          const data = model.get("data");
+          if (data !== undefined && data !== null) apply(normalizeData(data, model.get("definition") || {}, transposedChoice, formulas));
+        },
+      },
+    };
+  }
+
   const own = {
     getRowId: rowIdGetter(idField),
     columnDefs: [],
@@ -279,7 +315,7 @@ export function mountTable({ model, el, signal, experimental, tracker, saved = {
     enableCharts: chartsOn,
     tooltipShowMode: hoverCards ? "standard" : "whenTruncated",
     ...(activeRules.length ? { rowClassRules: { "ag-table-chart-row-active": (params) => isActiveRow(activeRules, params.data, currentParams) } } : {}),
-    ...(table.enableAdvanced === false ? { sideBar: false } : table.enableAdvanced === true ? { sideBar: { toolPanels: ["columns", FILTERS_TOOL_PANEL], defaultToolPanel: "columns" } } : {}),
+    ...sideBarFor(table, formulasOn ? formulasPanel() : null),
   };
   const api = createGrid(gridEl, gridOptionsFor({ model, gridOptions: currentGridOptions, ...own }));
   const detach = tracker.attach(api);
@@ -366,7 +402,7 @@ export function mountTable({ model, el, signal, experimental, tracker, saved = {
     tracker.persist();
     if (on && chartView?.isOpen) chartView.close();
     const data = model.get("data");
-    if (data !== undefined && data !== null) apply(normalizeData(data, model.get("definition") || {}, transposedChoice));
+    if (data !== undefined && data !== null) apply(normalizeData(data, model.get("definition") || {}, transposedChoice, formulas));
   };
 
   const onAction = (event) => {
@@ -435,6 +471,7 @@ export function mountTable({ model, el, signal, experimental, tracker, saved = {
     }
     idField = idFieldOf(next.table);
     tracked = next.transposed ? [] : changeTrackedColumns(next.table.columnsDefs);
+    if (next.baseColumnDefs) baseColumnDefs = next.baseColumnDefs;
     if (next.columnsKey !== currentColumnsKey) {
       currentColumnsKey = next.columnsKey;
       api.setGridOption("columnDefs", next.columnDefs);
@@ -458,7 +495,7 @@ export function mountTable({ model, el, signal, experimental, tracker, saved = {
   const onDataChange = () => {
     const data = model.get("data");
     if (data === undefined || data === null) return;
-    apply(normalizeData(data, model.get("definition") || {}, transposedChoice));
+    apply(normalizeData(data, model.get("definition") || {}, transposedChoice, formulas));
   };
 
   const onThemeChange = () => {
@@ -532,6 +569,7 @@ export function tableExports(getHandle, getTracker) {
       return copilotContextOf(handle.api, {
         chartView: { open: handle.chartOpen() },
         lastAgentPrompt: getTracker()?.state.agentPrompt ?? null,
+        formulas: getTracker()?.state.formulas ?? [],
       });
     },
   };
@@ -548,7 +586,13 @@ export default {
 
   async render({ model, el, signal, experimental }) {
     const saved = model.get("state") || {};
-    tracker = createTracker(model, { chartView: saved.chartView ?? null, agentPrompt: null, grid: saved.grid ?? null, transposed: typeof saved.transposed === "boolean" ? saved.transposed : null });
+    tracker = createTracker(model, {
+      chartView: saved.chartView ?? null,
+      agentPrompt: null,
+      grid: saved.grid ?? null,
+      transposed: typeof saved.transposed === "boolean" ? saved.transposed : null,
+      formulas: savedFormulas(saved.formulas),
+    });
     handle = mountTable({ model, el, signal, experimental, tracker, saved });
     signal.addEventListener("abort", () => { handle = null; });
   },
