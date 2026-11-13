@@ -122,8 +122,31 @@ export function modeOf(model) {
   return model.get("theme")?.mode === "dark" ? "dark" : "light";
 }
 
-export function chartThemesFor(mode) {
-  return mode === "light" ? CHART_THEMES : CHART_THEMES.map((name) => `${name}-dark`);
+export const ORG_CHART_THEME = "org";
+
+/** The organization's chart colours (a comma-separated list of colours) and font, kept only when they fit. */
+export function orgChartLook(adminSettings = {}) {
+  const s = adminSettings && typeof adminSettings === "object" ? adminSettings : {};
+  const colors = typeof s.chartColors === "string" ? s.chartColors.split(",").map((c) => c.trim()).filter((c) => COLOR_RE.test(c)).slice(0, 20) : [];
+  const font = typeof s.chartFontFamily === "string" && FONT_RE.test(s.chartFontFamily.trim()) ? s.chartFontFamily.trim() : "";
+  return colors.length || font ? { colors, font } : null;
+}
+
+/** The organization's chart theme in light and dark, built on AG Charts' default theme. */
+export function orgChartThemes(adminSettings = {}) {
+  const look = orgChartLook(adminSettings);
+  if (!look) return undefined;
+  const theme = (mode) => ({
+    baseTheme: mode === "light" ? "ag-default" : "ag-default-dark",
+    ...(look.colors.length ? { palette: { fills: look.colors, strokes: look.colors } } : {}),
+    ...(look.font ? { params: { fontFamily: look.font } } : {}),
+  });
+  return { [`${ORG_CHART_THEME}-light`]: theme("light"), [`${ORG_CHART_THEME}-dark`]: theme("dark") };
+}
+
+export function chartThemesFor(mode, adminSettings) {
+  const own = mode === "light" ? CHART_THEMES : CHART_THEMES.map((name) => `${name}-dark`);
+  return orgChartLook(adminSettings) ? [`${ORG_CHART_THEME}-${mode === "light" ? "light" : "dark"}`, ...own] : own;
 }
 
 export function baseThemeOf(model, gridOptions = {}) {
@@ -147,7 +170,7 @@ export function applyTheme(api, model, gridOptions = {}) {
   const theme = model.get("theme");
   const colors = paintSite(theme);
   api?.setGridOption("theme", themeFor(theme, baseThemeOf(model, gridOptions), model.get("adminSettings")));
-  api?.setGridOption("chartThemes", chartThemesFor(colors.mode));
+  api?.setGridOption("chartThemes", chartThemesFor(colors.mode, model.get("adminSettings")));
   return colors.mode;
 }
 
@@ -221,7 +244,8 @@ export function baseOptions(model, gridOptions = {}, { serverSide = false } = {}
     cellSelection: true,
     allowContextMenuWithControlKey: true,
     enableCharts: true,
-    chartThemes: chartThemesFor(mode),
+    chartThemes: chartThemesFor(mode, model.get("adminSettings")),
+    customChartThemes: orgChartThemes(model.get("adminSettings")),
     popupParent: document.body,
     sideBar: { toolPanels: ["columns", FILTERS_TOOL_PANEL], defaultToolPanel: "" },
     enableFilterHandlers: true,

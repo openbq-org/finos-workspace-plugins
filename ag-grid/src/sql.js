@@ -226,7 +226,10 @@ export default {
     popup.hidden = true;
     editor.setAttribute("aria-controls", popup.id);
     const output = element("div", "sx-output");
-    main.append(editor, output, popup);
+    const preview = element("div", "sx-preview");
+    preview.hidden = true;
+    preview.setAttribute("aria-live", "polite");
+    main.append(editor, preview, output, popup);
     body.append(tables, main);
     root.append(bar, paramStrip, paramEditor, body);
     el.replaceChildren(root);
@@ -445,12 +448,30 @@ export default {
       if (stale && !pending) status.textContent = "Changed: press Run";
     };
 
+    /** The query as it will run, with each {{name}} filled in, or what stops it from running. */
+    const updatePreview = () => {
+      if (!placeholdersOf(editor.value).length || editorHidden) {
+        preview.hidden = true;
+        return;
+      }
+      const filled = substitute(editor.value, sqlDefs, sqlValues);
+      preview.hidden = false;
+      preview.dataset.state = filled.missing.length || filled.errors.length ? "error" : "ok";
+      preview.textContent = filled.missing.length
+        ? `Not ready: define ${filled.missing.map((n) => `{{${n}}}`).join(", ")}`
+        : filled.errors.length
+          ? `Not ready: ${filled.errors.join(" ")}`
+          : `Runs as: ${filled.sql.replace(/\s+/g, " ").trim()}`;
+      preview.title = preview.textContent;
+    };
+
     const updateBadge = () => {
       const defined = new Set(sqlDefs.map((d) => d.name));
       const missing = placeholdersOf(editor.value).filter((name) => !defined.has(name));
       missingBadge.hidden = !missing.length;
       missingBadge.textContent = `${missing.length} undefined`;
       missingBadge.title = missing.length ? `Define ${missing.map((n) => `{{${n}}}`).join(", ")}` : "";
+      updatePreview();
       return missing;
     };
 
@@ -490,6 +511,7 @@ export default {
           };
           save();
           markStale();
+          updatePreview();
         });
         label.append(input);
         paramStrip.append(label);
@@ -582,6 +604,7 @@ export default {
       editorHidden = hidden;
       editor.hidden = hidden;
       toggleEditor.textContent = hidden ? "Show editor" : "Hide editor";
+      updatePreview();
     };
 
     const copy = async (text, done) => {

@@ -127,3 +127,16 @@ test("a stream of plain rows with a combined id updates rows in the grid and add
     await settle(50);
   }
 });
+
+test("streamNewestFirst puts new rows on top and drops the oldest from the bottom", () => {
+  const tape = new Map();
+  const options = { maxRows: 3, counter: { next: 0 }, newestFirst: true };
+  applyMessage(tape, [{ time: 1 }, { time: 2 }], "id", options);
+  applyMessage(tape, { time: 3 }, "id", options);
+  assert.deepEqual([...tape.values()].map((r) => r.time), [3, 2, 1]);
+  applyMessage(tape, { time: 4 }, "id", options);
+  assert.deepEqual([...tape.values()].map((r) => r.time), [4, 3, 2]);
+  const byId = new Map([["a", { id: "a", p: 1 }]]);
+  applyMessage(byId, { id: "a", p: 2 }, "id", { newestFirst: true });
+  assert.deepEqual([...byId.values()], [{ id: "a", p: 2 }], "an update stays where it is");
+});

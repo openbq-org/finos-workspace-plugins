@@ -530,3 +530,16 @@ body[data-mode="light"] {
 
 .ag-file-open { cursor: pointer; }
 .ag-stack.ag-file-dropping { outline: 2px dashed var(--ws-accent); outline-offset: -4px; }
+
+.sx-preview {
+  font: 11px ui-monospace, SFMono-Regular, Menlo, monospace;
+  padding: 3px 8px;
+  opacity: 0.8;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  border-bottom: 1px solid var(--ws-border);
+}
+
+.sx-preview[hidden] { display: none; }
+.sx-preview[data-state="error"] { color: #ea580c; opacity: 1; }

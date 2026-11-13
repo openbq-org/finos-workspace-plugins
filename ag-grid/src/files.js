@@ -1,5 +1,6 @@
 /*
- * Reading a file into rows: CSV and TSV text, JSON, and Excel workbooks (.xlsx). An .xlsx file is
+ * Reading a file into rows: CSV and TSV text, JSON, Excel workbooks (.xlsx) and Parquet (through
+ * the package's DuckDB-WASM, which the caller passes as `readParquet`). An .xlsx file is
  * a zip of XML parts; it is read with the browser's own DecompressionStream and DOMParser, so the
  * package carries no spreadsheet library. Formulas show their last computed values, errors are
  * empty, and dates are ISO dates.
@@ -252,6 +253,7 @@ export function kindOf(name, mime = "") {
   const ext = /\.([a-z0-9]+)$/i.exec(String(name ?? ""))?.[1]?.toLowerCase() ?? "";
   if (ext === "xlsx" || /spreadsheetml/.test(mime)) return "xlsx";
   if (ext === "xls") return "xls";
+  if (ext === "parquet" || /parquet/.test(mime)) return "parquet";
   if (ext === "json" || /json/.test(mime)) return "json";
   if (ext === "tsv" || /tab-separated/.test(mime)) return "tsv";
   if (ext === "csv" || ext === "txt" || /csv|text\/plain/.test(mime)) return "csv";
@@ -269,12 +271,17 @@ export function bytesOfBase64(base64) {
  * Reads a file into { columns, rows, sheets, sheet, truncated }. `file` is { name, mime, bytes }
  * or { name, mime, text }. For a workbook, `sheet` picks the sheet (the first by default).
  */
-export async function readFile(file, { sheet, dataKey } = {}) {
+export async function readFile(file, { sheet, dataKey, readParquet } = {}) {
   const kind = kindOf(file.name, file.mime);
   const size = file.bytes?.byteLength ?? file.text?.length ?? 0;
   if (size > MAX_FILE_BYTES) throw new Error(`The file is larger than ${MAX_FILE_BYTES / 1024 / 1024} MB.`);
   if (kind === "xls") throw new Error("An .xls workbook needs to be saved as .xlsx first.");
-  if (kind === "unknown") throw new Error("Open a .csv, .tsv, .json or .xlsx file.");
+  if (kind === "unknown") throw new Error("Open a .csv, .tsv, .json, .xlsx or .parquet file.");
+  if (kind === "parquet") {
+    if (!readParquet) throw new Error("Parquet files are read with DuckDB, which is not available here.");
+    if (!file.bytes) throw new Error("The Parquet file came as text; send it as base64.");
+    return { ...(await readParquet(file.bytes, MAX_FILE_ROWS)), sheets: [], sheet: null };
+  }
   if (kind === "xlsx") {
     if (!file.bytes) throw new Error("The workbook came as text; send it as base64.");
     const book = await openWorkbook(file.bytes);

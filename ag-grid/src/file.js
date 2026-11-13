@@ -12,7 +12,7 @@ import { mountTable, tableExports } from "./table.js";
 
 export const ACTION_OPEN_FILE = "open-file";
 export const ACTION_ADD_TABLE = "add-file-table";
-export const ACCEPT = ".csv,.tsv,.txt,.json,.xlsx,text/csv,text/tab-separated-values,application/json,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
+export const ACCEPT = ".csv,.tsv,.txt,.json,.xlsx,.parquet,text/csv,text/tab-separated-values,application/json,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
 
 /**
  * A model for the table widget whose `data` is the file's rows: every other trait, command and
@@ -97,6 +97,16 @@ export default {
 
     let current = null;
     let source = null;
+    const readAsset = async (path) => {
+      const [, [bytes]] = await experimental.invoke("core:asset:read", { path }, { timeout: 60_000, signal });
+      return bytes;
+    };
+    /** Parquet is read by the package's DuckDB-WASM, started the first time a Parquet file opens. */
+    const readParquet = async (bytes, limit) => {
+      say("Starting DuckDB to read Parquet…");
+      const { parquetRows, startDatabase } = await import("./sql/duckdb.js");
+      return parquetRows(await startDatabase(readAsset), bytes, limit);
+    };
     const say = (text) => {
       status.textContent = text;
     };
@@ -106,7 +116,7 @@ export default {
       say("Reading…");
       try {
         const definition = model.get("definition") || {};
-        const read = await readFile(file, { sheet: tracker.state.sheet ?? definition.sheet, dataKey: definition.dataKey });
+        const read = await readFile(file, { sheet: tracker.state.sheet ?? definition.sheet, dataKey: definition.dataKey, readParquet });
         current = { ...read, name: file.name };
         name.textContent = origin === "computer" ? `${file.name} (from this computer, not saved)` : file.name;
         sheetPicker.replaceChildren(...read.sheets.map((sheet) => {
@@ -136,7 +146,7 @@ export default {
       name.textContent = "";
       sheetPicker.hidden = true;
       rows.setRows(records);
-      say(records.length ? `${records.length.toLocaleString("en")} rows` : "Open a .csv, .tsv, .json or .xlsx file, or drop one here.");
+      say(records.length ? `${records.length.toLocaleString("en")} rows` : "Open a .csv, .tsv, .json, .xlsx or .parquet file, or drop one here.");
     };
 
     const openLocal = async (file) => {
@@ -204,7 +214,7 @@ export default {
       handle = null;
     });
 
-    if (model.get("data") === undefined || model.get("data") === null) say("Open a .csv, .tsv, .json or .xlsx file, or drop one here.");
+    if (model.get("data") === undefined || model.get("data") === null) say("Open a .csv, .tsv, .json, .xlsx or .parquet file, or drop one here.");
     else await fromAnswer();
   },
 };

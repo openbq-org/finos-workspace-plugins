@@ -10,7 +10,7 @@ each one gets its rows from its widget's endpoint in `widgets.json`.
 | `ssrm` | `aggrid-ssrm` | Server-side | A large table that the backend pages, sorts, filters, groups, aggregates and pivots. Each request of the grid is a POST to the endpoint. |
 | `infinite` | `aggrid-infinite` | Infinite | A long table that loads in blocks as the user scrolls, from a backend that answers `startRow` and `endRow`, `offset` and `limit`, or the grid state. |
 | `streaming` | `aggrid-streaming` | Client-side | A table kept current by a WebSocket that Workspace opens, which updates rows, inserts new ones and removes them. |
-| `file` | `aggrid-file` | Client-side | A CSV, TSV, JSON or Excel (.xlsx) file, from the endpoint or the user's computer, as a table. |
+| `file` | `aggrid-file` | Client-side | A CSV, TSV, JSON, Excel (.xlsx) or Parquet file, from the endpoint or the user's computer, as a table. |
 | `sql` | `aggrid-sql` | Client-side or server-side | A SQL editor with completion for the backend's database and `{{name}}` parameters, with the result in a grid, or paged on the server. |
 
 Nothing in the plugin imports Workspace code. It talks to Workspace only through the widget plugin
@@ -41,7 +41,9 @@ package serves FINOS Workspace and BQ Workspace.
   `headerBackgroundColor`, `fontFamily`, `fontSize` (9 to 20), `rowHeight` (20 to 60),
   `stripedRows` and `columnBorders`. A value that is not a plain colour, font list or number in
   range is ignored. These replace the base theme's own values, and the site's colours for the
-  accent and the font.
+  accent and the font. `chartColors` (colours separated by commas) and `chartFontFamily` make an
+  organization chart theme, in light and dark, that every chart uses: the chart view, charts of a
+  selection and pivot charts.
 - **Saved state.** The grid's state (columns, order, widths, sort, filters, row groups, pivot, open
   groups and the side bar) is saved in the widget's `state` trait and restored when the dashboard
   opens again. On the table and streaming widgets, the table-to-chart view and its chart are saved
@@ -65,7 +67,9 @@ package serves FINOS Workspace and BQ Workspace.
   The table and streaming widgets add **Transpose rows and columns**, saved with the card, and
   **Reverse column order**. The table widget adds **Add chart as a widget**, which puts the chart
   view, or else the chart opened last, on the dashboard as a new table widget that opens as that
-  chart, with the charted columns of the first 1,000 rows (`core:dashboard:add-widget`). Workspace draws them from the widget's `actions` in `plugin.json`
+  chart, with the charted columns of the first 1,000 rows (`core:dashboard:add-widget`). A pivot
+  chart goes as its pivot table flattened: one row per group at the deepest level, one column per
+  pivot result column. Workspace draws them from the widget's `actions` in `plugin.json`
   (`core:ui:button`, `core:ui:menu`) and sends the widget an `action` event when the user picks
   one. Until a card's button is used, the backend's `defaultColDef.floatingFilter` decides. The
   autosize item's icon is the package's `assets/autosize.svg`.
@@ -237,7 +241,8 @@ whose keys or values do not fit sees the problem, with its JSON pointer, when it
 | `calculatedExpression` | The column's value as an expression over its row, as under [Expressions](#expressions). |
 | `showAll` | Default `true`: fields the rows have and `columnsDefs` does not are shown after the declared ones. `false` shows only `columnsDefs`. |
 | `transpose` | One row per column and one column per row, headed by the first column's values. Each cell keeps its column's format and colours. |
-| `enableCharts`, `chartView` (`enabled`, `chartType`, `cellRangeCols`, `ignoreCellRange`, `chartNavigatorEnabled`, `chartMiniChartEnabled`, `xLabel`, `yLabel`, `dateLabels`) | A *Table / Chart* toolbar and an integrated chart linked to the rows, of any chart type of AG Grid 34, including `stackedLine`, `normalizedLine`, `funnel`, `coneFunnel` and `pyramid`. The chart a user arranges is saved with the dashboard and restored, unless `ignoreCellRange`. `xLabel` and `yLabel` title the category and number axes; `dateLabels` shows dates as `quarter` (Q3 2024) or `year` (FY 2024). Number axes show short numbers (45B), and cartesian charts zoom. In pivot mode the view is a pivot chart; a transposed table charts its rows of numbers. A line or area of a single row is drawn as columns. The Chart button is off while the table has no number column, and a `cellRangeCols` list that names no column is reported. A series column of texts such as `$1.2M`, `(300)` or `12.5%` charts, sorts and filters as numbers and shows as written. `enableCharts: false` turns charting off. |
+| `enableCharts`, `chartView` (`enabled`, `chartType`, `cellRangeCols`, `ignoreCellRange`, `chartNavigatorEnabled`, `chartMiniChartEnabled`, `xLabel`, `yLabel`, `dateLabels`) | A *Table / Chart* toolbar and an integrated chart linked to the rows, of any chart type of AG Grid 34, including `stackedLine`, `normalizedLine`, `funnel`, `coneFunnel` and `pyramid`. The chart a user arranges is saved with the dashboard and restored, unless `ignoreCellRange`. `xLabel` and `yLabel` title the category and number axes; `dateLabels` shows dates as `quarter` (Q3 2024) or `year` (FY 2024). Number axes show short numbers (45B), and cartesian charts zoom. In pivot mode the view is a pivot chart; a transposed table charts its rows of numbers. A line or area of a single row is drawn as columns. A series tooltip heads with the category
+(a fiscal period with `dateLabels`) and shows the value in full, with thousands separators. The Chart button is off while the table has no number column, and a `cellRangeCols` list that names no column is reported. A series column of texts such as `$1.2M`, `(300)` or `12.5%` charts, sorts and filters as numbers and shows as written. `enableCharts: false` turns charting off. |
 | `enableAdvanced` | `true` opens the Columns panel; `false` hides the side bar. |
 | `emptyValue` | The text of an empty cell, such as `-`. Empty by default. |
 | `columnState`, `filterModel` | The layout and the filters a new card opens with. `columnState` holds parts of an AG Grid grid state (`sort`, `rowGroup`, `pivot`, `aggregation`, `columnOrder`, `columnVisibility`, `columnPinning`, `columnSizing`, `columnGroup`, `filter`, `sideBar`), directly or under `default`; `filterModel` is an AG Grid filter model keyed by column. Only the parts named change: a column's own `rowGroup` stays unless `columnState` sets the row groups. Once a user changes the card, its own saved layout is used instead. |
@@ -388,6 +393,7 @@ such as `NYSE-IBM`); it replaces `wsRowIdColumn`. When any column has `enableCel
 an update changes only those columns and keeps the others as they were; without one, it changes
 every field it has. A stream keeps at most `maxStreamRows` rows (5,000 by default), dropping the
 oldest. A backend whose WebSocket was declared as `wsEndpoint` sets `data.streamEndpoint` to it.
+`streamNewestFirst: true` puts rows a stream adds on top, and the oldest leave from the bottom.
 The widget does not send messages up the WebSocket: Workspace opens `data.streamEndpoint` as it is
 written, without the widget's params, and only receives on it, so the feed cannot change with the
 params.
@@ -410,7 +416,9 @@ filters, formulas, charts, exports and the card's settings. The file comes from:
   card saves its state, not files. **Add as a table widget** keeps a copy, as the SQL widget's
   static copy does (the first 1,000 rows and 60 columns).
 
-It reads `.csv` and `.txt` (the delimiter is the one of comma, tab and semicolon the first line has
+It reads `.parquet` files with the package's DuckDB-WASM (started in the frame the first time a
+Parquet file opens), with decimals, big integers, dates and timestamps as plain values, and
+`.csv` and `.txt` (the delimiter is the one of comma, tab and semicolon the first line has
 most of), `.tsv`, `.json` (a list of records, the list at `dataKey`, any shape the table widget
 reads, or one record) and Excel `.xlsx` workbooks. A workbook is read in the frame with the
 browser's own zip and XML support, so the package carries no spreadsheet library: a sheet picker
@@ -462,6 +470,9 @@ quoted with its quotes doubled, a number that must be a number, a date that must
 so a parameter cannot change the query's shape. Placeholders without a definition are counted on a
 pulsing badge, which opens the definitions with their names filled in. The definitions, values,
 query, the editor's height and whether it is hidden are saved with the card.
+
+A line under the editor shows the query as it will run, with each parameter filled in, or what
+stops it from running (an undefined parameter, a value that does not fit).
 
 **Running and copying.** Shift+Enter, Ctrl+Enter or ⌘+Enter runs the query; after an edit or a
 parameter change the Run button pulses and the status says so. **Copy query** and **Copy table**

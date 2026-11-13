@@ -50,6 +50,35 @@ function plainValue(value) {
 }
 
 /**
+ * The data of a dashboard widget that shows a pivot chart: the pivot table flattened, one row per
+ * group at the deepest grouping level (its keys joined with " / ") and one column per pivot result
+ * column (its pivot keys and value), at most 60 columns and MAX_CHART_WIDGET_ROWS rows.
+ */
+export function pivotWidgetData(api, chartModel) {
+  const groups = api.getRowGroupColumns?.() ?? [];
+  const results = (api.getPivotResultColumns?.() ?? []).filter((c) => c.isVisible?.() !== false).slice(0, 59);
+  if (!groups.length || !results.length) return null;
+  const depth = groups.length - 1;
+  const rowData = [];
+  let total = 0;
+  api.forEachNodeAfterFilterAndSort((node) => {
+    if (!node.group || node.level !== depth) return;
+    total += 1;
+    if (rowData.length >= MAX_CHART_WIDGET_ROWS) return;
+    const keys = [];
+    for (let n = node; n && n.level >= 0; n = n.parent) if (n.key !== undefined && n.key !== null) keys.unshift(String(n.key));
+    rowData.push({ group: keys.join(" / ").slice(0, 500), ...Object.fromEntries(results.map((c, i) => [`p${i}`, plainValue(node.aggData?.[c.getColId()] ?? api.getCellValue({ rowNode: node, colKey: c }))])) });
+  });
+  if (!rowData.length) return null;
+  const header = (c) => [...(c.getColDef().pivotKeys ?? []), api.getDisplayNameForColumn(c, "header") || c.getColId()].join(" ").slice(0, 100);
+  const columnDefs = [
+    { field: "group", headerName: groups.map((g) => api.getDisplayNameForColumn(g, "header") || g.getColId()).join(" / ").slice(0, 100), chartDataType: "category" },
+    ...results.map((c, i) => ({ field: `p${i}`, headerName: header(c), chartDataType: "series" })),
+  ];
+  return { data: { columnDefs, rowData, chartView: { enabled: true, chartType: chartModel.chartType } }, truncated: total > MAX_CHART_WIDGET_ROWS };
+}
+
+/**
  * The data of a dashboard widget that shows a chart of the grid: the charted columns of the rows
  * the grid shows (at most MAX_CHART_WIDGET_ROWS), with the chart type, as the table artifact takes it.
  */
@@ -462,11 +491,11 @@ export function mountTable({ model, el, signal, experimental, tracker, saved = {
     }
     const chartId = chartToDownload(models.map((m) => m.chartId), chartView);
     const chartModel = models.find((m) => m.chartId === chartId);
-    if (!chartModel || chartModel.modelType === "pivot") {
-      notify("info", chartModel ? "A pivot chart cannot be added as a widget yet; chart a range of cells instead." : "Open the chart first, or chart a range of cells, then add it as a widget.");
+    if (!chartModel) {
+      notify("info", "Open the chart first, or chart a range of cells, then add it as a widget.");
       return;
     }
-    const made = chartWidgetData(api, chartModel);
+    const made = chartModel.modelType === "pivot" ? pivotWidgetData(api, chartModel) : chartWidgetData(api, chartModel);
     if (!made) {
       notify("info", "The chart has no columns to add.");
       return;

@@ -70,7 +70,7 @@ test("CSV text from the endpoint, a file dropped on the card, and a copy added a
 test("a file that cannot be read says why, and a card without data asks for one", async () => {
   const empty = await render({});
   try {
-    assert.match(empty.el.querySelector(".ag-file-status").textContent, /Open a \.csv, \.tsv, \.json or \.xlsx file/);
+    assert.match(empty.el.querySelector(".ag-file-status").textContent, /Open a \.csv, \.tsv, \.json, \.xlsx or \.parquet file/);
   } finally {
     empty.abort.abort();
   }

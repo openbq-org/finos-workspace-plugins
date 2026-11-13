@@ -30,7 +30,8 @@ test("the chart's look: axis titles, short numbers, zoom, period labels and one 
   const fill = (name) => bars.bar.series.itemStyler({ datum: { name }, xKey: "name" }).fill;
   assert.notEqual(fill("A"), fill("B"));
   assert.equal(fill("A"), fill("A"));
-  assert.equal(chartOverrides({}, "line", { distinctColors: true }).bar, undefined);
+  assert.equal(chartOverrides({}, "line", { distinctColors: true }).bar.series.itemStyler, undefined, "one colour per bar is for bar charts");
+  assert.equal(typeof bars.bar.series.tooltip.renderer, "function", "bars keep the tooltip with their colours");
 });
 
 test("short axis numbers, fiscal periods, single-row lines and merged overrides", () => {
@@ -150,6 +151,61 @@ test("the chart view adds its chart as a dashboard widget, and draws a pivot cha
     assert.equal(api.getChartModels()[0]?.modelType, "pivot");
   } finally {
     pivot.abort.abort();
+    await settle(100);
+  }
+});
+
+
+test("the chart tooltip: the category as heading, the value in full, and wrapped categories unwrapped", async () => {
+  const { tooltipRenderer, categoryValue } = await import("../src/ag-table-chart/chartView.js");
+  const wrapped = { id: 3, value: "2024-08-15", toString: () => "2024-08-15" };
+  assert.equal(categoryValue(wrapped), "2024-08-15");
+  const out = tooltipRenderer("quarter")({ datum: { quarter: wrapped, revenue: 45123456.789 }, xKey: "quarter", yKey: "revenue", yName: "Revenue" });
+  assert.deepEqual(out, { heading: "Q3 2024", title: "Revenue", data: [{ label: "Revenue", value: "45,123,456.79" }] });
+  const pie = tooltipRenderer()({ datum: { desk: "FX", n: 12 }, calloutLabelKey: "desk", angleKey: "n", angleName: "Trades" });
+  assert.equal(pie.heading, "FX");
+  assert.equal(pie.data[0].value, "12");
+  assert.equal(chartOverrides({}, "groupedColumn").common.axes.category.label.formatter({ value: { id: 0, value: "2024-02-01", toString: () => "x" } }), "2024-02-01");
+});
+
+test("the organization's chart colours and font become a chart theme", async () => {
+  const { chartThemesFor, orgChartLook, orgChartThemes } = await import("../src/grid.js");
+  assert.equal(orgChartLook({}), null);
+  assert.deepEqual(orgChartLook({ chartColors: "#123456, red, url(x), #abc", chartFontFamily: "Inter, sans-serif" }), { colors: ["#123456", "red", "#abc"], font: "Inter, sans-serif" });
+  const themes = orgChartThemes({ chartColors: "#123456,#654321" });
+  assert.deepEqual(themes["org-dark"], { baseTheme: "ag-default-dark", palette: { fills: ["#123456", "#654321"], strokes: ["#123456", "#654321"] } });
+  assert.equal(chartThemesFor("light", { chartColors: "#123456" })[0], "org-light");
+  assert.equal(chartThemesFor("dark", {})[0], "ag-default-dark");
+});
+
+test("a pivot chart is added as a widget of the pivot table flattened, and charts use the organization's theme", async () => {
+  const data = [
+    { region: "EU", desk: "FX", year: "2025", tvl: 5 },
+    { region: "EU", desk: "FX", year: "2026", tvl: 7 },
+    { region: "US", desk: "Rates", year: "2025", tvl: 50 },
+    { region: "US", desk: "Rates", year: "2026", tvl: 70 },
+  ];
+  const definition = { chartView: { enabled: false, chartType: "groupedColumn" }, columnsDefs: [{ field: "region", rowGroup: true }, { field: "desk" }, { field: "year", pivot: true }, { field: "tvl", aggFunc: "sum" }] };
+  const { model, el, abort } = await render({ data, definition, adminSettings: { chartColors: "#123456,#654321" } });
+  try {
+    const api = await liveApi(el);
+    api.setGridOption("pivotMode", true);
+    await settle(150);
+    el.querySelector(".ag-table-chart-toolbar-button:last-child").click();
+    await settle(300);
+    const [chart] = api.getChartModels();
+    assert.equal(chart.modelType, "pivot");
+    assert.equal(chart.chartThemeName, "org-light", "the organization's chart theme");
+    notifications.length = 0;
+    model.emit("msg:custom", { kind: "workspace-event", name: "action", id: "add-chart-widget" });
+    await settle(200);
+    const added = notifications.find(([name]) => name === "core:dashboard:add-widget")?.[1];
+    assert.ok(added, "the pivot chart is added");
+    assert.deepEqual(added.data.columnDefs.map((c) => [c.field, c.headerName, c.chartDataType]), [["group", "Region", "category"], ["p0", "2025 Tvl", "series"], ["p1", "2026 Tvl", "series"]]);
+    assert.deepEqual(added.data.rowData, [{ group: "EU", p0: 5, p1: 7 }, { group: "US", p0: 50, p1: 70 }]);
+    assert.deepEqual(added.data.chartView, { enabled: true, chartType: "groupedColumn" });
+  } finally {
+    abort.abort();
     await settle(100);
   }
 });

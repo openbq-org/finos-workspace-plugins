@@ -74,6 +74,18 @@
           "type": "boolean",
           "title": "Column lines",
           "description": "Lines between the columns."
+        },
+        "chartColors": {
+          "type": "string",
+          "title": "Chart colours",
+          "description": "The series colours of every chart, in order, separated by commas, such as #2563eb, #16a34a, #ea580c. Empty keeps AG Charts' colours.",
+          "maxLength": 400
+        },
+        "chartFontFamily": {
+          "type": "string",
+          "title": "Chart font",
+          "description": "The font of every chart's text, such as Inter, sans-serif. Empty keeps the chart theme's font.",
+          "maxLength": 200
         }
       }
     },
@@ -452,6 +464,10 @@
                   "minimum": 1,
                   "maximum": 100000,
                   "description": "The most rows a stream keeps; the oldest go first (5,000 by default)."
+                },
+                "streamNewestFirst": {
+                  "type": "boolean",
+                  "description": "Rows a stream adds go on top, and the oldest leave from the bottom."
                 }
               },
               "$defs": {
@@ -3203,6 +3219,10 @@
                   "minimum": 1,
                   "maximum": 100000,
                   "description": "The most rows a stream keeps; the oldest go first (5,000 by default)."
+                },
+                "streamNewestFirst": {
+                  "type": "boolean",
+                  "description": "Rows a stream adds go on top, and the oldest leave from the bottom."
                 }
               },
               "$defs": {
@@ -4468,14 +4488,14 @@
       {
         "id": "file",
         "name": "AgGrid file",
-        "description": "A CSV, TSV, JSON or Excel (.xlsx) file as an AgGrid table: from the widget's endpoint, or opened from the computer or dropped on the card, with sheets, sorting, filtering, grouping, formulas, charts and exports.",
+        "description": "A CSV, TSV, JSON, Excel (.xlsx) or Parquet file as an AgGrid table: from the widget's endpoint, or opened from the computer or dropped on the card, with sheets, sorting, filtering, grouping, formulas, charts and exports.",
         "category": "Data",
         "handles": [
           {
             "type": "aggrid-file",
             "response": {
               "accepts": "json",
-              "description": "A file carried in JSON: { file: { name, base64 } } for .xlsx (or any file), { file: { name, text } } or { csv } / { tsv } for text, or rows as the table widget takes them. data[\"aggrid-file\"] takes the table configuration, dataKey and sheet."
+              "description": "A file carried in JSON: { file: { name, base64 } } for .xlsx or .parquet (or any file), { file: { name, text } } or { csv } / { tsv } for text, or rows as the table widget takes them. data[\"aggrid-file\"] takes the table configuration, dataKey and sheet."
             },
             "definition": {
               "type": "object",

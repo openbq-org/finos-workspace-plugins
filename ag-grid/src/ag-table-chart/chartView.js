@@ -72,9 +72,42 @@ export function periodLabel(value, dateLabels) {
   return dateLabels === "year" ? `FY ${year}` : `Q${Math.floor(date.getUTCMonth() / 3) + 1} ${year}`;
 }
 
-function categoryFormatter(dateLabels) {
-  return ({ value }) => periodLabel(value, dateLabels) ?? (value instanceof Date ? value.toISOString().slice(0, 10) : String(value ?? ""));
+/** An integrated chart wraps a category as { id, value, toString }: its value. */
+export function categoryValue(value) {
+  return value && typeof value === "object" && !(value instanceof Date) && "value" in value ? value.value : value;
 }
+
+function categoryText(value, dateLabels) {
+  const plain = categoryValue(value);
+  return periodLabel(plain, dateLabels) ?? (plain instanceof Date ? plain.toISOString().slice(0, 10) : String(plain ?? ""));
+}
+
+function categoryFormatter(dateLabels) {
+  return ({ value }) => categoryText(value, dateLabels);
+}
+
+const fullNumbers = new Intl.NumberFormat("en-US", { maximumFractionDigits: 2 });
+
+/**
+ * A series tooltip: the category as its heading (a fiscal period when `dateLabels` says so) and
+ * the value in full, with thousands separators, under the series' name.
+ */
+export function tooltipRenderer(dateLabels) {
+  return (params) => {
+    const datum = params.datum ?? {};
+    const xKey = params.xKey ?? params.calloutLabelKey ?? params.sectorLabelKey;
+    const yKey = params.yKey ?? params.angleKey ?? params.sizeKey;
+    const value = categoryValue(datum[yKey]);
+    const name = params.yName ?? params.angleName ?? params.title ?? String(yKey ?? "");
+    return {
+      ...(xKey ? { heading: categoryText(datum[xKey], dateLabels) } : {}),
+      title: name,
+      data: [{ label: name, value: typeof value === "number" && Number.isFinite(value) ? fullNumbers.format(value) : String(value ?? "") }],
+    };
+  };
+}
+
+const TOOLTIP_SERIES = ["bar", "line", "area", "scatter", "bubble", "histogram", "pie", "donut"];
 
 /**
  * The chart's look: a transparent background; the navigator and its mini chart; axis titles from
@@ -95,12 +128,15 @@ export function chartOverrides(chartView = {}, chartType, settings = {}) {
     common.zoom = { enabled: true };
   }
   const overrides = { common };
+  const renderer = tooltipRenderer(chartView.dateLabels);
+  for (const series of TOOLTIP_SERIES) overrides[series] = { series: { tooltip: { renderer } } };
   if (settings.distinctColors === true && BARS.has(chartType)) {
     const order = new Map();
     overrides.bar = {
       series: {
+        ...overrides.bar.series,
         itemStyler: ({ datum, xKey }) => {
-          const key = String(datum?.[xKey] ?? "");
+          const key = String(categoryValue(datum?.[xKey]) ?? "");
           if (!order.has(key)) order.set(key, order.size);
           const color = DISTINCT_COLORS[order.get(key) % DISTINCT_COLORS.length];
           return { fill: color, stroke: color };
@@ -238,6 +274,11 @@ export function createChartView({ api, gridEl, chartEl, chartView = {}, saved, m
   let drawnRows = 0;
   let currentMode = mode;
   let type = agChartType(chartView.chartType);
+  /** The grid's first chart theme (the organization's when it has one), else AG Charts' default. */
+  const themeName = () => {
+    const first = api.getGridOption?.("chartThemes")?.[0];
+    return typeof first === "string" ? first : chartThemeName(currentMode);
+  };
 
   const save = () => {
     let model = ref ? null : saved?.model ?? null;
@@ -257,7 +298,7 @@ export function createChartView({ api, gridEl, chartEl, chartView = {}, saved, m
     if (model && restore && columnsOf(api).length && api.getDisplayedRowCount()) {
       try {
         const chartType = model.chartType ?? type;
-        ref = api.restoreChart({ ...model, chartThemeName: chartThemeName(currentMode), chartOptions: mergeOverrides(model.chartOptions ?? {}, chartOverrides(chartView, chartType, settings())) }, chartEl);
+        ref = api.restoreChart({ ...model, chartThemeName: themeName(), chartOptions: mergeOverrides(model.chartOptions ?? {}, chartOverrides(chartView, chartType, settings())) }, chartEl);
         drawnColumns = columnsOf(api).length;
         drawnRows = api.getDisplayedRowCount();
         if (ref) return;
@@ -270,7 +311,7 @@ export function createChartView({ api, gridEl, chartEl, chartView = {}, saved, m
     const chartThemeOverrides = chartOverrides(chartView, chartType, settings());
     if (api.isPivotMode?.()) {
       drawnColumns = columnsOf(api).length;
-      ref = drawnRows ? api.createPivotChart({ chartType, chartContainer: chartEl, chartThemeName: chartThemeName(currentMode), chartThemeOverrides }) ?? null : null;
+      ref = drawnRows ? api.createPivotChart({ chartType, chartContainer: chartEl, chartThemeName: themeName(), chartThemeOverrides }) ?? null : null;
       return;
     }
     const problem = cellRangeProblem(api, chartView, chartView.chartType);
@@ -284,7 +325,7 @@ export function createChartView({ api, gridEl, chartEl, chartView = {}, saved, m
     ref = api.createRangeChart({
       chartType,
       cellRange: { columns, ...(rowRange?.() ?? {}) },
-      chartThemeName: chartThemeName(currentMode),
+      chartThemeName: themeName(),
       chartContainer: chartEl,
       suppressChartRanges: true,
       chartThemeOverrides,

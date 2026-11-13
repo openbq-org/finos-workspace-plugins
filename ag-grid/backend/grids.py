@@ -91,10 +91,10 @@ WIDGETS = {
     ),
     "aggrid_streaming_tape": widget(
         "Trade tape",
-        "aggrid-streaming: a WebSocket sends plain rows with no id, which the grid appends, keeping the newest 200 (maxStreamRows)",
+        "aggrid-streaming: a WebSocket sends plain rows with no id, which the grid adds on top (streamNewestFirst), keeping the newest 200 (maxStreamRows)",
         "aggrid-streaming",
         "/ag-grid/tape",
-        data={"aggrid-streaming": {"maxStreamRows": 200, "columnsDefs": [{"field": "time"}, {"field": "symbol"}, {"field": "side", "renderFn": "columnColor", "renderFnParams": {"colorRules": [{"condition": "eq", "value": "BUY", "color": "green"}, {"condition": "eq", "value": "SELL", "color": "red"}]}}, {"field": "quantity", "formatterFn": "int"}, {"field": "price", "decimalPlaces": 2}]}, "streamEndpoint": "/ag-grid/tape/stream"},
+        data={"aggrid-streaming": {"maxStreamRows": 200, "streamNewestFirst": True, "columnsDefs": [{"field": "time"}, {"field": "symbol"}, {"field": "side", "renderFn": "columnColor", "renderFnParams": {"colorRules": [{"condition": "eq", "value": "BUY", "color": "green"}, {"condition": "eq", "value": "SELL", "color": "red"}]}}, {"field": "quantity", "formatterFn": "int"}, {"field": "price", "decimalPlaces": 2}]}, "streamEndpoint": "/ag-grid/tape/stream"},
     ),
     "aggrid_file_workbook": widget(
         "Positions workbook",

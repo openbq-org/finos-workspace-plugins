@@ -19,7 +19,8 @@ export function updatableFields(definition) {
  * row, a row without an id included, as a log or a tape is. `options`: `allowed`, the fields an update may change
  * (all when null), and `maxRows`, above which the oldest rows go.
  */
-export function applyMessage(byId, message, idField = "id", { allowed = null, maxRows = DEFAULT_MAX_STREAM_ROWS, counter = { next: 0 } } = {}) {
+export function applyMessage(byId, message, idField = "id", { allowed = null, maxRows = DEFAULT_MAX_STREAM_ROWS, counter = { next: 0 }, newestFirst = false } = {}) {
+  const added = [];
   const touched = new Set();
   const removed = new Set();
   let replaced = false;
@@ -32,6 +33,8 @@ export function applyMessage(byId, message, idField = "id", { allowed = null, ma
       const current = byId.get(id);
       const changes = allowed ? Object.fromEntries(Object.entries(row).filter(([key]) => allowed.has(key))) : row;
       byId.set(id, { ...current, ...changes });
+    } else if (newestFirst) {
+      added.push([id, row]);
     } else {
       byId.set(id, row);
     }
@@ -56,8 +59,13 @@ export function applyMessage(byId, message, idField = "id", { allowed = null, ma
   } else if (message && typeof message === "object" && message.op === undefined) {
     keep(message, true);
   }
+  if (added.length) {
+    const before = [...byId];
+    byId.clear();
+    for (const [id, row] of [...added.reverse(), ...before]) byId.set(id, row);
+  }
   while (byId.size > maxRows) {
-    const oldest = byId.keys().next().value;
+    const oldest = newestFirst ? [...byId.keys()].at(-1) : byId.keys().next().value;
     byId.delete(oldest);
     touched.delete(oldest);
     removed.add(oldest);
@@ -103,7 +111,7 @@ export default {
     const streamOptions = () => {
       const definition = model.get("definition") || {};
       const maxRows = Number.isInteger(definition.maxStreamRows) && definition.maxStreamRows > 0 ? definition.maxStreamRows : DEFAULT_MAX_STREAM_ROWS;
-      return { allowed: updatableFields(definition), maxRows, counter };
+      return { allowed: updatableFields(definition), maxRows, counter, newestFirst: definition.streamNewestFirst === true };
     };
     const seed = () => {
       const rows = normalizeData(model.get("data"), model.get("definition") || {}).rowData ?? [];

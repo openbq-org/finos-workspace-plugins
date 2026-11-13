@@ -143,6 +143,7 @@ test("{{parameters}}: defined in the card, filled in as SQL literals, saved, and
     const badge = el.querySelector(".sx-missing");
     assert.equal(badge.hidden, false);
     assert.equal(badge.textContent, "2 undefined");
+    assert.match(el.querySelector(".sx-preview").textContent, /^Not ready: define \{\{desk\}\}, \{\{min_qty\}\}/);
     el.querySelector(".sx-run").click();
     assert.match(el.querySelector(".sx-message").textContent, /Define the parameters \{\{desk\}\}, \{\{min_qty\}\}/);
     assert.equal(model.values.params[SQL_PARAM], "", "nothing ran");
@@ -165,6 +166,7 @@ test("{{parameters}}: defined in the card, filled in as SQL literals, saved, and
     assert.equal(badge.hidden, true);
     assert.equal(el.querySelectorAll(".sx-params .sx-param").length, 2, "a control per parameter");
 
+    assert.equal(el.querySelector(".sx-preview").textContent, "Runs as: SELECT * FROM trades WHERE desk = 'O''Neil' AND qty > 100", "the preview shows the query as it will run");
     editor.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", shiftKey: true, bubbles: true }));
     assert.equal(model.values.params[SQL_PARAM], "SELECT * FROM trades WHERE desk = 'O''Neil' AND qty > 100");
 
