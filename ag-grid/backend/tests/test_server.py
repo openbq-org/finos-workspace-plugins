@@ -61,7 +61,7 @@ def test_every_widget_answers_and_follows_the_plugins_definition(client):
     jsonschema = pytest.importorskip("jsonschema")
     known = handles()
     widgets = client.get("/widgets.json").json()
-    assert len(widgets) == 19
+    assert len(widgets) == 20
     assert {w["type"] for w in widgets.values()} == set(known)
     for key, widget in widgets.items():
         handle = known[widget["type"]]

@@ -78,3 +78,15 @@ test("the grid widgets have the card's floating filters button and its two menu 
   assert.ok(sql.permissions.includes("core:dashboard:add-widget"));
   assert.ok(widgets.find((w) => w.id === "table").artifact);
 });
+
+test("the table configuration takes row groups, pivot and aggregation per column, and a starting layout", () => {
+  for (const id of ["table", "streaming"]) {
+    const definition = widgets.find((w) => w.id === id).handles[0].definition;
+    const column = definition.$defs.column.properties;
+    assert.equal(column.rowGroup.type, "boolean");
+    assert.equal(column.pivot.type, "boolean");
+    assert.deepEqual(column.aggFunc.enum, ["sum", "min", "max", "count", "avg", "first", "last"]);
+    assert.equal(definition.properties.columnState.properties.default.$ref, "#/$defs/gridPreset");
+    assert.deepEqual(definition.properties.filterModel.additionalProperties, { type: "object" });
+  }
+});

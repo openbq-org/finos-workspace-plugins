@@ -33,6 +33,7 @@ TABLES = {
     "sparklines": ag_table_chart.sparklines,
     "profit-loss": ag_table_chart.profit_loss,
     "companies": ag_table_chart.companies,
+    "trades-by-desk": ag_table_chart.trades_by_desk,
 }
 
 

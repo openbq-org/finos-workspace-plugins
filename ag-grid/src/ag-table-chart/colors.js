@@ -47,8 +47,8 @@ export function ruleMatches(rule, value) {
       const max = asNumber(rule.range?.max);
       return number !== null && min !== null && max !== null && number >= min && number <= max;
     }
-    case "contains": return String(value).includes(String(rule.value ?? ""));
-    case "notContains": return !String(value).includes(String(rule.value ?? ""));
+    case "contains": return String(value).toLowerCase().includes(String(rule.value ?? "").toLowerCase());
+    case "notContains": return !String(value).toLowerCase().includes(String(rule.value ?? "").toLowerCase());
     default: return false;
   }
 }
@@ -64,9 +64,9 @@ export function contrastText(background) {
   return luminance > 0.4 ? "#111827" : "#ffffff";
 }
 
-/** The style of the first rule that matches, or null. */
+/** The style of the last rule that matches, so a later, narrower rule overrides an earlier one; or null. */
 export function columnColorStyle(rules, value) {
-  const rule = (Array.isArray(rules) ? rules : []).find((r) => ruleMatches(r, value));
+  const rule = (Array.isArray(rules) ? rules : []).findLast((r) => ruleMatches(r, value));
   if (!rule) return null;
   const color = resolveColor(rule.color);
   if (!color) return null;

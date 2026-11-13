@@ -28,10 +28,45 @@ function cellValueOf(raw, cellField) {
   return JSON.stringify(raw);
 }
 
+/** An integer that reads as a Unix time: seconds (2001 to 2286) or milliseconds over the same years. */
+export function epochMs(value) {
+  if (typeof value !== "number" || !Number.isInteger(value)) return null;
+  const size = Math.abs(value);
+  if (size >= 1e9 && size < 1e10) return value * 1000;
+  if (size >= 1e12 && size < 1e13) return value;
+  return null;
+}
+
+/** A field whose name says it holds a date or a time: `date`, `trade_date`, `createdAt`, `timestamp`, `time`. */
+export function isDateName(field) {
+  const words = String(field ?? "")
+    .replace(/([a-z0-9])([A-Z])/g, "$1 $2")
+    .toLowerCase()
+    .split(/[^a-z0-9]+/)
+    .filter(Boolean);
+  return words.some((word) => ["date", "datetime", "timestamp", "time"].includes(word)) || words.at(-1) === "at";
+}
+
 function toDate(value) {
   if (value instanceof Date || value === null || value === undefined || value === "") return value ?? null;
+  if (typeof value === "number") {
+    const ms = epochMs(value);
+    if (ms !== null) return new Date(ms);
+    if (Number.isInteger(value) && value > 999 && value < 10000) return new Date(Date.UTC(value, 0, 1));
+  }
   const parsed = new Date(typeof value === "string" && /^\d{4}-\d{2}-\d{2}$/.test(value) ? `${value}T00:00:00` : value);
   return Number.isNaN(parsed.getTime()) ? value : parsed;
+}
+
+const MIDNIGHT_RE = /^(\d{4}-\d{2}-\d{2})[T ]00:00(:00(\.0+)?)?(Z|[+-]00:?00)?$/;
+
+/** A date cell's text: a date-time at midnight as its date, a Unix time as an ISO date (and time when it has one). */
+export function dateText(value) {
+  if (typeof value === "string") return MIDNIGHT_RE.exec(value)?.[1] ?? value;
+  const ms = epochMs(value);
+  if (ms === null) return value;
+  const iso = new Date(ms).toISOString();
+  return iso.endsWith("T00:00:00.000Z") ? iso.slice(0, 10) : `${iso.slice(0, 10)} ${iso.slice(11, 19)}`;
 }
 
 function dateComparator(filterDate, cellValue) {
@@ -46,6 +81,10 @@ function dataTypeOf(def, rows) {
   if (def.cellDataType) return def.cellDataType;
   const values = rows.slice(0, 200).map((r) => (r ? r[def.field] : undefined));
   const inferred = inferColumnType(values);
+  if (inferred === "numeric" && isDateName(def.field)) {
+    const numbers = values.filter((v) => typeof v === "number");
+    if (numbers.length && numbers.every((v) => epochMs(v) !== null)) return "date";
+  }
   return { numeric: "number", date: "date", boolean: "boolean", string: "text", object: "object", array: "object" }[inferred] ?? "text";
 }
 
@@ -131,9 +170,12 @@ export function toColDef(def, rows, table = {}) {
     field,
     colId: field,
     headerName: def.headerName ?? headerFromField(field),
-    cellDataType: false,
+    // The Advanced Filter takes its operators from cellDataType: "number" gives
+    // greater than / less than, "text" gives contains / begins with. Dates, booleans
+    // and objects keep false, so AG Grid adds no renderer, parser or check of its own.
+    cellDataType: type === "number" ? "number" : type === "text" && !isDate ? "text" : false,
   };
-  for (const key of ["headerTooltip", "width", "minWidth", "maxWidth", "hide", "pinned", "chartDataType", "calculatedExpression"]) {
+  for (const key of ["headerTooltip", "width", "minWidth", "maxWidth", "hide", "pinned", "chartDataType", "calculatedExpression", "rowGroup", "rowGroupIndex", "pivot", "aggFunc"]) {
     if (def[key] !== undefined) col[key] = def[key];
   }
   if (typeof def.width === "number") col.flex = 0;
@@ -168,7 +210,7 @@ export function toColDef(def, rows, table = {}) {
     if (value instanceof Date) {
       if (formatterFn === "dateToYear") return yearOf(value) ?? "";
       const original = params.data ? cellValueOf(params.data[field], cellField) : value;
-      value = original instanceof Date ? original.toISOString().slice(0, 10) : original;
+      value = original instanceof Date ? original.toISOString().slice(0, 10) : dateText(original);
       return formatValue(value, { prefix: def.prefix, suffix: def.suffix });
     }
     if (typeof value === "boolean") value = String(value);

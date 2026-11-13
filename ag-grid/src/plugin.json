@@ -137,6 +137,57 @@
                 "enableCellExpressions": {
                   "type": "boolean",
                   "description": "Cell values that start with = are expressions over the row, such as =[quantity] * [price]. Evaluated by the plugin, never as code."
+                },
+                "columnState": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "description": "The grid layout a new card opens with: parts of an AG Grid grid state, directly or under `default`. A card's own saved layout replaces it.",
+                  "properties": {
+                    "aggregation": {
+                      "type": "object"
+                    },
+                    "columnGroup": {
+                      "type": "object"
+                    },
+                    "columnOrder": {
+                      "type": "object"
+                    },
+                    "columnPinning": {
+                      "type": "object"
+                    },
+                    "columnSizing": {
+                      "type": "object"
+                    },
+                    "columnVisibility": {
+                      "type": "object"
+                    },
+                    "filter": {
+                      "type": "object"
+                    },
+                    "pivot": {
+                      "type": "object"
+                    },
+                    "rowGroup": {
+                      "type": "object"
+                    },
+                    "sideBar": {
+                      "type": "object"
+                    },
+                    "sort": {
+                      "type": "object"
+                    },
+                    "default": {
+                      "$ref": "#/$defs/gridPreset"
+                    }
+                  }
+                },
+                "filterModel": {
+                  "type": "object",
+                  "maxProperties": 200,
+                  "additionalProperties": {
+                    "type": "object"
+                  },
+                  "description": "The filters a new card opens with, as an AG Grid filter model keyed by column."
                 }
               },
               "$defs": {
@@ -586,6 +637,33 @@
                       "type": "string",
                       "maxLength": 2000,
                       "description": "The column's value as an expression over the row's columns, such as [revenue] - [cost]: literals, [column], + - * / %, comparisons, && || ??, ?: and Math functions."
+                    },
+                    "rowGroup": {
+                      "type": "boolean",
+                      "description": "Groups the rows by this column when the card opens."
+                    },
+                    "rowGroupIndex": {
+                      "type": "integer",
+                      "minimum": 0,
+                      "maximum": 50,
+                      "description": "The column's place among the row groups."
+                    },
+                    "pivot": {
+                      "type": "boolean",
+                      "description": "Pivots on this column when the card opens (with pivot mode on)."
+                    },
+                    "aggFunc": {
+                      "type": "string",
+                      "enum": [
+                        "sum",
+                        "min",
+                        "max",
+                        "count",
+                        "avg",
+                        "first",
+                        "last"
+                      ],
+                      "description": "The aggregation of this column in group and pivot rows."
                     }
                   },
                   "required": [
@@ -656,6 +734,46 @@
                     },
                     "chartMiniChartEnabled": {
                       "type": "boolean"
+                    }
+                  }
+                },
+                "gridPreset": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "description": "Parts of an AG Grid grid state (api.getState()): the layout the card opens with until the user changes it.",
+                  "properties": {
+                    "aggregation": {
+                      "type": "object"
+                    },
+                    "columnGroup": {
+                      "type": "object"
+                    },
+                    "columnOrder": {
+                      "type": "object"
+                    },
+                    "columnPinning": {
+                      "type": "object"
+                    },
+                    "columnSizing": {
+                      "type": "object"
+                    },
+                    "columnVisibility": {
+                      "type": "object"
+                    },
+                    "filter": {
+                      "type": "object"
+                    },
+                    "pivot": {
+                      "type": "object"
+                    },
+                    "rowGroup": {
+                      "type": "object"
+                    },
+                    "sideBar": {
+                      "type": "object"
+                    },
+                    "sort": {
+                      "type": "object"
                     }
                   }
                 }
@@ -1744,6 +1862,57 @@
                 "enableCellExpressions": {
                   "type": "boolean",
                   "description": "Cell values that start with = are expressions over the row, such as =[quantity] * [price]. Evaluated by the plugin, never as code."
+                },
+                "columnState": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "description": "The grid layout a new card opens with: parts of an AG Grid grid state, directly or under `default`. A card's own saved layout replaces it.",
+                  "properties": {
+                    "aggregation": {
+                      "type": "object"
+                    },
+                    "columnGroup": {
+                      "type": "object"
+                    },
+                    "columnOrder": {
+                      "type": "object"
+                    },
+                    "columnPinning": {
+                      "type": "object"
+                    },
+                    "columnSizing": {
+                      "type": "object"
+                    },
+                    "columnVisibility": {
+                      "type": "object"
+                    },
+                    "filter": {
+                      "type": "object"
+                    },
+                    "pivot": {
+                      "type": "object"
+                    },
+                    "rowGroup": {
+                      "type": "object"
+                    },
+                    "sideBar": {
+                      "type": "object"
+                    },
+                    "sort": {
+                      "type": "object"
+                    },
+                    "default": {
+                      "$ref": "#/$defs/gridPreset"
+                    }
+                  }
+                },
+                "filterModel": {
+                  "type": "object",
+                  "maxProperties": 200,
+                  "additionalProperties": {
+                    "type": "object"
+                  },
+                  "description": "The filters a new card opens with, as an AG Grid filter model keyed by column."
                 }
               },
               "$defs": {
@@ -2193,6 +2362,33 @@
                       "type": "string",
                       "maxLength": 2000,
                       "description": "The column's value as an expression over the row's columns, such as [revenue] - [cost]: literals, [column], + - * / %, comparisons, && || ??, ?: and Math functions."
+                    },
+                    "rowGroup": {
+                      "type": "boolean",
+                      "description": "Groups the rows by this column when the card opens."
+                    },
+                    "rowGroupIndex": {
+                      "type": "integer",
+                      "minimum": 0,
+                      "maximum": 50,
+                      "description": "The column's place among the row groups."
+                    },
+                    "pivot": {
+                      "type": "boolean",
+                      "description": "Pivots on this column when the card opens (with pivot mode on)."
+                    },
+                    "aggFunc": {
+                      "type": "string",
+                      "enum": [
+                        "sum",
+                        "min",
+                        "max",
+                        "count",
+                        "avg",
+                        "first",
+                        "last"
+                      ],
+                      "description": "The aggregation of this column in group and pivot rows."
                     }
                   },
                   "required": [
@@ -2263,6 +2459,46 @@
                     },
                     "chartMiniChartEnabled": {
                       "type": "boolean"
+                    }
+                  }
+                },
+                "gridPreset": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "description": "Parts of an AG Grid grid state (api.getState()): the layout the card opens with until the user changes it.",
+                  "properties": {
+                    "aggregation": {
+                      "type": "object"
+                    },
+                    "columnGroup": {
+                      "type": "object"
+                    },
+                    "columnOrder": {
+                      "type": "object"
+                    },
+                    "columnPinning": {
+                      "type": "object"
+                    },
+                    "columnSizing": {
+                      "type": "object"
+                    },
+                    "columnVisibility": {
+                      "type": "object"
+                    },
+                    "filter": {
+                      "type": "object"
+                    },
+                    "pivot": {
+                      "type": "object"
+                    },
+                    "rowGroup": {
+                      "type": "object"
+                    },
+                    "sideBar": {
+                      "type": "object"
+                    },
+                    "sort": {
+                      "type": "object"
                     }
                   }
                 }

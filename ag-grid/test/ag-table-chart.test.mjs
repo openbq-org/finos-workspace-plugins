@@ -7,7 +7,7 @@ import { compileExpression, compileFormatter } from "../src/ag-table-chart/expre
 import { columnColorStyle, contrastText, greenRedStyle, ruleMatches, withOpacity } from "../src/ag-table-chart/colors.js";
 import { pointParams, pointStyle, sparklineData, sparklineOptions, sparklinePoints } from "../src/ag-table-chart/sparkline.js";
 import { fillTemplate, renderMarkdown } from "../src/ag-table-chart/markdown.js";
-import { HoverCardTooltip, changeTrackedColumns, agTableChartColumnDefs, renderFnsOf, toColDef } from "../src/ag-table-chart/columns.js";
+import { HoverCardTooltip, changeTrackedColumns, agTableChartColumnDefs, dateText, epochMs, isDateName, renderFnsOf, toColDef } from "../src/ag-table-chart/columns.js";
 import { agChartType, chartColumns, navigatorOverrides } from "../src/ag-table-chart/chartView.js";
 
 const en = { locale: "en-US" };
@@ -287,4 +287,49 @@ test("expressions read columns by name and refuse code", () => {
   assert.throws(() => compileExpression("fetch('https://evil')")(() => undefined), TypeError);
   assert.equal(run("[name].constructor"), undefined);
   assert.throws(() => compileExpression("x".repeat(2001)), SyntaxError);
+});
+
+test("columns carry the cell data type the Advanced Filter takes its operators from", () => {
+  const rows = [{ name: "AAPL", price: 101.5, when: "2026-11-12", up: true }];
+  assert.equal(toColDef({ field: "price" }, rows).cellDataType, "number");
+  assert.equal(toColDef({ field: "name" }, rows).cellDataType, "text");
+  assert.equal(toColDef({ field: "when" }, rows).cellDataType, false);
+  assert.equal(toColDef({ field: "up" }, rows).cellDataType, false);
+});
+
+test("a later colour rule overrides an earlier one, and contains ignores case", () => {
+  const rules = [{ condition: "gt", value: 0, color: "green" }, { condition: "gt", value: 100, color: "blue", fill: true }];
+  assert.deepEqual(columnColorStyle(rules, 50), { color: "#16a34a" });
+  assert.equal(columnColorStyle(rules, 500).backgroundColor, "#2563eb");
+  assert.equal(ruleMatches({ condition: "contains", value: "pend" }, "PENDING"), true);
+  assert.equal(ruleMatches({ condition: "notContains", value: "PEND" }, "pending"), false);
+});
+
+test("Unix times in a date-named column read as dates, and a midnight time shows as its date", () => {
+  assert.equal(epochMs(1700000000), 1700000000000);
+  assert.equal(epochMs(1700000000000), 1700000000000);
+  assert.equal(epochMs(2024), null);
+  assert.equal(isDateName("trade_date") && isDateName("createdAt") && isDateName("timestamp"), true);
+  assert.equal(isDateName("updates") || isDateName("category") || isDateName("data"), false);
+  assert.equal(dateText("2024-03-01T00:00:00"), "2024-03-01");
+  assert.equal(dateText("2024-03-01T00:00:00.000Z"), "2024-03-01");
+  assert.equal(dateText("2024-03-01T09:30:00"), "2024-03-01T09:30:00");
+  assert.equal(dateText(1709251200), "2024-03-01");
+  assert.equal(dateText(1709285400000), "2024-03-01 09:30:00");
+
+  const rows = [{ date: 1709251200, ticks: 1709251200 }];
+  const [date, ticks] = agTableChartColumnDefs(rows);
+  assert.equal(date.filter, "agDateColumnFilter");
+  assert.equal(date.valueFormatter({ value: date.valueGetter({ data: rows[0] }), data: rows[0], context: {} }), "2024-03-01");
+  assert.equal(ticks.filter, "agNumberColumnFilter", "a number without a date name stays a number");
+});
+
+test("columnsDefs take row groups, pivot and aggregation", () => {
+  const [desk, sales] = agTableChartColumnDefs([{ desk: "A", sales: 1 }], {
+    columnsDefs: [{ field: "desk", rowGroup: true, rowGroupIndex: 0, pivot: false }, { field: "sales", aggFunc: "sum" }],
+  });
+  assert.equal(desk.rowGroup, true);
+  assert.equal(desk.rowGroupIndex, 0);
+  assert.equal(desk.pivot, false);
+  assert.equal(sales.aggFunc, "sum");
 });

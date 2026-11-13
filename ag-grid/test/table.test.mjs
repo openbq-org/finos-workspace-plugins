@@ -354,3 +354,54 @@ test("a card that never toggled floating filters keeps the backend's choice", as
     abort.abort();
   }
 });
+
+test("fields with dots are plain keys, and columnsDefs group and aggregate the rows", async () => {
+  const data = [{ desk: "A", "eps.ttm": 1.5, sales: 10 }, { desk: "A", "eps.ttm": 2, sales: 5 }, { desk: "B", "eps.ttm": 3, sales: 7 }];
+  const definition = { columnsDefs: [{ field: "desk", rowGroup: true }, { field: "eps.ttm" }, { field: "sales", aggFunc: "sum" }] };
+  const { el, abort } = await render({ data, definition });
+  try {
+    const api = await liveApi(el);
+    assert.deepEqual(api.getRowGroupColumns().map((c) => c.getColId()), ["desk"]);
+    const groups = [];
+    api.forEachNode((node) => { if (node.group) groups.push([node.key, node.aggData?.sales]); });
+    assert.deepEqual(groups.sort(), [["A", 15], ["B", 7]]);
+    const leaf = [];
+    api.forEachNode((node) => { if (!node.group) leaf.push(api.getCellValue({ rowNode: node, colKey: "eps.ttm" })); });
+    assert.deepEqual(leaf.sort(), [1.5, 2, 3]);
+  } finally {
+    abort.abort();
+    await settle(100);
+  }
+});
+
+test("a new card opens with the definition's layout and filters; a saved layout replaces them", async () => {
+  const data = [{ name: "A", desk: "X", tvl: 5 }, { name: "B", desk: "Y", tvl: 50 }, { name: "C", desk: "X", tvl: 500 }];
+  const definition = {
+    columnsDefs: [{ field: "name" }, { field: "desk", rowGroup: true }, { field: "tvl" }],
+    columnState: { default: { sort: { sortModel: [{ colId: "tvl", sort: "desc" }] }, columnVisibility: { hiddenColIds: ["name"] } } },
+    filterModel: { tvl: { filterType: "number", type: "greaterThan", filter: 10 } },
+  };
+  const fresh = await render({ data, definition });
+  try {
+    const api = await liveApi(fresh.el);
+    assert.deepEqual(Object.keys(api.getFilterModel()), ["tvl"]);
+    const state = api.getColumnState();
+    assert.equal(state.find((c) => c.colId === "tvl").sort, "desc");
+    assert.equal(state.find((c) => c.colId === "name").hide, true);
+    assert.deepEqual(state.filter((c) => c.rowGroup).map((c) => c.colId), ["desk"], "the column's own row group stays");
+  } finally {
+    fresh.abort.abort();
+    await settle(100);
+  }
+
+  const saved = { grid: { sort: { sortModel: [{ colId: "tvl", sort: "asc" }] } } };
+  const reopened = await render({ data, definition, state: saved });
+  try {
+    const api = await liveApi(reopened.el);
+    assert.deepEqual(api.getFilterModel(), {}, "the card's own layout has no filter");
+    assert.equal(api.getColumnState().find((c) => c.colId === "tvl").sort, "asc");
+  } finally {
+    reopened.abort.abort();
+    await settle(100);
+  }
+});

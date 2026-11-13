@@ -149,6 +149,7 @@ export function baseOptions(model, gridOptions = {}, { serverSide = false } = {}
     paginationAutoPageSize: !serverSide,
     paginationPageSizeSelector: false,
     suppressDragLeaveHidesColumns: true,
+    suppressFieldDotNotation: true,
     stopEditingWhenCellsLoseFocus: true,
     tooltipShowDelay: 400,
     tooltipInteraction: true,
@@ -474,6 +475,39 @@ export function gridStateSnapshot(api) {
   delete snapshot.ssrmRowGroupExpansion;
   delete snapshot.columnSizing;
   return JSON.stringify(snapshot).length <= MAX_GRID_STATE_TEXT ? snapshot : null;
+}
+
+const GRID_STATE_KEYS = [
+  "aggregation", "columnGroup", "columnOrder", "columnPinning", "columnSizing", "columnVisibility", "filter", "focusedCell",
+  "pagination", "rowPinning", "pivot", "cellSelection", "rangeSelection", "rowGroup", "rowGroupExpansion",
+  "ssrmRowGroupExpansion", "rowSelection", "scroll", "sideBar", "sort",
+];
+
+/**
+ * The layout a new card opens with, from the definition: `columnState` (a grid state, directly or
+ * under `default`) and `filterModel`. Null when the definition sets neither.
+ */
+export function presetStateOf(definition) {
+  const table = definition && typeof definition === "object" ? definition : {};
+  const columnState = table.columnState && typeof table.columnState === "object" ? table.columnState : {};
+  const own = Object.fromEntries(Object.entries(columnState).filter(([key, value]) => key !== "default" && value && typeof value === "object"));
+  const preset = { ...(columnState.default && typeof columnState.default === "object" ? columnState.default : {}), ...own };
+  if (table.filterModel && typeof table.filterModel === "object" && Object.keys(table.filterModel).length) preset.filter = { filterModel: table.filterModel };
+  return Object.keys(preset).length ? preset : null;
+}
+
+/**
+ * Applies a preset without resetting what it leaves out: the column definitions' own grouping,
+ * pivot and widths stay unless the preset names them.
+ */
+export function applyPresetState(api, preset) {
+  if (!preset) return;
+  const ignored = GRID_STATE_KEYS.filter((key) => !Object.hasOwn(preset, key));
+  try {
+    api.setState({ ...preset, partialColumnState: true }, [...new Set([...ignored, ...TRANSIENT_GRID_STATE])]);
+  } catch (e) {
+    console.warn("ag-grid preset layout:", e.message);
+  }
 }
 
 export function restoreGridState(api, saved) {

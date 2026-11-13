@@ -1,7 +1,7 @@
-"""The examples of OpenBB Workspace's AgGrid table page, as `aggrid-table` widgets.
+"""The AgGrid table examples, as `aggrid-table` widgets.
 
-An OpenBB widget of type `table` with `data.table` is here a widget of type `aggrid-table` with
-`data["aggrid-table"]`; the rows its endpoint returns are the same.
+A widget of type `table` with `data.table` in a widgets.json is here a widget of type
+`aggrid-table` with `data["aggrid-table"]`; the rows its endpoint returns are the same.
 """
 
 import math
@@ -324,7 +324,43 @@ WIDGETS = {
         refetchInterval=5000,
         h=10,
     ),
+    "ag_table_chart_grouped_layout": widget(
+        "Grouped trades with a starting layout",
+        "rowGroup and aggFunc per column, a field with a dot in its name, Unix times read as dates, and the layout and filter a new card opens with",
+        "trades-by-desk",
+        {
+            "columnsDefs": [
+                {"field": "desk", "headerName": "Desk", "rowGroup": True, "hide": True},
+                {"field": "symbol", "headerName": "Symbol"},
+                {"field": "trade_date", "headerName": "Trade date"},
+                {"field": "eps.ttm", "headerName": "EPS (TTM)", "decimalPlaces": 2},
+                {"field": "notional", "headerName": "Notional", "formatterFn": "int", "aggFunc": "sum"},
+                {"field": "quantity", "headerName": "Quantity", "formatterFn": "int", "aggFunc": "sum"},
+            ],
+            "columnState": {"default": {"sort": {"sortModel": [{"colId": "notional", "sort": "desc"}]}}},
+            "filterModel": {"notional": {"filterType": "number", "type": "greaterThan", "filter": 100000}},
+        },
+        h=12,
+    ),
 }
+
+TRADES_BY_DESK = [
+    ("Rates", "UST10Y", 1709251200, 4.1, 2500000, 25),
+    ("Rates", "UST2Y", 1709510400, 4.6, 80000, 8),
+    ("Rates", "BUND", 1709596800, 2.3, 1200000, 12),
+    ("Equities", "AAPL", 1709251200, 6.4, 450000, 2500),
+    ("Equities", "MSFT", 1709683200, 11.8, 620000, 1500),
+    ("Equities", "NVDA", 1709769600, 1.2, 95000, 100),
+    ("Credit", "IG CDX", 1709856000, 0.0, 3100000, 31),
+    ("Credit", "HY CDX", 1709251200, 0.0, 700000, 7),
+]
+
+
+def trades_by_desk() -> list[dict]:
+    return [
+        {"desk": desk, "symbol": symbol, "trade_date": date, "eps.ttm": eps, "notional": notional, "quantity": quantity}
+        for desk, symbol, date, eps, notional, quantity in TRADES_BY_DESK
+    ]
 
 
 def assets() -> list[dict]:

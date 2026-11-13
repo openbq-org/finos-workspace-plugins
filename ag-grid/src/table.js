@@ -1,6 +1,7 @@
 import { createChartView } from "./ag-table-chart/chartView.js";
 import { agTableChartColumnDefs, changeTrackedColumns, transpose } from "./ag-table-chart/columns.js";
 import {
+  applyPresetState,
   applyTheme,
   attachCardActions,
   backendOptions,
@@ -15,6 +16,7 @@ import {
   gridOptionsFor,
   gridStateOf,
   idFieldOf,
+  presetStateOf,
   rawCsv,
   restoreGridState,
   rowIdGetter,
@@ -345,7 +347,8 @@ export function mountTable({ model, el, signal, experimental, tracker, saved = {
     setRows(next.rowData, next.transposed);
     if (!gridRestored && hasData && (api.getColumns() || []).length) {
       gridRestored = true;
-      restoreGridState(api, saved.grid);
+      if (saved.grid) restoreGridState(api, saved.grid);
+      else applyPresetState(api, presetStateOf(next.table));
       tracker.gridRestored();
     }
     chartView?.refresh();
