@@ -62,6 +62,16 @@ WIDGETS = {
         },
         gridData={"w": 40, "h": 24},
     ),
+    "aggrid_ssrm_body": widget(
+        "Trades, server-side (request in the body)",
+        "aggrid-ssrm for a backend that takes the grid's request as the whole body: the gridState param has bodyRoot, so startRow, sortModel and the rest arrive at the top of the body",
+        "aggrid-ssrm",
+        "/ag-grid/trades/ssrm-body",
+        method="POST",
+        params=[{**STATE_PARAM, "bodyRoot": True}],
+        data={"aggrid-ssrm": {"pageSize": 50, "wsRowIdColumn": "id"}},
+        gridData={"w": 40, "h": 24},
+    ),
     "aggrid_infinite_state": infinite(
         "Trades, infinite (grid state)",
         "aggrid-infinite over a POST endpoint: each block is the gridState body param, answered with rowData and rowCount",
@@ -98,15 +108,15 @@ WIDGETS = {
     ),
     "aggrid_file_workbook": widget(
         "Positions workbook",
-        "aggrid-file: an .xlsx workbook sent as base64 in JSON, with a title row above its header, dates, and two sheets to pick from",
+        "aggrid-file: an .xlsx workbook sent as the file itself, with a title row above its header, dates, and two sheets to pick from",
         "aggrid-file",
-        "/ag-grid/files/positions",
+        "/ag-grid/files/positions.xlsx",
     ),
     "aggrid_file_csv": widget(
         "Trades CSV",
-        "aggrid-file: a CSV sent as text in JSON ({ csv }); the card can also open a file from the computer",
+        "aggrid-file: a CSV sent as the file itself; the card can also open a file from the computer",
         "aggrid-file",
-        "/ag-grid/files/trades-csv",
+        "/ag-grid/files/trades.csv",
     ),
     "aggrid_sql": widget(
         "Trades SQL",

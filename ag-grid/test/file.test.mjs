@@ -83,3 +83,23 @@ test("a file that cannot be read says why, and a card without data asks for one"
   }
   assert.deepEqual(fileResult(["a", "b"], [{ a: 1 }]), { columns: [{ name: "a", type: "" }, { name: "b", type: "" }], rows: [[1, null]] });
 });
+
+test("a file answer from the host, raw or a JSON file that carries a file, shows as a table", async () => {
+  const encode = (text) => btoa(unescape(encodeURIComponent(text)));
+  const raw = await render({ data: { file: { name: "trades.csv", mime: "text/csv", base64: encode("desk,qty\nFX,3\n") } } });
+  try {
+    const api = await liveApi(raw.el);
+    assert.deepEqual(api.getColumns().map((c) => c.getColId()), ["desk", "qty"]);
+  } finally {
+    raw.abort.abort();
+    await settle(50);
+  }
+  const wrapped = await render({ data: { file: { name: "answer.json", mime: "application/json", base64: encode(JSON.stringify({ csv: "symbol,price\nIBM,101\n" })) } } });
+  try {
+    const api = await liveApi(wrapped.el);
+    assert.deepEqual(api.getColumns().map((c) => c.getColId()), ["symbol", "price"]);
+  } finally {
+    wrapped.abort.abort();
+    await settle(50);
+  }
+});

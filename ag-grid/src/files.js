@@ -296,6 +296,8 @@ export async function readFile(file, { sheet, dataKey, readParquet } = {}) {
     } catch (error) {
       throw new Error(`The JSON could not be read: ${error.message}`);
     }
+    const inner = fileOfAnswer(value);
+    if (inner) return readFile(inner, { sheet, dataKey, readParquet });
     const rows = rowsFromJson(value, dataKey);
     return { columns: [...new Set(rows.flatMap((r) => Object.keys(r ?? {})))], rows: rows.slice(0, MAX_FILE_ROWS), truncated: rows.length > MAX_FILE_ROWS, sheets: [], sheet: null };
   }

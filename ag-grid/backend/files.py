@@ -81,17 +81,23 @@ def workbook(sheets: dict[str, list[list]]) -> bytes:
     return out.getvalue()
 
 
-def positions_workbook() -> dict:
+def workbook_bytes() -> bytes:
     rows = trades.build()[:200]
     by_desk: dict[str, float] = {}
     for row in rows:
         by_desk[row["desk"]] = by_desk.get(row["desk"], 0) + row["notional"]
-    sheets = {
-        "Trades": [["Trades report"], [], ["id", "traded", "desk", "product", "quantity", "price", "notional"]]
-        + [[r["id"], date.fromisoformat(r["traded"]), r["desk"], r["product"], r["quantity"], r["price"], r["notional"]] for r in rows],
-        "By desk": [["desk", "notional"]] + [[desk, round(total, 2)] for desk, total in sorted(by_desk.items())],
-    }
-    return {"file": {"name": "positions.xlsx", "base64": base64.b64encode(workbook(sheets)).decode()}}
+    return workbook(
+        {
+            "Trades": [["Trades report"], [], ["id", "traded", "desk", "product", "quantity", "price", "notional"]]
+            + [[r["id"], date.fromisoformat(r["traded"]), r["desk"], r["product"], r["quantity"], r["price"], r["notional"]] for r in rows],
+            "By desk": [["desk", "notional"]] + [[desk, round(total, 2)] for desk, total in sorted(by_desk.items())],
+        }
+    )
+
+
+def positions_workbook() -> dict:
+    """The workbook carried in JSON, for a host that passes plugins JSON only."""
+    return {"file": {"name": "positions.xlsx", "base64": base64.b64encode(workbook_bytes()).decode()}}
 
 
 def trades_csv() -> dict:

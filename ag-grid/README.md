@@ -319,10 +319,10 @@ The widget sends one request at a time and gives up on one after 35 seconds.
 its rows, with headers made from their names (`trade_id` is *Trade Id*), and that answer is the
 grid's first block, so the grid asks for nothing more until the user scrolls, sorts, filters or
 groups. `pivotFields` is read as `pivotResultFields`. A backend written for AG Grid's request as
-the whole POST body reads it from the `gridState` body param instead, because Workspace sends
-widget params, not a body of the widget's own: in Python,
-`request = json.loads(body["gridState"] or "{}")`. Its own params go in the query string or the
-body as their `in` says.
+the whole POST body declares its `gridState` param with `"bodyRoot": true`, and Workspace puts the
+request's keys (`startRow`, `endRow`, `sortModel`, `filterModel` and the rest, with the plugin's
+`seq` and `event`) at the top of the body, so the backend reads them as it always has. Its own
+params go in the query string or the body as their `in` says.
 
 **Chart of the page.** With `chartView` (or `enableCharts: true`), a *Table / Chart (this page)*
 toolbar shows a chart of the current page's rows, as the table widget's chart view does
@@ -394,9 +394,9 @@ an update changes only those columns and keeps the others as they were; without 
 every field it has. A stream keeps at most `maxStreamRows` rows (5,000 by default), dropping the
 oldest. A backend whose WebSocket was declared as `wsEndpoint` sets `data.streamEndpoint` to it.
 `streamNewestFirst: true` puts rows a stream adds on top, and the oldest leave from the bottom.
-The widget does not send messages up the WebSocket: Workspace opens `data.streamEndpoint` as it is
-written, without the widget's params, and only receives on it, so the feed cannot change with the
-params.
+The widget does not send messages up the WebSocket. Workspace opens `data.streamEndpoint` with
+the widget's query params in its URL and opens it again when they change, so a feed follows the
+params by reading them from its URL.
 
 Changes are applied every 150 ms. Changed cells flash with `showCellChange`. The strip above the
 grid shows whether the feed is live, retrying or closed. The widget takes the same configuration
@@ -407,10 +407,12 @@ as the table widget.
 The widget shows a file as an AgGrid table, with everything the table widget has: formats,
 filters, formulas, charts, exports and the card's settings. The file comes from:
 
-- **The widget's endpoint**, as JSON, because Workspace passes plugins JSON answers only:
-  `{ "file": { "name": "positions.xlsx", "base64": "..." } }` for a workbook (or any file),
-  `{ "file": { "name": "trades.csv", "text": "..." } }`, `{ "csv": "..." }` or `{ "tsv": "..." }`
-  for text, or rows as the table widget takes them.
+- **The widget's endpoint**, which answers with the file itself: the widget's handle declares
+  `accepts: "file"`, so Workspace reads the answer's bytes and passes them on, named by the
+  answer's `Content-Disposition` or the URL. A JSON answer still works too: a JSON file of rows, or
+  one that carries a file, `{ "file": { "name": "positions.xlsx", "base64": "..." } }`,
+  `{ "file": { "name": "trades.csv", "text": "..." } }`, `{ "csv": "..." }` or `{ "tsv": "..." }`.
+  Files are passed up to 25 MB.
 - **The user's computer**: the **Open file** button, or a file dropped on the card. Such a file
   stays in the card until it is closed or reloaded; it is not saved with the dashboard, because a
   card saves its state, not files. **Add as a table widget** keeps a copy, as the SQL widget's
@@ -596,6 +598,13 @@ widget in `table.test.mjs`, `ssrm.test.mjs`, `infinite.test.mjs`, `streaming.tes
 `sql.test.mjs`; the SQL completion in `completion.test.mjs`; OpenBQ's table configuration in
 `ag-table-chart.test.mjs`; and the manifest in `manifest.test.mjs`. Drawing charts needs a browser;
 check them on a dashboard.
+
+## Workspace version
+
+From 3.14.0, the file widget's handle declares `accepts: "file"`, and the server-side widget's
+examples use `bodyRoot`. Both need a Workspace that has them (branch
+`feature/aggrid-plugin-host-support`, commit `98dbe84e`); an older Workspace blocks the version
+when it scans it, because its manifest takes only `accepts: "json"`.
 
 ## The data backend
 

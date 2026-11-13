@@ -44,7 +44,8 @@ The `type` is the AgGrid type, and the widget's options go in `data["<type>"]`, 
 - **Server-side** (`aggrid-ssrm`): `POST`, with a hidden `gridState` body param; the backend answers `{ rowData, rowCount }` per request.
 - **SQL** (`aggrid-sql`): `POST`, with a `sql` (or `query`) body param; `data["aggrid-sql"].serverSide: true` with a `gridState` body param pages the result on the server.
 - **Streaming**: `data.streamEndpoint` is the WebSocket; `wsRowIdColumn` or `wsRowIdColumns` identify rows. Messages are `{ op: "snapshot" | "upsert" | "remove" }` or plain rows.
-- **File** (`aggrid-file`): the endpoint answers `{ file: { name, base64 } }` for .xlsx, or `{ csv }` / `{ file: { name, text } }` for text.
+- **File** (`aggrid-file`): the endpoint answers with the file itself (CSV, TSV, JSON, .xlsx or .parquet, named by `Content-Disposition`), or JSON that carries one.
+- **A backend that takes the grid's request as the whole body** (server-side): declare `gridState` with `"bodyRoot": true` and `"in": "body"`.
 
 ## Rules
 

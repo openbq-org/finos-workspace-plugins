@@ -37,6 +37,8 @@ def call(client, widget: dict, **body) -> dict:
     else:
         answer = client.get(widget["endpoint"], params=params(widget))
     assert answer.status_code == 200, widget["endpoint"]
+    if "json" not in answer.headers.get("content-type", ""):
+        return {"file": answer.content}
     return answer.json()
 
 
@@ -61,7 +63,7 @@ def test_every_widget_answers_and_follows_the_plugins_definition(client):
     jsonschema = pytest.importorskip("jsonschema")
     known = handles()
     widgets = client.get("/widgets.json").json()
-    assert len(widgets) == 26
+    assert len(widgets) == 27
     assert {w["type"] for w in widgets.values()} == set(known)
     for key, widget in widgets.items():
         handle = known[widget["type"]]
@@ -284,3 +286,21 @@ def test_the_file_widget_examples_carry_a_workbook_and_a_csv(client):
     assert {"xl/workbook.xml", "xl/worksheets/sheet1.xml", "xl/worksheets/sheet2.xml", "xl/styles.xml"} <= set(parts)
     csv = client.get("/ag-grid/files/trades-csv").json()["csv"]
     assert csv.startswith("id,desk,product,quantity,price\n") and len(csv.splitlines()) == 101
+
+
+def test_a_backend_that_takes_the_grid_request_as_the_body(client):
+    columns = client.post("/ag-grid/trades/ssrm-body", json={}).json()
+    assert "columnDefs" in columns
+    page = client.post("/ag-grid/trades/ssrm-body", json={"seq": 4, "event": {"type": "getRows"}, "startRow": 0, "endRow": 5, "rowGroupCols": [], "valueCols": [], "pivotCols": [], "pivotMode": False, "groupKeys": [], "filterModel": {}, "sortModel": [{"colId": "quantity", "sort": "desc"}]}).json()
+    assert page["seq"] == 4 and len(page["rowData"]) == 5
+    quantities = [r["quantity"] for r in page["rowData"]]
+    assert quantities == sorted(quantities, reverse=True)
+
+
+def test_the_file_examples_are_served_as_files(client):
+    workbook = client.get("/ag-grid/files/positions.xlsx")
+    assert workbook.headers["content-type"].startswith("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+    assert 'filename="positions.xlsx"' in workbook.headers["content-disposition"]
+    assert workbook.content[:2] == b"PK"
+    csv = client.get("/ag-grid/files/trades.csv")
+    assert csv.headers["content-type"].startswith("text/csv") and csv.text.startswith("id,desk,")

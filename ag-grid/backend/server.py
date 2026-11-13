@@ -12,7 +12,7 @@ from starlette.applications import Starlette
 from starlette.middleware import Middleware
 from starlette.middleware.cors import CORSMiddleware
 from starlette.requests import Request
-from starlette.responses import JSONResponse
+from starlette.responses import JSONResponse, Response
 from starlette.routing import Route, WebSocketRoute
 
 import ag_table_chart
@@ -86,6 +86,32 @@ async def trades_ssrm(request: Request) -> JSONResponse:
         return JSONResponse(trades.ssrm(state))
     except trades.RequestError as error:
         return JSONResponse({"error": str(error), **({"seq": state["seq"]} if "seq" in state else {})})
+
+
+async def trades_ssrm_body(request: Request) -> JSONResponse:
+    """The same trades for a backend that takes the grid's request as the whole body: the widget
+    declares its gridState param with "bodyRoot": true, so startRow, sortModel and the rest arrive
+    at the top of the body. An empty body asks for the columns."""
+    state: dict = {}
+    try:
+        state = await body_of(request)
+        if not isinstance(state, dict):
+            raise trades.RequestError("The body is not a JSON object.")
+        return JSONResponse(trades.ssrm(state))
+    except trades.RequestError as error:
+        return JSONResponse({"error": str(error), **({"seq": state["seq"]} if isinstance(state, dict) and "seq" in state else {})})
+
+
+def file_response(content: bytes, name: str, media_type: str) -> Response:
+    return Response(content, media_type=media_type, headers={"Content-Disposition": f'attachment; filename="{name}"'})
+
+
+async def positions_file(_request: Request) -> Response:
+    return file_response(files.workbook_bytes(), "positions.xlsx", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+
+
+async def trades_file(_request: Request) -> Response:
+    return file_response(files.trades_csv()["csv"].encode(), "trades.csv", "text/csv")
 
 
 def number(request: Request, name: str, default: int) -> int:
@@ -174,6 +200,9 @@ app = Starlette(
         Route("/ag-table-chart/live", live, methods=["GET"]),
         Route("/ag-grid/positions", positions_book, methods=["POST"]),
         Route("/ag-grid/trades/ssrm", trades_ssrm, methods=["POST"]),
+        Route("/ag-grid/trades/ssrm-body", trades_ssrm_body, methods=["POST"]),
+        Route("/ag-grid/files/positions.xlsx", positions_file, methods=["GET"]),
+        Route("/ag-grid/files/trades.csv", trades_file, methods=["GET"]),
         Route("/ag-grid/trades/infinite/state", infinite_state, methods=["POST"]),
         Route("/ag-grid/trades/infinite/rest", infinite_rest, methods=["GET"]),
         Route("/ag-grid/trades/infinite/list", infinite_list, methods=["GET"]),

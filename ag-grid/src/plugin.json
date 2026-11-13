@@ -4494,8 +4494,8 @@
           {
             "type": "aggrid-file",
             "response": {
-              "accepts": "json",
-              "description": "A file carried in JSON: { file: { name, base64 } } for .xlsx or .parquet (or any file), { file: { name, text } } or { csv } / { tsv } for text, or rows as the table widget takes them. data[\"aggrid-file\"] takes the table configuration, dataKey and sheet."
+              "accepts": "file",
+              "description": "The file itself: CSV, TSV, JSON, .xlsx or .parquet, named by Content-Disposition or the URL. A JSON answer may also carry a file ({ file: { name, base64 | text } }, { csv }, { tsv }) or be rows. data[\"aggrid-file\"] takes the table configuration, dataKey and sheet."
             },
             "definition": {
               "type": "object",
