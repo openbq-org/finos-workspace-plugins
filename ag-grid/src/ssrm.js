@@ -4,8 +4,11 @@ import {
   attachCardActions,
   cellExpressionsOf,
   columnFieldsOf,
+  columnHeadersOf,
   compactColumnDefs,
   createGrid,
+  sampleRows,
+  visibleRowsOf,
   rawCsv,
   createStateChannel,
   createTracker,
@@ -136,8 +139,12 @@ export default {
       exportData: (id) => (api && id === "csv" ? rawCsv(api) : null),
       copilotContext: () => {
         if (!api) return null;
+        const loaded = visibleRowsOf(api, 500, (fn) => api.forEachNode(fn));
         return {
           columns: columnFieldsOf(api),
+          columnHeaders: columnHeadersOf(api),
+          rows: sampleRows(loaded),
+          rowsLoaded: loaded.length,
           rowsAtThisLevel: api.getDisplayedRowCount(),
           filterModel: filterModelOf(api),
           sortModel: sortModelOf(api),

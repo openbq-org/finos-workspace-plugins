@@ -375,9 +375,67 @@ export function columnMenuItems(params) {
   return items;
 }
 
-/** The context menu: AG Grid's items, with its Chart Range replaced by the plugin's Chart item. */
+export const MAX_PROMPT_ROWS = 100;
+export const MAX_PROMPT_COLUMNS = 20;
+export const MAX_PROMPT_TEXT = 12_000;
+
+function markdownCell(value) {
+  const plain = plainCell(value);
+  return plain === null ? "" : String(plain).replace(/\|/g, "\\|").replace(/[\r\n]+/g, " ");
+}
+
+/**
+ * The selected cells as a Markdown table for the AI agent: the first range's columns and rows,
+ * at most MAX_PROMPT_ROWS rows and MAX_PROMPT_COLUMNS columns. Null without a selection.
+ */
+export function selectionMarkdown(api) {
+  const range = (api.getCellRanges?.() ?? [])[0];
+  if (!range?.columns?.length || !range.startRow || !range.endRow) return null;
+  const columns = range.columns.slice(0, MAX_PROMPT_COLUMNS);
+  const [from, to] = [range.startRow.rowIndex, range.endRow.rowIndex].sort((a, b) => a - b);
+  const lines = [`| ${columns.map((c) => markdownCell(api.getDisplayNameForColumn(c, "header") || c.getColId())).join(" | ")} |`, `|${columns.map(() => " --- ").join("|")}|`];
+  let count = 0;
+  for (let i = from; i <= to && count < MAX_PROMPT_ROWS; i++) {
+    const node = api.getDisplayedRowAtIndex(i);
+    if (!node) continue;
+    lines.push(`| ${columns.map((c) => markdownCell(node.group && !c.getColDef().showRowGroup ? node.aggData?.[c.getColId()] : api.getCellValue({ rowNode: node, colKey: c, useFormatter: true }))).join(" | ")} |`);
+    count++;
+  }
+  const more = to - from + 1 > count ? `\n\n(The first ${count} of ${to - from + 1} selected rows.)` : "";
+  return `${lines.join("\n")}${more}`.slice(0, MAX_PROMPT_TEXT);
+}
+
+/** The rows the user sees as tab-separated text with a header row, for the clipboard. */
+export function visibleRowsText(api) {
+  const columns = visibleColumnsOf(api);
+  const cell = (v) => (v === null || v === undefined ? "" : String(v)).replace(/[\t\r\n]+/g, " ");
+  const lines = [columns.map((c) => cell(api.getDisplayNameForColumn(c, "header") || c.getColId())).join("\t")];
+  api.forEachNodeAfterFilterAndSort((node) => {
+    if (node.group || !node.data) return;
+    lines.push(columns.map((c) => cell(plainCell(api.getCellValue({ rowNode: node, colKey: c })))).join("\t"));
+  });
+  return lines.join("\n");
+}
+
+/**
+ * The context menu: AG Grid's items, with its Chart Range replaced by the plugin's Chart item,
+ * and, where the widget can use the clipboard, Ask the AI agent about these cells and Copy all rows.
+ */
 export function contextMenuItems(params) {
-  return (params.defaultItems ?? []).map((item) => (item === "chartRange" ? chartMenuItem(params.api) : item));
+  const items = (params.defaultItems ?? []).map((item) => (item === "chartRange" ? chartMenuItem(params.api) : item));
+  const actions = params.context?.actions;
+  const extra = [];
+  if (actions?.sendToAgent && (params.api.getCellRanges?.() ?? []).length) {
+    extra.push({
+      name: "Ask the AI agent about these cells",
+      action: () => {
+        const table = selectionMarkdown(params.api);
+        if (table) actions.sendToAgent(`Here are cells from a table on my dashboard:\n\n${table}\n\n`);
+      },
+    });
+  }
+  if (actions?.copyText) extra.push({ name: "Copy all rows", action: () => actions.copyText(visibleRowsText(params.api), "Rows copied, with their headers.") });
+  return extra.length ? [...items, "separator", ...extra] : items;
 }
 
 /** Puts the columns back as the column definitions have them: order, widths, visibility, pinning and grouping. */
@@ -873,14 +931,44 @@ export function sampleRows(rows, maxText = MAX_CONTEXT_ROWS_TEXT) {
   return sample;
 }
 
+/** A cell value as plain JSON: dates as ISO strings, objects as short JSON text. */
+export function plainCell(value) {
+  if (value instanceof Date) return Number.isNaN(value.getTime()) ? null : value.toISOString();
+  if (value === undefined || (typeof value === "number" && !Number.isFinite(value))) return null;
+  if (value !== null && typeof value === "object") return JSON.stringify(value).slice(0, 500);
+  return value;
+}
+
+/** The columns the user sees, in their order: no hidden column and no group column. */
+export function visibleColumnsOf(api) {
+  return (api.getAllDisplayedColumns?.() ?? []).filter((c) => !c.getColDef().showRowGroup && !c.getColId().startsWith("ag-Grid-"));
+}
+
+/** The rows as the user sees them: the visible columns (formulas included), after filters and sort. */
+export function visibleRowsOf(api, limit = Infinity, nodes = (fn) => api.forEachNodeAfterFilterAndSort(fn)) {
+  const columns = visibleColumnsOf(api);
+  const rows = [];
+  nodes((node) => {
+    if (node.group || !node.data || rows.length >= limit) return;
+    rows.push(Object.fromEntries(columns.map((c) => [c.getColId(), plainCell(api.getCellValue({ rowNode: node, colKey: c }))])));
+  });
+  return rows;
+}
+
+export function columnHeadersOf(api) {
+  return Object.fromEntries(visibleColumnsOf(api).map((c) => [c.getColId(), api.getDisplayNameForColumn(c, "header") || c.getColId()]));
+}
+
 export function copilotContextOf(api, extra = {}) {
-  const rows = leafRowsOf(api, 5000);
-  const columns = columnFieldsOf(api);
+  const rows = visibleRowsOf(api, 5000);
+  const columns = visibleColumnsOf(api).map((c) => c.getColId());
   return {
     rows: sampleRows(rows),
     rowCount: rows.length,
     columnCount: columns.length,
     columns,
+    columnHeaders: columnHeadersOf(api),
+    hiddenColumns: (api.getColumns?.() ?? []).filter((c) => !c.isVisible()).length,
     selectionCount: api.getSelectedNodes().length,
     filterModel: filterModelOf(api),
     sortModel: sortModelOf(api),

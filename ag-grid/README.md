@@ -46,8 +46,16 @@ package serves FINOS Workspace and BQ Workspace.
   groups and the side bar) is saved in the widget's `state` trait and restored when the dashboard
   opens again. On the table and streaming widgets, the table-to-chart view and its chart are saved
   too.
-- **Copilot context.** The AI agent can read the columns, the row count, the filter and sort
-  models and the grouping.
+- **Copilot context.** The AI agent can read the columns the user sees (hidden columns and their
+  values are left out; formula columns are in), their headers, a sample of the rows as they are
+  filtered and sorted, the row count, number statistics, the filter and sort models, the grouping
+  and the card's formulas. The server-side and infinite widgets give the rows they have loaded.
+- **Asking the AI agent about cells.** The context menu's **Ask the AI agent about these cells**
+  copies the selected cells (the first range, up to 100 rows and 20 columns) as a Markdown table
+  in a prompt, for the user to paste into the AI agent, and keeps it in the widget's Copilot
+  context. Workspace has no command that posts a message to the agent, so the clipboard carries
+  it. **Copy all rows** copies the rows the user sees, with their headers, as tab-separated text.
+  Both are on the table, streaming and file widgets and the table in the chat.
 - **Card actions.** The card's header has a **Floating filters** button, which switches the
   card's `floatingFilters` setting and shows a filter box under each column header while it is on.
   The card's options menu has **Autosize columns**, which sizes every column to its content,
@@ -463,7 +471,11 @@ against the query's own and the values bound as parameters.
 
 The `table` widget is also an agent component: the AI agent shows rows in the chat with
 `columnDefs` and `rowData` (at most 1,000 rows), and the user can add the card to a dashboard.
-The plugin's skill, `skills/ag-grid-widgets.md`, tells the agent when each widget fits.
+With `chartView: { "enabled": true, "chartType": "line" }` and `chartDataType` on its columns, the
+card opens as a chart of its rows, which the user can switch to the table.
+The plugin's skill, `skills/ag-grid-widgets.md`, tells the agent when each widget fits, how to
+show rows or a chart of them in the chat (`chartView` with `chartDataType` on the columns), and how
+to write `widgets.json` for each widget type.
 
 ## Model traits
 

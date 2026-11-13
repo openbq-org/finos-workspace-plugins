@@ -6080,7 +6080,7 @@
     "skills": [
       {
         "slug": "ag-grid-widgets",
-        "description": "The five AgGrid widgets and when each fits; how to show rows in the AgGrid table component: the data it takes and how to fill it from loaded tables.",
+        "description": "The six AgGrid widgets and when each fits; how to show rows, or a chart of them, in the AgGrid table component; and how to write widgets.json for each widget type.",
         "file": "skills/ag-grid-widgets.md"
       }
     ]

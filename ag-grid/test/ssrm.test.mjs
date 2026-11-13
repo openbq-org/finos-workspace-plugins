@@ -189,3 +189,21 @@ test("a backend that answers rows only: columns from its rows, its first answer 
     await settle(50);
   }
 });
+
+test("the AI agent gets the rows the server-side grid has loaded", async () => {
+  const rowsOnly = (state) => ({ seq: state.seq, rowData: rows.slice(state.startRow, state.endRow), rowCount: rows.length });
+  const model = hostModel({ data: { rowData: rows.slice(0, 100), rowCount: rows.length } }, { answer: rowsOnly });
+  const { el, abort } = mount();
+  const exposed = plugin.initialize({ model });
+  await plugin.render({ model, el, signal: abort.signal });
+  try {
+    await settle(300);
+    const ctx = exposed.copilotContext();
+    assert.ok(ctx.rowsLoaded >= 100, `${ctx.rowsLoaded} rows loaded`);
+    assert.deepEqual(ctx.rows[0], { id: "T0", desk: "FX", qty: 0 });
+    assert.equal(ctx.columnHeaders.desk, "Desk");
+  } finally {
+    abort.abort();
+    await settle(50);
+  }
+});

@@ -292,6 +292,11 @@ export function mountTable({ model, el, signal, experimental, tracker, saved = {
       invoke("core:ui:open-link", { url }).catch((e) => console.warn("ag-grid openUrl:", e.message));
       tracker.record("cellOnClick", { actionType: "openUrl", url });
     },
+    copyText(text, done) {
+      invoke("core:clipboard:write", { text })
+        .then(() => notify("info", done))
+        .catch(() => notify("warning", "The clipboard refused the copy."));
+    },
     sendToAgent(markdown, agentId) {
       tracker.state.agentPrompt = { markdown, agentId: agentId ?? null, timestamp: Date.now() };
       tracker.record("cellOnClick", { actionType: "sendToAgent", agentId: agentId ?? null });
