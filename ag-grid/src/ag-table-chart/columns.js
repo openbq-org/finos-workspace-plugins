@@ -5,7 +5,7 @@
  */
 import { fieldsOf, inferColumnType } from "../infer.js";
 import { columnColorStyle, greenRedStyle } from "./colors.js";
-import { formatValue, headerFromField, titleCase, yearOf } from "./format.js";
+import { clipped, formatValue, headerFromField, titleCase, yearOf } from "./format.js";
 import { fillTemplate, renderMarkdown } from "./markdown.js";
 import { sparklineOptions, sparklinePoints } from "./sparkline.js";
 
@@ -155,6 +155,100 @@ function onCellClick(def, params) {
   }
 }
 
+function hasCardOf(def, fns) {
+  const p = def.renderFnParams ?? {};
+  return fns.includes("hoverCard") || (Array.isArray(p.hoverCardData) && p.hoverCardData.length > 0);
+}
+
+/** True when the column's texts are mostly links: a sample's non-empty strings that start with http(s)://. */
+export function looksLikeLinks(rows, field) {
+  const texts = rows.slice(0, 50).map((r) => r?.[field]).filter((v) => typeof v === "string" && v !== "");
+  return texts.length > 0 && texts.filter((v) => /^https?:\/\/\S+$/i.test(v)).length * 2 > texts.length;
+}
+
+/** Long texts and abbreviated numbers show in full in their tooltip. */
+const TOOLTIP_TEXT_AT = 40;
+
+export function tooltipTextOf(params, colDef) {
+  const value = params.value;
+  if (value === null || value === undefined || value === "") return undefined;
+  if (typeof value === "number") {
+    const shown = typeof params.valueFormatted === "string" ? params.valueFormatted : null;
+    return shown && /[MBT]$/.test(shown.replace(colDef.suffix ?? "", "")) ? formatValue(value, { locale: params.context?.locale, decimals: params.context?.decimals }) : undefined;
+  }
+  if (typeof value !== "string") return undefined;
+  return params.context?.truncatedTooltips || value.length > TOOLTIP_TEXT_AT ? value : undefined;
+}
+
+/** A link cell: the URL, opened through the host (which asks the user first) when it is clicked. */
+export class LinkCell {
+  init(params) {
+    const doc = params.eGridCell?.ownerDocument ?? document;
+    this.gui = doc.createElement("span");
+    this.update(params);
+  }
+
+  update(params) {
+    const url = typeof params.value === "string" ? params.value : "";
+    this.gui.replaceChildren();
+    this.gui.className = "";
+    if (!/^https?:\/\/\S+$/i.test(url)) {
+      this.gui.textContent = params.valueFormatted ?? url;
+      return;
+    }
+    const link = this.gui.ownerDocument.createElement("span");
+    link.className = "ag-table-chart-link";
+    link.textContent = params.valueFormatted ?? url;
+    link.setAttribute("role", "link");
+    link.tabIndex = 0;
+    const open = (event) => {
+      event.stopPropagation();
+      params.context?.actions?.openUrl(url);
+    };
+    link.addEventListener("click", open);
+    link.addEventListener("keydown", (event) => { if (event.key === "Enter") open(event); });
+    this.gui.appendChild(link);
+  }
+
+  getGui() {
+    return this.gui;
+  }
+
+  refresh(params) {
+    this.update(params);
+    return true;
+  }
+}
+
+/** A cell that shows, for a moment after its value changed, an arrow and how much it moved. */
+export class ChangeCell {
+  init(params) {
+    const doc = params.eGridCell?.ownerDocument ?? document;
+    this.gui = doc.createElement("span");
+    this.update(params);
+  }
+
+  update(params) {
+    this.gui.replaceChildren();
+    this.gui.append(params.valueFormatted ?? (params.value === null || params.value === undefined ? "" : String(params.value)));
+    const delta = params.context?.deltas?.get(`${params.node?.id}|${params.field}`);
+    if (typeof delta !== "number" || delta === 0) return;
+    const mark = this.gui.ownerDocument.createElement("span");
+    mark.className = `ag-table-chart-delta ag-table-chart-delta-${delta > 0 ? "up" : "down"}`;
+    mark.textContent = `${delta > 0 ? "▲" : "▼"} ${params.format(delta, params.context)}`;
+    this.gui.append(" ", mark);
+  }
+
+  getGui() {
+    return this.gui;
+  }
+
+  refresh(params) {
+    this.update(params);
+    return true;
+  }
+}
+
 /** One OpenBQ column definition as an AG Grid ColDef. */
 export function toColDef(def, rows, table = {}) {
   const field = def.field;
@@ -165,6 +259,7 @@ export function toColDef(def, rows, table = {}) {
   const isDate = type === "date" || type === "dateString" || def.chartDataType === "time";
   const hoverCard = fns.includes("hoverCard");
   const cellField = p.hoverCard?.cellField;
+  const emptyValue = typeof table.emptyValue === "string" ? table.emptyValue : undefined;
 
   const col = {
     field,
@@ -182,7 +277,8 @@ export function toColDef(def, rows, table = {}) {
 
   if (def.sparkline) {
     const dataField = def.sparkline.dataField;
-    col.valueGetter = (params) => sparklinePoints(params.data ? params.data[dataField ?? field] : undefined);
+    const keys = { xKey: def.sparkline.options?.xKey, yKey: def.sparkline.options?.yKey };
+    col.valueGetter = (params) => sparklinePoints(params.data ? params.data[dataField ?? field] : undefined, keys);
     col.cellRenderer = "agSparklineCellRenderer";
     col.cellRendererParams = { sparklineOptions: sparklineOptions(def.sparkline) };
     col.sortable = false;
@@ -222,10 +318,22 @@ export function toColDef(def, rows, table = {}) {
       suffix: def.suffix,
       locale: params.context?.locale,
       decimals: params.context?.decimals,
+      abbreviate: params.context?.abbreviate === true,
+      emptyValue: emptyValue ?? params.context?.emptyValue,
     });
     if (fns.includes("titleCase")) text = titleCase(text);
-    return text;
+    return typeof value === "string" ? clipped(text) : text;
   };
+
+  if (!hasCardOf(def, fns)) {
+    col.tooltipValueGetter = (params) => tooltipTextOf(params, col);
+  }
+  if (type === "text" && !isDate && !fns.includes("cellOnClick") && looksLikeLinks(rows, field)) {
+    col.cellRenderer = LinkCell;
+  } else if (fns.includes("showCellChange") && def.enableCellChangeWs !== false) {
+    col.cellRenderer = ChangeCell;
+    col.cellRendererParams = { field, format: (delta, context) => formatValue(Math.abs(delta), { formatterFn: formatterFn === "compact" ? undefined : formatterFn, decimalPlaces: def.decimalPlaces, locale: context?.locale, decimals: context?.decimals }) };
+  }
 
   const align = def.align;
   if (align) {
@@ -255,7 +363,7 @@ export function toColDef(def, rows, table = {}) {
     classRules["ag-table-chart-cell-up"] = (params) => params.context?.changes?.get(`${params.node?.id}|${field}`) === "up";
     classRules["ag-table-chart-cell-down"] = (params) => params.context?.changes?.get(`${params.node?.id}|${field}`) === "down";
   }
-  const hasCard = hoverCard || (Array.isArray(p.hoverCardData) && p.hoverCardData.length);
+  const hasCard = hasCardOf(def, fns);
   if (hasCard) classRules["ag-table-chart-has-card"] = () => true;
   if (Object.keys(classRules).length) col.cellClassRules = classRules;
 

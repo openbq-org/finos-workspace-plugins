@@ -27,7 +27,7 @@ test("every widget reads its meta and data, writes params for the endpoint's bod
     assert.equal(widget.model.traits.meta.bind, "meta");
     assert.equal(widget.model.traits.params.access, "readwrite");
     assert.ok(widget.permissions.includes("core:data:read") && widget.permissions.includes("core:params:write"), widget.id);
-    assert.deepEqual(widget.settings.schema.properties.theme.enum, ["balham", "quartz", "alpine", "material"]);
+    assert.deepEqual(widget.settings.schema.properties.theme.enum, ["balham", "quartz", "alpine", "material", "compact"]);
   }
   assert.equal(manifest.adminSettings.defaults.theme, "balham");
   for (const id of ["ssrm", "streaming"]) assert.ok(widgets.find((w) => w.id === id).permissions.includes("core:data:stream"));
@@ -51,7 +51,7 @@ test("every skill is a markdown file under src/skills, and the artifact has a cl
 });
 
 test("the grid widgets have the card's floating filters button and its two menu items, and the SQL widget creates a static table", () => {
-  const icons = new Set(["download", "filter", "refresh", "sliders", "table"]);
+  const icons = new Set(["columns", "download", "filter", "refresh", "sliders", "table"]);
   for (const widget of widgets) {
     const actions = widget.actions ?? [];
     const placed = (placement) => actions.some((a) => a.placement === placement);
@@ -69,6 +69,8 @@ test("the grid widgets have the card's floating filters button and its two menu 
       ...(id === "table" ? [["download-chart", "navbar", null]] : []),
       ["autosize", "menu", null],
       ["clear-filters", "menu", null],
+      ["reset-columns", "menu", null],
+      ...(["table", "streaming"].includes(id) ? [["transpose", "menu", null], ["reverse-columns", "menu", null]] : []),
     ]);
   }
   assert.ok(widgets.find((w) => w.id === "table").permissions.includes("core:download:save"));
@@ -87,6 +89,67 @@ test("the table configuration takes row groups, pivot and aggregation per column
     assert.equal(column.pivot.type, "boolean");
     assert.deepEqual(column.aggFunc.enum, ["sum", "min", "max", "count", "avg", "first", "last"]);
     assert.equal(definition.properties.columnState.properties.default.$ref, "#/$defs/gridPreset");
-    assert.deepEqual(definition.properties.filterModel.additionalProperties, { type: "object" });
+    assert.equal(definition.properties.filterModel.$ref, "#/$defs/filterModel");
+    assert.equal(definition.$defs.gridPreset.additionalProperties, false);
   }
+});
+
+/* Workspace's discovery lints each definition: closed objects (or typed maps), arrays with maxItems,
+   strings with maxLength, an enum or a pattern, only known keywords, at most 8 levels deep and 64 KiB.
+   The same rules here, so a version that Workspace would block fails before it is built. */
+const KEYWORDS = new Set(["title", "description", "default", "examples", "type", "properties", "required", "additionalProperties", "items", "enum", "const", "minimum", "maximum", "exclusiveMinimum", "exclusiveMaximum", "minLength", "maxLength", "pattern", "minItems", "maxItems", "uniqueItems", "oneOf", "anyOf", "$defs", "$ref"]);
+
+function typesOf(node) {
+  if (typeof node.type === "string") return new Set([node.type]);
+  if (Array.isArray(node.type)) return new Set(node.type);
+  if (node.properties || node.additionalProperties) return new Set(["object"]);
+  if (node.items) return new Set(["array"]);
+  return new Set();
+}
+
+function lintFragment(schema) {
+  const problems = [];
+  if (JSON.stringify(schema).length > 64 * 1024) problems.push("larger than 64 KiB");
+  const defs = schema.$defs ?? {};
+  const check = (node, where, depth) => {
+    if (depth > 8) return problems.push(`${where}: deeper than 8`);
+    for (const key of Object.keys(node)) if (!KEYWORDS.has(key)) problems.push(`${where}: keyword ${key}`);
+    if (node.$ref) {
+      if (!node.$ref.startsWith("#/$defs/") || !Object.hasOwn(defs, node.$ref.slice(8))) problems.push(`${where}: $ref ${node.$ref}`);
+      return;
+    }
+    for (const key of ["oneOf", "anyOf"]) (node[key] ?? []).forEach((option, i) => check(option, `${where}/${key}/${i}`, depth + 1));
+    if (node.enum || node.const !== undefined) return;
+    const types = typesOf(node);
+    if (!types.size && !node.oneOf && !node.anyOf) problems.push(`${where}: no type`);
+    if (types.has("object")) {
+      if (node.additionalProperties !== false) {
+        if (node.additionalProperties && typeof node.additionalProperties === "object") check(node.additionalProperties, `${where}/additionalProperties`, depth + 1);
+        else problems.push(`${where}: not closed`);
+      }
+      for (const [name, child] of Object.entries(node.properties ?? {})) check(child, `${where}/properties/${name}`, depth + 1);
+    }
+    if (types.has("array")) {
+      if (!Number.isInteger(node.maxItems)) problems.push(`${where}: array without maxItems`);
+      if (node.items) check(node.items, `${where}/items`, depth + 1);
+      else problems.push(`${where}: array without items`);
+    }
+    if (types.has("string") && !Number.isInteger(node.maxLength) && node.pattern === undefined) problems.push(`${where}: string without maxLength`);
+  };
+  for (const [name, def] of Object.entries(defs)) check(def, `/$defs/${name}`, 1);
+  check(schema, "", 0);
+  return problems;
+}
+
+test("every definition and artifact schema passes Workspace's fragment rules", () => {
+  for (const widget of widgets) {
+    for (const handle of widget.handles) if (handle.definition) assert.deepEqual(lintFragment(handle.definition), [], `${widget.id} definition`);
+    if (widget.artifact) assert.deepEqual(lintFragment(widget.artifact.data), [], `${widget.id} artifact`);
+  }
+});
+
+test("every icon the manifest names under assets/ is copied into the package", () => {
+  const build = readFileSync(join(root, "build.mjs"), "utf8");
+  const icons = new Set(widgets.flatMap((w) => (w.actions ?? []).map((a) => a.icon)).filter((icon) => icon.startsWith("assets/")));
+  for (const icon of icons) assert.ok(build.includes(`"${icon}"`), `${icon} is not in build.mjs`);
 });

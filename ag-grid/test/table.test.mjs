@@ -405,3 +405,169 @@ test("a new card opens with the definition's layout and filters; a saved layout 
     await settle(100);
   }
 });
+
+test("the active filters bar names each filter, removes one, and clears them all; the empty grid says why", async () => {
+  const data = [{ name: "A", tvl: 5 }, { name: "B", tvl: 50 }, { name: "C", tvl: 500 }];
+  const { model, el, abort } = await render({ data, definition: { columnsDefs: [{ field: "name", headerName: "Name" }, { field: "tvl", headerName: "TVL" }] } });
+  try {
+    const api = await liveApi(el);
+    const bar = el.querySelector(".ag-grid-filter-bar");
+    assert.ok(bar.hidden, "no filter, no bar");
+    api.setFilterModel({ tvl: { filterType: "number", type: "greaterThan", filter: 10 }, name: { filterType: "text", type: "contains", filter: "b" } });
+    await settle();
+    assert.equal(bar.hidden, false);
+    const texts = [...bar.querySelectorAll(".ag-grid-filter-chip")].map((chip) => chip.textContent);
+    assert.ok(texts.some((t) => t.startsWith("TVL > 10")), texts.join(" | "));
+    assert.ok(texts.some((t) => t.startsWith("Name contains b")), texts.join(" | "));
+    bar.querySelector(".ag-grid-filter-chip-remove").click();
+    await settle();
+    assert.equal(Object.keys(api.getFilterModel()).length, 1);
+
+    api.setFilterModel({ tvl: { filterType: "number", type: "greaterThan", filter: 1e6 } });
+    await settle();
+    assert.equal(api.getDisplayedRowCount(), 0);
+    assert.match(api.getGridOption("overlayNoRowsTemplate"), /No rows match the filters/);
+    api.setFilterModel({ tvl: { filterType: "number", type: "greaterThan", filter: 1e6 }, name: { filterType: "text", type: "contains", filter: "x" } });
+    await settle();
+    bar.querySelector(".ag-grid-filter-clear").click();
+    await settle();
+    assert.deepEqual(api.getFilterModel(), {});
+    assert.ok(bar.hidden);
+    assert.match(api.getGridOption("overlayNoRowsTemplate"), /No rows to show/);
+
+    model.push("config", { filterBar: false });
+    api.setFilterModel({ tvl: { filterType: "number", type: "greaterThan", filter: 10 } });
+    await settle();
+    assert.ok(bar.hidden, "the card turned the bar off");
+  } finally {
+    abort.abort();
+    await settle(100);
+  }
+});
+
+test("the card's settings set decimals, large numbers, the status bar and pages", async () => {
+  const data = Array.from({ length: 150 }, (_, i) => ({ id: i, value: 1234.5678 + i * 1e7 }));
+  const { model, el, abort } = await render({ data, definition: { columnsDefs: [{ field: "id" }, { field: "value" }] } });
+  try {
+    const api = await liveApi(el);
+    assert.ok(el.querySelector(".ag-status-bar"));
+    assert.equal(api.getGridOption("pagination"), true, "pages above 100 rows");
+    const cellText = (row) => api.getCellValue({ rowNode: api.getDisplayedRowAtIndex(row), colKey: "value", useFormatter: true });
+    assert.equal(cellText(0), "1,234.57");
+
+    model.push("config", { decimals: 1, abbreviateNumbers: true, statusBar: false, pagination: "on", pageSize: "50" });
+    await settle(200);
+    assert.equal(cellText(0), "1,234.6");
+    assert.equal(cellText(1), "10.0M");
+    assert.equal(api.getGridOption("statusBar"), undefined);
+    assert.ok(el.querySelector(".ag-status-bar").classList.contains("ag-hidden"), "AG Grid hides the status bar");
+    assert.equal(api.getGridOption("paginationPageSize"), 50);
+
+    model.push("config", { pagination: "off" });
+    await settle(200);
+    assert.equal(api.getGridOption("pagination"), false);
+    assert.ok(api.getGridOption("statusBar"), "the status bar is back");
+  } finally {
+    abort.abort();
+    await settle(100);
+  }
+});
+
+test("the card's menu transposes the table and keeps it, reverses the columns and resets them", async () => {
+  const data = [{ name: "A", x: 1, y: 2 }, { name: "B", x: 3, y: 4 }];
+  const { model, el, abort } = await render({ data, definition: { columnsDefs: [{ field: "name" }, { field: "x" }, { field: "y" }] } });
+  const action = (id) => model.emit("msg:custom", { kind: "workspace-event", name: "action", id });
+  try {
+    let api = await liveApi(el);
+    action("reverse-columns");
+    await settle();
+    assert.deepEqual(api.getAllGridColumns().map((c) => c.getColId()), ["y", "x", "name"]);
+    action("reset-columns");
+    await settle();
+    assert.deepEqual(api.getAllGridColumns().map((c) => c.getColId()), ["name", "x", "y"]);
+
+    action("transpose");
+    await settle(200);
+    api = await liveApi(el);
+    assert.deepEqual(api.getAllGridColumns().map((c) => c.getColDef().headerName), ["Name", "A", "B"]);
+    assert.equal(model.get("state").transposed, true, "the choice is saved with the card");
+    action("transpose");
+    await settle(200);
+    assert.deepEqual(api.getAllGridColumns().map((c) => c.getColId()), ["name", "x", "y"]);
+  } finally {
+    abort.abort();
+    await settle(100);
+  }
+
+  const reopened = await render({ data, definition: { columnsDefs: [{ field: "name" }, { field: "x" }] }, state: { transposed: true } });
+  try {
+    const api = await liveApi(reopened.el);
+    assert.deepEqual(api.getAllGridColumns().map((c) => c.getColDef().headerName), ["Name", "A", "B"]);
+  } finally {
+    reopened.abort.abort();
+    await settle(100);
+  }
+});
+
+test("Excel export, link cells, the row of the current parameter and change arrows", async () => {
+  const definition = {
+    wsRowIdColumn: "symbol",
+    columnsDefs: [
+      { field: "symbol", renderFn: "cellOnClick", renderFnParams: { actionType: "groupBy", groupBy: { paramName: "symbol" } } },
+      { field: "price", renderFn: "showCellChange", decimalPlaces: 2 },
+      { field: "site" },
+    ],
+  };
+  const data = [{ symbol: "AAPL", price: 10, site: "https://apple.com" }, { symbol: "MSFT", price: 20, site: "https://microsoft.com" }];
+  const { model, el, abort, exposed } = await render({ data, definition, params: { symbol: "MSFT" } });
+  try {
+    const api = await liveApi(el);
+    assert.deepEqual(exposed.exportOptions().map((o) => o.id), ["csv", "xlsx"]);
+    const workbook = exposed.exportData("xlsx");
+    assert.ok(workbook && (workbook.size > 0 || workbook.length > 0), "an Excel file");
+
+    const link = el.querySelector(".ag-table-chart-link");
+    assert.equal(link?.textContent, "https://apple.com");
+    link.click();
+    await settle();
+    assert.ok(notifications.some(([name, message]) => name === "core:ui:open-link" && message.url === "https://apple.com"));
+
+    const active = () => [...el.querySelectorAll(".ag-row.ag-table-chart-row-active")].map((row) => row.getAttribute("row-id"));
+    assert.deepEqual([...new Set(active())], ["MSFT"]);
+    model.push("params", { symbol: "AAPL" });
+    await settle();
+    assert.deepEqual([...new Set(active())], ["AAPL"]);
+
+    model.push("data", [{ symbol: "AAPL", price: 10.25, site: "https://apple.com" }, { symbol: "MSFT", price: 20, site: "https://microsoft.com" }]);
+    await settle();
+    const delta = el.querySelector('.ag-row[row-id="AAPL"] .ag-table-chart-delta');
+    assert.equal(delta?.textContent, "▲ 0.25");
+    assert.ok(api);
+  } finally {
+    abort.abort();
+    await settle(100);
+  }
+});
+
+test("double-clicking a header selects its column, and a cell its row", async () => {
+  const { el, abort } = await render({ data: { columnDefs, rowData: rows } });
+  try {
+    const api = await liveApi(el);
+    const header = el.querySelector('.ag-header-cell[col-id="name"]');
+    header.dispatchEvent(new MouseEvent("dblclick", { bubbles: true }));
+    await settle();
+    const [range] = api.getCellRanges();
+    assert.deepEqual(range.columns.map((c) => c.getColId()), ["name"]);
+    assert.equal(range.endRow.rowIndex - range.startRow.rowIndex, rows.length - 1);
+
+    const cell = el.querySelector('.ag-row[row-index="1"] .ag-cell[col-id="sales"]');
+    cell.dispatchEvent(new MouseEvent("dblclick", { bubbles: true }));
+    await settle();
+    const [row] = api.getCellRanges();
+    assert.equal(row.startRow.rowIndex, 1);
+    assert.equal(row.columns.length, 3);
+  } finally {
+    abort.abort();
+    await settle(100);
+  }
+});

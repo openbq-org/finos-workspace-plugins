@@ -1,9 +1,11 @@
 import { createChartView } from "./ag-table-chart/chartView.js";
 import { agTableChartColumnDefs, changeTrackedColumns, transpose } from "./ag-table-chart/columns.js";
+import { mountFilterBar } from "./filterBar.js";
 import {
   applyPresetState,
   applyTheme,
   attachCardActions,
+  attachSelectionShortcuts,
   backendOptions,
   cellExpressionsOf,
   compactColumnDefs,
@@ -11,23 +13,51 @@ import {
   createGrid,
   createStateChannel,
   createTracker,
+  displaySettingsOf,
   fieldsOf,
   FILTERS_TOOL_PANEL,
   gridOptionsFor,
   gridStateOf,
   idFieldOf,
+  noRowsText,
+  paginationFor,
   presetStateOf,
   rawCsv,
+  rawExcel,
   restoreGridState,
   rowIdGetter,
   rowIdOf,
   rowsOf,
   setLicense,
+  sizeColumnsToContent,
   withExpressions,
 } from "./grid.js";
 
 export const CHANGE_FLASH_MS = 1500;
 export const ACTION_DOWNLOAD_CHART = "download-chart";
+export const ACTION_TRANSPOSE = "transpose";
+export const ACTION_REVERSE_COLUMNS = "reverse-columns";
+
+/**
+ * The rules that mark a row as the one the card's parameters point at: each `cellOnClick` column
+ * whose click writes a parameter (`groupBy`), with the field whose value it writes.
+ */
+export function activeRowRules(columnsDefs) {
+  return (Array.isArray(columnsDefs) ? columnsDefs : [])
+    .filter((def) => def?.field && [def.renderFn].flat().includes("cellOnClick"))
+    .filter((def) => def.renderFnParams?.actionType === "groupBy" && def.renderFnParams?.groupBy?.paramName)
+    .map((def) => ({ paramName: def.renderFnParams.groupBy.paramName, field: def.renderFnParams.groupBy.valueField ?? def.field }));
+}
+
+export function isActiveRow(rules, row, params) {
+  if (!row || !params) return false;
+  return rules.some(({ paramName, field }) => {
+    const current = params[paramName];
+    const raw = row[field];
+    const value = raw && typeof raw === "object" && !Array.isArray(raw) ? raw.value : raw;
+    return current !== undefined && current !== null && current !== "" && value !== undefined && value !== null && String(value) === String(current);
+  });
+}
 
 /** The chart the download button saves: the chart view while it shows, else the chart opened last, else the hidden chart view. */
 export function chartToDownload(chartIds, view) {
@@ -94,7 +124,11 @@ export const GRID_EVENTS = [
   "rowGroupOpened",
 ];
 
-export function cellChanges(oldRows, newRows, tracked, idField = "id") {
+/**
+ * The cells whose tracked value moved, as "up" or "down" by `${rowId}|${field}`. When `deltas` is
+ * given, it receives how much each cell's own number moved, for the cell's arrow.
+ */
+export function cellChanges(oldRows, newRows, tracked, idField = "id", deltas = null) {
   const changes = new Map();
   if (!tracked.length) return changes;
   const oldById = new Map(oldRows.map((r, i) => [rowIdOf(r, i, idField), r]));
@@ -107,14 +141,21 @@ export function cellChanges(oldRows, newRows, tracked, idField = "id") {
       const after = row[compareField];
       if (typeof before === "number" && typeof after === "number" && before !== after) {
         changes.set(`${id}|${field}`, after > before ? "up" : "down");
+        const own = [old[field], row[field]];
+        if (deltas && own.every((v) => typeof v === "number") && own[0] !== own[1]) deltas.set(`${id}|${field}`, own[1] - own[0]);
       }
     }
   });
   return changes;
 }
 
-export function normalizeData(data, definition) {
+/**
+ * The grid's rows and columns from an answer and the table configuration. `transposed`, the card's
+ * own choice from its menu, replaces the definition's `transpose` when it is a boolean.
+ */
+export function normalizeData(data, definition, transposed) {
   const table = definition && typeof definition === "object" ? definition : {};
+  const transposing = typeof transposed === "boolean" ? transposed : table.transpose === true;
   const object = data && typeof data === "object" && !Array.isArray(data) ? data : null;
   const gridOptions = object?.gridOptions && typeof object.gridOptions === "object" ? object.gridOptions : {};
 
@@ -126,13 +167,17 @@ export function normalizeData(data, definition) {
   if (object && Array.isArray(object.columnDefs)) {
     const rowData = Array.isArray(object.rowData) ? object.rowData : [];
     const columnDefs = compactColumnDefs(withExpressions(object.columnDefs, rowData, { cellExpressions }), rowData);
-    return { rowData, columnDefs, gridOptions, table, transposed: false, columnsKey: JSON.stringify({ columnDefs: object.columnDefs, cellExpressions }) };
+    const columnsKey = JSON.stringify({ columnDefs: object.columnDefs, cellExpressions });
+    if (transposing) {
+      return { ...transpose(rowData, columnDefs.filter((c) => !c.children)), gridOptions, table, transposed: true, columnsKey: `${columnsKey}|t|${rowData.length}` };
+    }
+    return { rowData, columnDefs, gridOptions, table, transposed: false, columnsKey };
   }
 
   const rows = rowsOf(data);
   const columnDefs = withExpressions(agTableChartColumnDefs(rows, table), rows, { cellExpressions });
   const columnsKey = JSON.stringify({ table, fields: fieldsOf(rows) });
-  if (table.transpose === true) {
+  if (transposing) {
     return { ...transpose(rows, columnDefs), gridOptions, table, transposed: true, columnsKey: `${columnsKey}|${rows.length}` };
   }
   return { rowData: rows, columnDefs, gridOptions, table, transposed: false, columnsKey };
@@ -149,8 +194,12 @@ export function mountTable({ model, el, signal, experimental, tracker, saved = {
   el.replaceChildren();
 
   const definition = model.get("definition") || {};
-  const initial = normalizeData(model.get("data"), definition);
+  let transposedChoice = typeof saved.transposed === "boolean" ? saved.transposed : undefined;
+  const initial = normalizeData(model.get("data"), definition, transposedChoice);
   const table = initial.table;
+  let settings = displaySettingsOf(model);
+  let currentParams = model.get("params") || {};
+  const activeRules = activeRowRules(table.columnsDefs);
   let idField = idFieldOf(table);
   let currentRowData = [];
   let currentColumnsKey = null;
@@ -195,7 +244,19 @@ export function mountTable({ model, el, signal, experimental, tracker, saved = {
   };
 
   const theme = model.get("theme") || {};
-  const context = { locale: theme.locale, decimals: theme.decimals, actions, changes: new Map() };
+  const hoverCards = (Array.isArray(table.columnsDefs) ? table.columnsDefs : []).some((def) => {
+    const fns = Array.isArray(def?.renderFn) ? def.renderFn : [def?.renderFn];
+    return fns.includes("hoverCard") || (Array.isArray(def?.renderFnParams?.hoverCardData) && def.renderFnParams.hoverCardData.length > 0);
+  });
+  const context = {
+    locale: theme.locale,
+    decimals: settings.decimals ?? theme.decimals,
+    abbreviate: settings.abbreviate,
+    truncatedTooltips: !hoverCards,
+    actions,
+    changes: new Map(),
+    deltas: new Map(),
+  };
 
   const container = element("ag-grid-container", { height: "100%", width: "100%", display: "flex", flexDirection: "column" });
   const body = element("ag-table-chart-body", { position: "relative", flex: "1 1 auto", minHeight: "0" });
@@ -216,11 +277,19 @@ export function mountTable({ model, el, signal, experimental, tracker, saved = {
     rowData: [],
     context,
     enableCharts: chartsOn,
+    tooltipShowMode: hoverCards ? "standard" : "whenTruncated",
+    ...(activeRules.length ? { rowClassRules: { "ag-table-chart-row-active": (params) => isActiveRow(activeRules, params.data, currentParams) } } : {}),
     ...(table.enableAdvanced === false ? { sideBar: false } : table.enableAdvanced === true ? { sideBar: { toolPanels: ["columns", FILTERS_TOOL_PANEL], defaultToolPanel: "columns" } } : {}),
   };
   const api = createGrid(gridEl, gridOptionsFor({ model, gridOptions: currentGridOptions, ...own }));
   const detach = tracker.attach(api);
   const detachActions = attachCardActions(api, model);
+  const detachShortcuts = attachSelectionShortcuts(api, gridEl);
+  const filterBar = mountFilterBar(api, container, { before: body, enabled: () => (model.get("config") || {}).filterBar !== false });
+  const updateOverlay = () => {
+    if (!api.isDestroyed()) api.setGridOption("overlayNoRowsTemplate", `<span class="ag-overlay-no-rows-center">${noRowsText(api)}</span>`);
+  };
+  api.addEventListener("filterChanged", updateOverlay);
 
   const events = (Array.isArray(table.gridEvents) ? table.gridEvents : []).filter((name) => GRID_EVENTS.includes(name));
   const detailOf = {
@@ -291,31 +360,57 @@ export function mountTable({ model, el, signal, experimental, tracker, saved = {
     }
     await experimental.invoke("core:download:save", { filename: chartFilename("chart"), mime: "image/png" }, { buffers: [bytes] });
   };
+  const setTransposed = (on) => {
+    transposedChoice = on;
+    tracker.state.transposed = on;
+    tracker.persist();
+    if (on && chartView?.isOpen) chartView.close();
+    const data = model.get("data");
+    if (data !== undefined && data !== null) apply(normalizeData(data, model.get("definition") || {}, transposedChoice));
+  };
+
   const onAction = (event) => {
-    if (event?.kind !== "workspace-event" || event.name !== "action" || event.id !== ACTION_DOWNLOAD_CHART || api.isDestroyed()) return;
-    downloadChart().catch((error) => notify("warning", `The chart was not downloaded: ${error?.message ?? error}`));
+    if (event?.kind !== "workspace-event" || event.name !== "action" || api.isDestroyed()) return;
+    if (event.id === ACTION_DOWNLOAD_CHART) {
+      downloadChart().catch((error) => notify("warning", `The chart was not downloaded: ${error?.message ?? error}`));
+    } else if (event.id === ACTION_TRANSPOSE) {
+      setTransposed(!(transposedChoice ?? table.transpose === true));
+    } else if (event.id === ACTION_REVERSE_COLUMNS) {
+      const order = api.getAllGridColumns().map((c) => c.getColId());
+      api.applyColumnState({ state: order.reverse().map((colId) => ({ colId })), applyOrder: true });
+    }
   };
   model.on("msg:custom", onAction);
 
-  const flash = (changes) => {
+  const flash = (changes, deltas) => {
     if (!changes.size) return;
     for (const [key, direction] of changes) context.changes.set(key, direction);
+    for (const [key, delta] of deltas) context.deltas.set(key, delta);
     const columns = [...new Set(tracked.map((t) => t.field))];
     api.refreshCells({ columns, force: true });
     const timer = setTimeout(() => {
       flashTimers.delete(timer);
       for (const key of changes.keys()) if (context.changes.get(key) === changes.get(key)) context.changes.delete(key);
+      for (const key of deltas.keys()) if (context.deltas.get(key) === deltas.get(key)) context.deltas.delete(key);
       if (!api.isDestroyed()) api.refreshCells({ columns, force: true });
     }, CHANGE_FLASH_MS);
     flashTimers.add(timer);
   };
 
+  const applyPagination = () => {
+    for (const [key, value] of Object.entries(paginationFor(settings, currentGridOptions, currentRowData.length, PAGINATE_ABOVE))) {
+      if (api.getGridOption(key) !== value) api.setGridOption(key, value);
+    }
+  };
+
   const setRows = (next, transposed = false) => {
-    const changes = transposed ? new Map() : cellChanges(currentRowData, next, tracked, idField);
+    const deltas = new Map();
+    const changes = transposed ? new Map() : cellChanges(currentRowData, next, tracked, idField, deltas);
     api.setGridOption("rowData", next);
-    if (!Object.hasOwn(currentGridOptions, "pagination")) api.setGridOption("pagination", next.length > PAGINATE_ABOVE);
     currentRowData = next;
-    flash(changes);
+    applyPagination();
+    flash(changes, deltas);
+    updateOverlay();
   };
 
   const applyTransaction = (transaction) => {
@@ -348,7 +443,11 @@ export function mountTable({ model, el, signal, experimental, tracker, saved = {
     if (!gridRestored && hasData && (api.getColumns() || []).length) {
       gridRestored = true;
       if (saved.grid) restoreGridState(api, saved.grid);
-      else applyPresetState(api, presetStateOf(next.table));
+      else {
+        const preset = presetStateOf(next.table);
+        if (!preset?.columnSizing) sizeColumnsToContent(api);
+        applyPresetState(api, preset);
+      }
       tracker.gridRestored();
     }
     chartView?.refresh();
@@ -359,22 +458,32 @@ export function mountTable({ model, el, signal, experimental, tracker, saved = {
   const onDataChange = () => {
     const data = model.get("data");
     if (data === undefined || data === null) return;
-    apply(normalizeData(data, model.get("definition") || {}));
+    apply(normalizeData(data, model.get("definition") || {}, transposedChoice));
   };
 
   const onThemeChange = () => {
     const nextTheme = model.get("theme") || {};
+    settings = displaySettingsOf(model);
     context.locale = nextTheme.locale;
-    context.decimals = nextTheme.decimals;
+    context.decimals = settings.decimals ?? nextTheme.decimals;
+    context.abbreviate = settings.abbreviate;
     const mode = applyTheme(api, model, currentGridOptions);
+    applyPagination();
+    filterBar.refresh();
     api.refreshCells({ force: true });
     chartView?.setMode(mode);
+  };
+
+  const onParamsChange = () => {
+    currentParams = model.get("params") || {};
+    if (activeRules.length && !api.isDestroyed()) api.redrawRows();
   };
 
   model.on("change:data", onDataChange);
   model.on("change:definition", onDataChange);
   model.on("change:theme", onThemeChange);
   model.on("change:config", onThemeChange);
+  model.on("change:params", onParamsChange);
 
   signal.addEventListener("abort", () => {
     model.off("msg:custom", onAction);
@@ -382,11 +491,15 @@ export function mountTable({ model, el, signal, experimental, tracker, saved = {
     model.off("change:definition", onDataChange);
     model.off("change:theme", onThemeChange);
     model.off("change:config", onThemeChange);
+    model.off("change:params", onParamsChange);
     for (const timer of flashTimers) clearTimeout(timer);
     flashTimers.clear();
     for (const name of events) api.removeEventListener(name, sendState);
+    api.removeEventListener("filterChanged", updateOverlay);
     detach();
     detachActions();
+    detachShortcuts();
+    filterBar.destroy();
     chartView?.destroy();
     api.destroy();
   });
@@ -402,10 +515,16 @@ export function mountTable({ model, el, signal, experimental, tracker, saved = {
 
 export function tableExports(getHandle, getTracker) {
   return {
-    exportOptions: () => [{ id: "csv", label: "Rows (CSV)", extension: "csv", mime: "text/csv" }],
+    exportOptions: () => [
+      { id: "csv", label: "Rows (CSV)", extension: "csv", mime: "text/csv" },
+      { id: "xlsx", label: "Rows (Excel)", extension: "xlsx", mime: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" },
+    ],
     exportData: (id) => {
       const handle = getHandle();
-      return id === "csv" && handle ? rawCsv(handle.api) : null;
+      if (!handle) return null;
+      if (id === "csv") return rawCsv(handle.api);
+      if (id === "xlsx") return rawExcel(handle.api) ?? null;
+      return null;
     },
     copilotContext: () => {
       const handle = getHandle();
@@ -429,7 +548,7 @@ export default {
 
   async render({ model, el, signal, experimental }) {
     const saved = model.get("state") || {};
-    tracker = createTracker(model, { chartView: saved.chartView ?? null, agentPrompt: null, grid: saved.grid ?? null });
+    tracker = createTracker(model, { chartView: saved.chartView ?? null, agentPrompt: null, grid: saved.grid ?? null, transposed: typeof saved.transposed === "boolean" ? saved.transposed : null });
     handle = mountTable({ model, el, signal, experimental, tracker, saved });
     signal.addEventListener("abort", () => { handle = null; });
   },

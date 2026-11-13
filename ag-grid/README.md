@@ -30,11 +30,17 @@ package serves FINOS Workspace and BQ Workspace.
 - **The backend's grid options.** An answer's `gridOptions` are passed to AG Grid as they are, and
   they replace the plugin's defaults. That includes `defaultColDef`, `sideBar`, `statusBar`,
   `rowSelection`, `pagination` and any other option of AG Grid 34.
-- **Themes.** The grid's base theme is one of AG Grid's four: `balham`, which is compact and the
-  default, `quartz`, `alpine` or `material`. Its colours come from the site's light or dark
-  palette, so the grid follows the site when the user switches. The base theme is chosen in this
-  order: the card's `theme` setting, the backend's `gridOptions.theme`, the organization's `theme`
-  admin setting, then `balham`. Charts use AG Charts' light or dark theme to match.
+- **Themes.** The grid's base theme is one of AG Grid's four, `balham` (small type and the
+  default), `quartz`, `alpine` or `material`, or the plugin's `compact`: Alpine with 12px type,
+  30px rows, no column lines and every other row shaded. Its colours come from the site's light or
+  dark palette, so the grid follows the site when the user switches. The base theme is chosen in
+  this order: the card's `theme` setting, the backend's `gridOptions.theme`, the organization's
+  `theme` admin setting, then `balham`. Charts use AG Charts' light or dark theme to match.
+- **The organization's look.** An organization admin can set, for every card: `accentColor`,
+  `headerBackgroundColor`, `fontFamily`, `fontSize` (9 to 20), `rowHeight` (20 to 60),
+  `stripedRows` and `columnBorders`. A value that is not a plain colour, font list or number in
+  range is ignored. These replace the base theme's own values, and the site's colours for the
+  accent and the font.
 - **Saved state.** The grid's state (columns, order, widths, sort, filters, row groups, pivot, open
   groups and the side bar) is saved in the widget's `state` trait and restored when the dashboard
   opens again. On the table and streaming widgets, the table-to-chart view and its chart are saved
@@ -43,8 +49,11 @@ package serves FINOS Workspace and BQ Workspace.
   models and the grouping.
 - **Card actions.** The card's header has a **Floating filters** button, which switches the
   card's `floatingFilters` setting and shows a filter box under each column header while it is on.
-  The card's options menu has **Autosize columns**, which sizes every column to its content, and
-  **Clear filters and sort**. Workspace draws them from the widget's `actions` in `plugin.json`
+  The card's options menu has **Autosize columns**, which sizes every column to its content,
+  **Clear filters and sort**, and **Reset columns**, which puts the columns back as the column
+  definitions have them (order, widths, visibility, pinning and grouping) and keeps the filters.
+  The table and streaming widgets add **Transpose rows and columns**, saved with the card, and
+  **Reverse column order**. Workspace draws them from the widget's `actions` in `plugin.json`
   (`core:ui:button`, `core:ui:menu`) and sends the widget an `action` event when the user picks
   one. Until a card's button is used, the backend's `defaultColDef.floatingFilter` decides. The
   autosize item's icon is the package's `assets/autosize.svg`.
@@ -58,6 +67,23 @@ package serves FINOS Workspace and BQ Workspace.
   Advanced Filter, because AG Grid's infinite row model does not support it.
 - **Download chart.** The table widget's **Download chart as image** button saves the chart view,
   or else the chart opened last, as a PNG (`core:download:save`).
+- **Active filters bar.** While a filter is on, a bar above the grid names each one, such as
+  *TVL > 10* or *Name contains b*, with a button that removes it, and **Clear all** when there are
+  several. With the Advanced Filter on, it shows one chip for it. The card's `filterBar` setting
+  turns it off. When the filters hide every row, the grid says so instead of *No rows to show*.
+- **Column menu and selection.** A column's menu adds **Hide column** and, for a column wider than
+  200px, **Narrow column**. Right-clicking a header opens the menu of AG Grid. Double-clicking a
+  header selects the column's cells (with Shift, every column from the one picked before), and
+  double-clicking a cell selects its row, so the status bar sums them and they can be copied or
+  charted.
+- **Card settings.** Besides the theme and the filters: `statusBar` (on unless turned off) on
+  every grid, `filterBar` on every grid, and on the table and streaming widgets `decimals` (0 to
+  8, for numbers without their own `decimalPlaces`; empty follows the site), `abbreviateNumbers`
+  (a million or more as M, B or T, with the full number in the tooltip), `pagination` (`auto`, the
+  default, pages above 100 rows unless the backend's `gridOptions` say otherwise; `on` and `off`
+  decide for the card) and `pageSize` (`auto` fits the rows to the card, or 50 to 1000).
+- **Exports.** The table and streaming widgets export the rows as CSV and as an Excel workbook,
+  with raw values. The server-side and infinite widgets export the rows loaded so far as CSV.
 
 ## Two-way communication with the backend
 
@@ -181,15 +207,16 @@ whose keys or values do not fit sees the problem, with its JSON pointer, when it
 | `field` | Taken as the key it is: `eps.ttm` reads the row's `"eps.ttm"`, not a nested `eps.ttm`. A backend whose raw `columnDefs` read nested objects sets `gridOptions.suppressFieldDotNotation: false`. |
 | `cellDataType` (`text`, `number`, `boolean`, `date`, `dateString`, `object`) | The column's filter, alignment and formatting, and the operators of the Advanced Filter. Without it, the type is inferred from the rows; a column whose name says it is a date or a time (`date`, `trade_date`, `createdAt`, `timestamp`) and holds Unix times, in seconds or milliseconds, is a date column. Date strings sort, filter and chart as dates and show as they came, except that a time of midnight shows as its date. |
 | `rowGroup`, `rowGroupIndex`, `pivot`, `aggFunc` (`sum`, `min`, `max`, `count`, `avg`, `first`, `last`) | The rows are grouped, pivoted and aggregated by these columns when a card opens. The user can change it in the Columns panel. |
-| `formatterFn` (`int`, `none`, `percent`, `normalized`, `normalizedPercent`, `dateToYear`), on a column or the whole table; `decimalPlaces`; `prefix`, `suffix` | Formatted cell text. Sorting, filtering, charts and the CSV keep the raw values. Numbers follow the site's locale and decimals. |
+| `formatterFn` (`int`, `none`, `percent`, `normalized`, `normalizedPercent`, `dateToYear`, `compact`), on a column or the whole table; `decimalPlaces`; `prefix`, `suffix` | Formatted cell text. `compact` shows a million or more as M, B or T (`45.00B`), with the full number in the tooltip. Sorting, filtering, charts and the exports keep the raw values. Numbers follow the site's locale and decimals, or the card's `decimals`. A text longer than 200 characters is cut with `…` and shows in full in its tooltip; so does any text cut by its column's width. A text column whose values are mostly `http(s)://` links shows them as links, which open after the user confirms (`core:ui:open-link`; only `https:` and `mailto:`). |
 | `renderFn` (one or a list) and `renderFnParams` | `greenRed`, `titleCase`, `columnColor` (`colorRules` with every condition, `fill`, `colorValueKey`; when several rules match, the last one wins, and `contains` and `notContains` ignore case), `hoverCard` (`cellField`, `title`, `markdown` with `{field}` placeholders, or `hoverCardData`), `cellOnClick` and `showCellChange`, both described below. A cell with a hover card shows a help pointer and a dotted underline. |
-| `sparkline` (`line`, `area`, `bar`; `dataField`; `options`) | AG Charts sparklines: stroke, fill, opacity, markers, padding, bar `direction`, `min` and `max`, every point of interest, and `customFormatter`. |
+| `sparkline` (`line`, `area`, `bar`; `dataField`; `options`) | AG Charts sparklines: stroke, fill, opacity, markers (with `shape`), padding, bar `direction`, `min` and `max`, every point of interest, `customFormatter`, `tooltip` and `crosshair` (`enabled`), `axis` (`visible`, `stroke`, `strokeWidth`) and, on bars, `label` (`enabled`, `placement`, `color`, `fontSize`, `fontWeight`). Points are numbers, or objects read with `xKey` and `yKey`. |
 | `chartDataType` (`category`, `series`, `time`, `excluded`) | The column's role in charts. |
 | `calculatedExpression` | The column's value as an expression over its row, as under [Expressions](#expressions). |
 | `showAll` | Default `true`: fields the rows have and `columnsDefs` does not are shown after the declared ones. `false` shows only `columnsDefs`. |
 | `transpose` | One row per column and one column per row, headed by the first column's values. Each cell keeps its column's format and colours. |
 | `enableCharts`, `chartView` (`enabled`, `chartType`, `cellRangeCols`, `ignoreCellRange`, `chartNavigatorEnabled`, `chartMiniChartEnabled`) | A *Table / Chart* toolbar and an integrated chart linked to the rows, with every chart type of OpenBQ's list. The chart a user arranges is saved with the dashboard and restored, unless `ignoreCellRange`. `enableCharts: false` turns charting off. |
 | `enableAdvanced` | `true` opens the Columns panel; `false` hides the side bar. |
+| `emptyValue` | The text of an empty cell, such as `-`. Empty by default. |
 | `columnState`, `filterModel` | The layout and the filters a new card opens with. `columnState` holds parts of an AG Grid grid state (`sort`, `rowGroup`, `pivot`, `aggregation`, `columnOrder`, `columnVisibility`, `columnPinning`, `columnSizing`, `columnGroup`, `filter`, `sideBar`), directly or under `default`; `filterModel` is an AG Grid filter model keyed by column. Only the parts named change: a column's own `rowGroup` stays unless `columnState` sets the row groups. Once a user changes the card, its own saved layout is used instead. |
 | `wsRowIdColumn` | The field that identifies a row across refreshes (default `id`), so changed rows are applied as transactions and `showCellChange` knows which cell moved. |
 | `gridEvents`, `enableCellExpressions` | As above. |
@@ -207,8 +234,13 @@ whose keys or values do not fit sees the problem, with its JSON pointer, when it
   message to the AI agent, so the user pastes it.
 
 **`showCellChange`**: when a refresh, a `refetchInterval` or a stream brings new values, a changed
-cell flashes green when it rose and red when it fell (by `colorValueKey`'s field when set).
-`enableCellChangeWs: false` turns it off for a column.
+cell flashes green when it rose and red when it fell (by `colorValueKey`'s field when set), and a
+number shows for a moment how far it moved, such as *▲ 0.25*. `enableCellChangeWs: false` turns
+it off for a column.
+
+**The current row**: a `cellOnClick` column with `actionType: "groupBy"` marks the row whose
+value is the widget's current value of that param, with an accent bar, so the row the dashboard
+follows stays visible.
 
 **`customFormatter`** is a JavaScript function in a string. The frame forbids `eval`, and a
 backend's string should not run as code, so the plugin evaluates the subset formatters use, over

@@ -1,6 +1,28 @@
 /*  `formatterFn`, `decimalPlaces`, `prefix` and `suffix`, as value formatters. */
 
-export const FORMATTERS = ["int", "none", "percent", "normalized", "normalizedPercent", "dateToYear"];
+export const FORMATTERS = ["int", "none", "percent", "normalized", "normalizedPercent", "dateToYear", "compact"];
+
+const MAGNITUDES = [
+  [1e12, "T"],
+  [1e9, "B"],
+  [1e6, "M"],
+];
+
+/** A number of a million or more as M, B or T with `decimals` places, such as 45.00B; null below a million. */
+export function abbreviated(number, decimals, locale) {
+  const size = Math.abs(number);
+  const found = MAGNITUDES.find(([at]) => size >= at);
+  if (!found) return null;
+  return `${numberFormat(locale, decimals, decimals).format(number / found[0])}${found[1]}`;
+}
+
+/** At most this many characters of a text show in a cell; the rest is in its tooltip. */
+export const MAX_CELL_TEXT = 200;
+
+export function clipped(text) {
+  const value = String(text);
+  return value.length > MAX_CELL_TEXT ? `${value.slice(0, MAX_CELL_TEXT - 1)}…` : value;
+}
 
 const DEFAULT_DECIMALS = 2;
 const formats = new Map();
@@ -39,11 +61,13 @@ export function yearOf(value) {
 
 /**
  * Formats one value the way OpenBQ's table does.
- * `options`: { formatterFn, decimalPlaces, prefix, suffix, locale, decimals }.
+ * `options`: { formatterFn, decimalPlaces, prefix, suffix, locale, decimals, abbreviate, emptyValue }.
+ * `abbreviate` shows numbers without a formatterFn of their own like `compact`.
  */
 export function formatValue(value, options = {}) {
-  if (value === null || value === undefined || value === "") return "";
-  const { formatterFn, decimalPlaces, prefix = "", suffix = "", locale } = options;
+  if (value === null || value === undefined || value === "") return typeof options.emptyValue === "string" ? options.emptyValue : "";
+  const { decimalPlaces, prefix = "", suffix = "", locale } = options;
+  const formatterFn = options.formatterFn ?? (options.abbreviate ? "compact" : undefined);
   const wrap = (text) => `${prefix}${text}${suffix}`;
 
   if (formatterFn === "dateToYear") return wrap(yearOf(value) ?? String(value));
@@ -65,6 +89,12 @@ export function formatValue(value, options = {}) {
       return wrap(numberFormat(locale, decimals, decimals).format(number * 100));
     case "normalizedPercent":
       return wrap(`${numberFormat(locale, decimals, decimals).format(number * 100)}%`);
+    case "compact": {
+      const short = abbreviated(number, decimals, locale);
+      if (short) return wrap(short);
+      if (fixed !== null) return wrap(numberFormat(locale, fixed, fixed).format(number));
+      return wrap(Number.isInteger(number) ? numberFormat(locale, 0, 0).format(number) : numberFormat(locale, decimals, decimals).format(number));
+    }
     default: {
       if (fixed !== null) return wrap(numberFormat(locale, fixed, fixed).format(number));
       return wrap(Number.isInteger(number)

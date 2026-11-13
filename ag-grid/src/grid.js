@@ -20,7 +20,22 @@ export const MAX_STATE_SELECTION = 1000;
 
 const CHART_THEMES = ["ag-default", "ag-vivid", "ag-polychroma", "ag-sheets", "ag-material"];
 
-export const BASE_THEMES = { quartz: themeQuartz, alpine: themeAlpine, balham: themeBalham, material: themeMaterial };
+/** `compact`: Alpine, small type, short rows, no column lines, and every other row shaded. */
+const themeCompact = themeAlpine.withParams({
+  fontSize: 12,
+  headerFontSize: 12,
+  headerFontWeight: 600,
+  rowHeight: 30,
+  headerHeight: 32,
+  spacing: 6,
+  cellHorizontalPadding: 8,
+  columnBorder: false,
+  headerColumnBorder: false,
+  wrapperBorderRadius: 2,
+  oddRowBackgroundColor: { ref: "foregroundColor", mix: 0.035, onto: "backgroundColor" },
+});
+
+export const BASE_THEMES = { quartz: themeQuartz, alpine: themeAlpine, balham: themeBalham, material: themeMaterial, compact: themeCompact };
 
 const FALLBACK_COLORS = {
   light: { background: "#ffffff", foreground: "#1f2933", border: "#e1e6eb", accent: "#0b62d6" },
@@ -47,7 +62,36 @@ export function baseThemeName(...choices) {
 
 export const DEFAULT_BASE_THEME = "balham";
 
-export function themeFor(theme, baseName = DEFAULT_BASE_THEME) {
+const COLOR_RE = /^(#[0-9a-f]{3,8}|rgba?\(\s*[\d.]+%?\s*,\s*[\d.]+%?\s*,\s*[\d.]+%?\s*(,\s*[\d.]+\s*)?\)|[a-z]{3,20})$/i;
+const FONT_RE = /^[\w\s,"'-]{1,200}$/;
+
+function inRange(value, min, max) {
+  return Number.isInteger(value) && value >= min && value <= max ? value : undefined;
+}
+
+/**
+ * The organization's look, from its admin settings: an accent colour, a font, a font size, a row
+ * height, shaded rows, column lines and a header colour. Values that do not fit are ignored.
+ */
+export function orgThemeParams(adminSettings = {}) {
+  const s = adminSettings && typeof adminSettings === "object" ? adminSettings : {};
+  const params = {};
+  if (typeof s.accentColor === "string" && COLOR_RE.test(s.accentColor.trim())) params.accentColor = s.accentColor.trim();
+  if (typeof s.headerBackgroundColor === "string" && COLOR_RE.test(s.headerBackgroundColor.trim())) params.headerBackgroundColor = s.headerBackgroundColor.trim();
+  if (typeof s.fontFamily === "string" && FONT_RE.test(s.fontFamily.trim())) params.fontFamily = s.fontFamily.trim();
+  const fontSize = inRange(s.fontSize, 9, 20);
+  if (fontSize) params.fontSize = fontSize;
+  const rowHeight = inRange(s.rowHeight, 20, 60);
+  if (rowHeight) params.rowHeight = rowHeight;
+  if (typeof s.stripedRows === "boolean") params.oddRowBackgroundColor = s.stripedRows ? { ref: "foregroundColor", mix: 0.035, onto: "backgroundColor" } : { ref: "backgroundColor" };
+  if (typeof s.columnBorders === "boolean") {
+    params.columnBorder = s.columnBorders;
+    params.headerColumnBorder = s.columnBorders;
+  }
+  return params;
+}
+
+export function themeFor(theme, baseName = DEFAULT_BASE_THEME, adminSettings = {}) {
   const colors = siteColors(theme);
   return BASE_THEMES[baseThemeName(baseName)].withParams({
     browserColorScheme: colors.mode,
@@ -56,6 +100,7 @@ export function themeFor(theme, baseName = DEFAULT_BASE_THEME) {
     borderColor: colors.border,
     accentColor: colors.accent,
     fontFamily: colors.fontFamily,
+    ...orgThemeParams(adminSettings),
   });
 }
 
@@ -100,7 +145,7 @@ export const CHART_OVERRIDES = { common: { background: { fill: "transparent" } }
 export function applyTheme(api, model, gridOptions = {}) {
   const theme = model.get("theme");
   const colors = paintSite(theme);
-  api?.setGridOption("theme", themeFor(theme, baseThemeOf(model, gridOptions)));
+  api?.setGridOption("theme", themeFor(theme, baseThemeOf(model, gridOptions), model.get("adminSettings")));
   api?.setGridOption("chartThemes", chartThemesFor(colors.mode));
   return colors.mode;
 }
@@ -144,7 +189,7 @@ export function baseOptions(model, gridOptions = {}, { serverSide = false } = {}
   const colors = paintSite(model.get("theme"));
   const mode = colors.mode;
   return {
-    theme: themeFor(model.get("theme"), baseThemeOf(model, gridOptions)),
+    theme: themeFor(model.get("theme"), baseThemeOf(model, gridOptions), model.get("adminSettings")),
     chartThemeOverrides: CHART_OVERRIDES,
     paginationAutoPageSize: !serverSide,
     paginationPageSizeSelector: false,
@@ -166,12 +211,9 @@ export function baseOptions(model, gridOptions = {}, { serverSide = false } = {}
     pivotPanelShow: "always",
     suppressAggFuncInHeader: true,
     autoGroupColumnDef: { headerName: "Group", minWidth: 160 },
-    statusBar: {
-      statusPanels: [
-        ...(serverSide ? [] : [{ statusPanel: "agTotalAndFilteredRowCountComponent", align: "left" }]),
-        { statusPanel: "agAggregationComponent", align: "right" },
-      ],
-    },
+    statusBar: statusBarFor(serverSide),
+    getMainMenuItems: columnMenuItems,
+    overlayNoRowsTemplate: '<span class="ag-overlay-no-rows-center">No rows to show</span>',
     ...(serverSide ? {} : { groupDefaultExpanded: 1 }),
   };
 }
@@ -267,6 +309,122 @@ export function advancedFilterOf(model) {
   return typeof on === "boolean" ? on : undefined;
 }
 
+/** The card's settings for the table body: decimals, large numbers, the status bar and pages. */
+export function displaySettingsOf(model) {
+  const config = model?.get("config") || {};
+  const pageSize = Number(config.pageSize);
+  return {
+    decimals: Number.isInteger(config.decimals) && config.decimals >= 0 && config.decimals <= 8 ? config.decimals : undefined,
+    abbreviate: config.abbreviateNumbers === true,
+    statusBar: config.statusBar !== false,
+    pagination: ["on", "off"].includes(config.pagination) ? config.pagination : "auto",
+    pageSize: Number.isInteger(pageSize) && pageSize > 0 ? pageSize : null,
+  };
+}
+
+/** The pagination options for `rows` rows: the card's choice, else the backend's, else pages above `above` rows. */
+export function paginationFor(settings, backend = {}, rows = 0, above = 100) {
+  const on = settings.pagination === "on" ? true : settings.pagination === "off" ? false : Object.hasOwn(backend, "pagination") ? backend.pagination === true : rows > above;
+  if (!on) return { pagination: false };
+  if (settings.pageSize) return { pagination: true, paginationAutoPageSize: false, paginationPageSize: settings.pageSize };
+  if (Object.hasOwn(backend, "paginationPageSize")) return { pagination: true, paginationAutoPageSize: false, paginationPageSize: backend.paginationPageSize };
+  return { pagination: true, paginationAutoPageSize: true };
+}
+
+export function statusBarFor(serverSide, on = true) {
+  if (!on) return undefined;
+  return {
+    statusPanels: [
+      ...(serverSide ? [] : [{ statusPanel: "agTotalAndFilteredRowCountComponent", align: "left" }]),
+      { statusPanel: "agAggregationComponent", align: "right" },
+    ],
+  };
+}
+
+/** The column menu: AG Grid's items, then Hide column and, for a wide column, Narrow column. */
+export function columnMenuItems(params) {
+  const column = params.column;
+  const items = [...(params.defaultItems ?? [])];
+  if (!column) return items;
+  items.push("separator", {
+    name: "Hide column",
+    action: () => params.api.setColumnsVisible([column], false),
+  });
+  if (column.getActualWidth() > 200) {
+    items.push({ name: "Narrow column", action: () => params.api.setColumnWidths([{ key: column, newWidth: 150 }]) });
+  }
+  return items;
+}
+
+/** Puts the columns back as the column definitions have them: order, widths, visibility, pinning and grouping. */
+export function resetColumns(api) {
+  api.resetColumnState();
+  api.resetColumnGroupState();
+}
+
+/**
+ * With many columns that share the card's width, each gets too narrow to read: sizes them to their
+ * content instead. Columns with a width of their own keep it.
+ */
+export const AUTOSIZE_ABOVE_COLUMNS = 6;
+
+export function sizeColumnsToContent(api) {
+  const columns = (api.getAllDisplayedColumns?.() ?? []).filter((c) => !c.getColDef().width);
+  if (columns.length <= AUTOSIZE_ABOVE_COLUMNS) return false;
+  api.applyColumnState({ state: columns.map((c) => ({ colId: c.getColId(), flex: null })) });
+  api.autoSizeColumns(columns.map((c) => c.getColId()));
+  return true;
+}
+
+/** The text of the empty grid: whether the filters hide every row, or there are none. */
+export function noRowsText(api) {
+  const filtered = api.isAnyFilterPresent?.() || (api.getGridOption("enableAdvancedFilter") === true && api.getAdvancedFilterModel?.());
+  return filtered ? "No rows match the filters" : "No rows to show";
+}
+
+/**
+ * Double-clicking a column header selects the column's cells (with Shift, every column from the
+ * one picked before); double-clicking a cell selects its row. Client-side grids with cell
+ * selection only.
+ */
+export function attachSelectionShortcuts(api, el) {
+  let anchor = null;
+  const lastRow = () => api.getDisplayedRowCount() - 1;
+  const onHeader = (event) => {
+    const cell = event.target?.closest?.(".ag-header-cell[col-id]");
+    if (!cell || api.isDestroyed() || lastRow() < 0) return;
+    const colId = cell.getAttribute("col-id");
+    const columns = api.getAllDisplayedColumns().map((c) => c.getColId());
+    if (!columns.includes(colId)) return;
+    const from = event.shiftKey && anchor && columns.includes(anchor) ? anchor : colId;
+    const [start, end] = [columns.indexOf(from), columns.indexOf(colId)].sort((a, b) => a - b);
+    api.clearCellSelection?.();
+    api.addCellRange({ rowStartIndex: 0, rowEndIndex: lastRow(), columns: columns.slice(start, end + 1) });
+    if (!event.shiftKey) anchor = colId;
+  };
+  const onCell = (event) => {
+    if (api.isDestroyed() || event.rowIndex === null || event.rowIndex === undefined || event.node?.group) return;
+    api.clearCellSelection?.();
+    api.addCellRange({ rowStartIndex: event.rowIndex, rowEndIndex: event.rowIndex, columns: api.getAllDisplayedColumns() });
+  };
+  el.addEventListener("dblclick", onHeader);
+  api.addEventListener("cellDoubleClicked", onCell);
+  return () => {
+    el.removeEventListener("dblclick", onHeader);
+    if (!api.isDestroyed()) api.removeEventListener("cellDoubleClicked", onCell);
+  };
+}
+
+/** The rows as an Excel workbook, with raw values as in the CSV. */
+export function rawExcel(api) {
+  return api.getDataAsExcel({
+    processCellCallback: (p) => {
+      if (p.value instanceof Date) return p.node?.data?.[p.column.getColDef().field] ?? p.value.toISOString();
+      return Array.isArray(p.value) ? p.value.join(" ") : p.value;
+    },
+  });
+}
+
 /** The Filters Tool Panel of AG Grid 34: the user adds a filter per column and sees each filter's summary. */
 export const FILTERS_TOOL_PANEL = "filters-new";
 const FILTER_PANELS = new Set(["filters", FILTERS_TOOL_PANEL, "agFiltersToolPanel", "agNewFiltersToolPanel"]);
@@ -301,6 +459,7 @@ export function allowsAdvancedFilter(rowModelType) {
 }
 
 const fullSideBars = new WeakMap();
+const fullStatusBars = new WeakMap();
 
 export function gridOptionsFor({ model, gridOptions = {}, serverSide = false, base = baseOptions(model, gridOptions, { serverSide }), ...own }) {
   const backend = backendOptions(gridOptions);
@@ -311,6 +470,8 @@ export function gridOptionsFor({ model, gridOptions = {}, serverSide = false, ba
     ...backend,
     defaultColDef: { ...DEFAULT_COL_DEF, ...(backend.defaultColDef || {}), ...(floatingFilter === undefined ? {} : { floatingFilter }) },
   };
+  fullStatusBars.set(options, options.statusBar);
+  if (!displaySettingsOf(model).statusBar) options.statusBar = undefined;
   if (!allowsAdvancedFilter(options.rowModelType)) {
     delete options.enableAdvancedFilter;
     return options;
@@ -342,9 +503,14 @@ export function setAdvancedFilter(api, on) {
 
 export const ACTION_AUTOSIZE = "autosize";
 export const ACTION_CLEAR_FILTERS = "clear-filters";
+export const ACTION_RESET_COLUMNS = "reset-columns";
 
 export function attachCardActions(api, model) {
   const onConfig = () => {
+    if (!api.isDestroyed() && fullStatusBars.has(api)) {
+      const statusBar = displaySettingsOf(model).statusBar ? fullStatusBars.get(api) : undefined;
+      if (api.getGridOption("statusBar") !== statusBar) api.setGridOption("statusBar", statusBar);
+    }
     const advanced = advancedFilterOf(model);
     if (advanced !== undefined) setAdvancedFilter(api, advanced);
     const floatingFilter = floatingFiltersOf(model);
@@ -355,6 +521,7 @@ export function attachCardActions(api, model) {
   const onEvent = (event) => {
     if (event?.kind !== "workspace-event" || event.name !== "action" || api.isDestroyed()) return;
     if (event.id === ACTION_AUTOSIZE) api.autoSizeAllColumns();
+    if (event.id === ACTION_RESET_COLUMNS) resetColumns(api);
     if (event.id === ACTION_CLEAR_FILTERS) {
       api.setFilterModel(null);
       api.applyColumnState({ defaultState: { sort: null } });
@@ -371,6 +538,7 @@ export function attachCardActions(api, model) {
 export function createGrid(el, options) {
   const api = agCreateGrid(el, options);
   if (fullSideBars.has(options)) fullSideBars.set(api, fullSideBars.get(options));
+  if (fullStatusBars.has(options)) fullStatusBars.set(api, fullStatusBars.get(options));
   return api;
 }
 

@@ -2,7 +2,8 @@ import { compileFormatter } from "./expression.js";
 import { withOpacity } from "./colors.js";
 
 const DEFAULT_POINT_SIZE = 5;
-const STYLE_KEYS = ["fill", "stroke", "strokeWidth", "size"];
+const STYLE_KEYS = ["fill", "stroke", "strokeWidth", "size", "shape"];
+const LABEL_KEYS = ["enabled", "placement", "color", "fontSize", "fontWeight"];
 
 function pick(style) {
   const out = {};
@@ -65,6 +66,15 @@ export function sparklineOptions(sparkline) {
   if (o.padding) options.padding = { ...o.padding };
   if (typeof o.min === "number") options.min = o.min;
   if (typeof o.max === "number") options.max = o.max;
+  if (typeof o.tooltip?.enabled === "boolean") options.tooltip = { enabled: o.tooltip.enabled };
+  if (typeof o.crosshair?.enabled === "boolean") options.crosshair = { enabled: o.crosshair.enabled };
+  if (o.axis && typeof o.axis === "object") {
+    const axis = {};
+    if (typeof o.axis.visible === "boolean") axis.visible = o.axis.visible;
+    if (typeof o.axis.stroke === "string") axis.stroke = o.axis.stroke;
+    if (typeof o.axis.strokeWidth === "number") axis.strokeWidth = o.axis.strokeWidth;
+    if (Object.keys(axis).length) options.axis = axis;
+  }
 
   if (type === "bar") {
     options.type = "bar";
@@ -72,6 +82,9 @@ export function sparklineOptions(sparkline) {
     if (o.fill) options.fill = withOpacity(o.fill, o.fillOpacity);
     if (o.stroke) options.stroke = o.stroke;
     if (typeof o.strokeWidth === "number") options.strokeWidth = o.strokeWidth;
+    if (o.label && typeof o.label === "object") {
+      options.label = Object.fromEntries(LABEL_KEYS.filter((key) => o.label[key] !== undefined).map((key) => [key, o.label[key]]));
+    }
     if (points || custom) {
       options.itemStyler = (params) => {
         const at = pointParams(params);
@@ -118,13 +131,23 @@ export function sparklineData(value) {
   return [];
 }
 
-export function sparklinePoints(value) {
-  const values = sparklineData(value).map((v) => (typeof v === "number" ? v : Number(v)));
+/**
+ * The points of a sparkline: numbers in order, or objects whose `yKey` holds the value (and
+ * `xKey` the label, kept as `label`).
+ */
+export function sparklinePoints(value, { xKey, yKey } = {}) {
+  const items = sparklineData(value);
+  const objects = items.some((v) => v && typeof v === "object" && !Array.isArray(v));
+  const values = items.map((v) => {
+    const y = objects && v && typeof v === "object" ? v[yKey ?? "y"] : v;
+    return typeof y === "number" ? y : Number(y);
+  });
   const finite = values.filter(Number.isFinite);
   const min = finite.length ? Math.min(...finite) : null;
   const max = finite.length ? Math.max(...finite) : null;
   return values.map((y, x) => ({
     x,
+    ...(objects && xKey && items[x] && typeof items[x] === "object" ? { label: items[x][xKey] } : {}),
     y: Number.isFinite(y) ? y : null,
     first: x === 0,
     last: x === values.length - 1,

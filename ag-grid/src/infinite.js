@@ -1,9 +1,11 @@
+import { mountFilterBar } from "./filterBar.js";
 import {
   applyTheme,
   attachCardActions,
   backendOptions,
   columnFieldsOf,
   createGrid,
+  rawCsv,
   createStateChannel,
   createTracker,
   FILTERS_TOOL_PANEL,
@@ -171,8 +173,8 @@ export default {
   initialize({ model }) {
     setLicense(model);
     return {
-      exportOptions: () => [],
-      exportData: () => null,
+      exportOptions: () => (api ? [{ id: "csv", label: "Loaded rows (CSV)", extension: "csv", mime: "text/csv" }] : []),
+      exportData: (id) => (api && id === "csv" ? rawCsv(api) : null),
       copilotContext: () => {
         if (!api) return null;
         return {
@@ -206,6 +208,7 @@ export default {
     const tracker = createTracker(model, { grid: saved.grid ?? null });
     let detach = () => {};
     let detachActions = () => {};
+    let filterBar = null;
     let gridOptions = {};
 
     const start = () => {
@@ -221,6 +224,7 @@ export default {
       api = createGrid(gridEl, optionsFor({ model, definition, columnDefs, gridOptions: backendOptions(gridOptions), datasource, initialState: saved.grid }));
       detach = tracker.attach(api);
       detachActions = attachCardActions(api, model);
+      filterBar = mountFilterBar(api, root, { before: gridEl, enabled: () => (model.get("config") || {}).filterBar !== false });
       tracker.gridRestored();
       say("");
     };
@@ -228,7 +232,10 @@ export default {
     start();
     model.on("change:data", start);
 
-    const onTheme = () => applyTheme(api, model, gridOptions);
+    const onTheme = () => {
+      applyTheme(api, model, gridOptions);
+      filterBar?.refresh();
+    };
     const onEvent = (event) => {
       if (event?.kind === "workspace-event" && event.name === "refresh" && api) api.purgeInfiniteCache();
     };
@@ -243,6 +250,7 @@ export default {
       model.off("msg:custom", onEvent);
       detach();
       detachActions();
+      filterBar?.destroy();
       api?.destroy();
       api = null;
     });

@@ -24,13 +24,56 @@
         "theme": {
           "type": "string",
           "title": "AgGrid theme",
-          "description": "The AgGrid theme of every card of the organization, in the site's light or dark colours: balham (compact), quartz, alpine or material.",
+          "description": "The AgGrid theme of every card of the organization, in the site's light or dark colours: balham (compact type), quartz, alpine, material, or compact (small type, short rows, no column lines, shaded rows).",
           "enum": [
             "balham",
             "quartz",
             "alpine",
-            "material"
+            "material",
+            "compact"
           ]
+        },
+        "accentColor": {
+          "type": "string",
+          "title": "Accent colour",
+          "description": "The colour of selections, focus and links, such as #2563eb. Empty follows the site.",
+          "maxLength": 40
+        },
+        "headerBackgroundColor": {
+          "type": "string",
+          "title": "Header colour",
+          "description": "The background of the column headers, such as #f3f4f6. Empty follows the theme.",
+          "maxLength": 40
+        },
+        "fontFamily": {
+          "type": "string",
+          "title": "Font",
+          "description": "The font of every grid, such as Inter, sans-serif. Empty follows the site.",
+          "maxLength": 200
+        },
+        "fontSize": {
+          "type": "integer",
+          "title": "Font size",
+          "description": "In pixels, 9 to 20.",
+          "minimum": 9,
+          "maximum": 20
+        },
+        "rowHeight": {
+          "type": "integer",
+          "title": "Row height",
+          "description": "In pixels, 20 to 60.",
+          "minimum": 20,
+          "maximum": 60
+        },
+        "stripedRows": {
+          "type": "boolean",
+          "title": "Shaded rows",
+          "description": "Every other row is shaded."
+        },
+        "columnBorders": {
+          "type": "boolean",
+          "title": "Column lines",
+          "description": "Lines between the columns."
         }
       }
     },
@@ -96,7 +139,8 @@
                     "percent",
                     "normalized",
                     "normalizedPercent",
-                    "dateToYear"
+                    "dateToYear",
+                    "compact"
                   ]
                 },
                 "wsRowIdColumn": {
@@ -141,53 +185,254 @@
                 "columnState": {
                   "type": "object",
                   "additionalProperties": false,
-                  "description": "The grid layout a new card opens with: parts of an AG Grid grid state, directly or under `default`. A card's own saved layout replaces it.",
                   "properties": {
                     "aggregation": {
-                      "type": "object"
+                      "type": "object",
+                      "additionalProperties": false,
+                      "properties": {
+                        "aggregationModel": {
+                          "type": "array",
+                          "maxItems": 500,
+                          "items": {
+                            "type": "object",
+                            "additionalProperties": false,
+                            "properties": {
+                              "colId": {
+                                "type": "string",
+                                "maxLength": 256
+                              },
+                              "aggFunc": {
+                                "type": "string",
+                                "maxLength": 32
+                              }
+                            }
+                          }
+                        }
+                      }
                     },
                     "columnGroup": {
-                      "type": "object"
+                      "type": "object",
+                      "additionalProperties": false,
+                      "properties": {
+                        "openColumnGroupIds": {
+                          "type": "array",
+                          "maxItems": 500,
+                          "items": {
+                            "type": "string",
+                            "maxLength": 256
+                          }
+                        }
+                      }
                     },
                     "columnOrder": {
-                      "type": "object"
+                      "type": "object",
+                      "additionalProperties": false,
+                      "properties": {
+                        "orderedColIds": {
+                          "type": "array",
+                          "maxItems": 500,
+                          "items": {
+                            "type": "string",
+                            "maxLength": 256
+                          }
+                        }
+                      }
                     },
                     "columnPinning": {
-                      "type": "object"
+                      "type": "object",
+                      "additionalProperties": false,
+                      "properties": {
+                        "leftColIds": {
+                          "type": "array",
+                          "maxItems": 500,
+                          "items": {
+                            "type": "string",
+                            "maxLength": 256
+                          }
+                        },
+                        "rightColIds": {
+                          "type": "array",
+                          "maxItems": 500,
+                          "items": {
+                            "type": "string",
+                            "maxLength": 256
+                          }
+                        }
+                      }
                     },
                     "columnSizing": {
-                      "type": "object"
+                      "type": "object",
+                      "additionalProperties": false,
+                      "properties": {
+                        "columnSizingModel": {
+                          "type": "array",
+                          "maxItems": 500,
+                          "items": {
+                            "type": "object",
+                            "additionalProperties": false,
+                            "properties": {
+                              "colId": {
+                                "type": "string",
+                                "maxLength": 256
+                              },
+                              "width": {
+                                "type": "number",
+                                "minimum": 0,
+                                "maximum": 5000
+                              },
+                              "flex": {
+                                "type": "number",
+                                "minimum": 0,
+                                "maximum": 100
+                              }
+                            }
+                          }
+                        }
+                      }
                     },
                     "columnVisibility": {
-                      "type": "object"
+                      "type": "object",
+                      "additionalProperties": false,
+                      "properties": {
+                        "hiddenColIds": {
+                          "type": "array",
+                          "maxItems": 500,
+                          "items": {
+                            "type": "string",
+                            "maxLength": 256
+                          }
+                        }
+                      }
                     },
                     "filter": {
-                      "type": "object"
+                      "type": "object",
+                      "additionalProperties": false,
+                      "properties": {
+                        "filterModel": {
+                          "$ref": "#/$defs/filterModel"
+                        }
+                      }
                     },
                     "pivot": {
-                      "type": "object"
+                      "type": "object",
+                      "additionalProperties": false,
+                      "properties": {
+                        "pivotMode": {
+                          "type": "boolean"
+                        },
+                        "pivotColIds": {
+                          "type": "array",
+                          "maxItems": 500,
+                          "items": {
+                            "type": "string",
+                            "maxLength": 256
+                          }
+                        }
+                      }
                     },
                     "rowGroup": {
-                      "type": "object"
+                      "type": "object",
+                      "additionalProperties": false,
+                      "properties": {
+                        "groupColIds": {
+                          "type": "array",
+                          "maxItems": 500,
+                          "items": {
+                            "type": "string",
+                            "maxLength": 256
+                          }
+                        }
+                      }
                     },
                     "sideBar": {
-                      "type": "object"
+                      "type": "object",
+                      "additionalProperties": false,
+                      "properties": {
+                        "visible": {
+                          "type": "boolean"
+                        },
+                        "position": {
+                          "type": "string",
+                          "enum": [
+                            "left",
+                            "right"
+                          ]
+                        },
+                        "openToolPanel": {
+                          "type": [
+                            "string",
+                            "null"
+                          ],
+                          "maxLength": 64
+                        },
+                        "toolPanels": {
+                          "type": "object",
+                          "additionalProperties": {
+                            "type": "object",
+                            "additionalProperties": false,
+                            "properties": {
+                              "expandedGroupIds": {
+                                "type": "array",
+                                "maxItems": 500,
+                                "items": {
+                                  "type": "string",
+                                  "maxLength": 256
+                                }
+                              },
+                              "expandedColIds": {
+                                "type": "array",
+                                "maxItems": 500,
+                                "items": {
+                                  "type": "string",
+                                  "maxLength": 256
+                                }
+                              }
+                            }
+                          }
+                        }
+                      }
                     },
                     "sort": {
-                      "type": "object"
+                      "type": "object",
+                      "additionalProperties": false,
+                      "properties": {
+                        "sortModel": {
+                          "type": "array",
+                          "maxItems": 50,
+                          "items": {
+                            "type": "object",
+                            "additionalProperties": false,
+                            "properties": {
+                              "colId": {
+                                "type": "string",
+                                "maxLength": 256
+                              },
+                              "sort": {
+                                "type": "string",
+                                "enum": [
+                                  "asc",
+                                  "desc"
+                                ]
+                              }
+                            }
+                          }
+                        }
+                      }
                     },
                     "default": {
                       "$ref": "#/$defs/gridPreset"
                     }
-                  }
+                  },
+                  "description": "The grid layout a new card opens with: parts of an AG Grid grid state, directly or under `default`. A card's own saved layout replaces it."
                 },
                 "filterModel": {
-                  "type": "object",
-                  "maxProperties": 200,
-                  "additionalProperties": {
-                    "type": "object"
-                  },
+                  "$ref": "#/$defs/filterModel",
                   "description": "The filters a new card opens with, as an AG Grid filter model keyed by column."
+                },
+                "emptyValue": {
+                  "type": "string",
+                  "maxLength": 16,
+                  "description": "The text of an empty cell, such as - or n/a. Empty by default."
                 }
               },
               "$defs": {
@@ -280,6 +525,18 @@
                           "type": "number",
                           "minimum": 0,
                           "maximum": 20
+                        },
+                        "shape": {
+                          "type": "string",
+                          "enum": [
+                            "circle",
+                            "square",
+                            "diamond",
+                            "triangle",
+                            "cross",
+                            "plus",
+                            "star"
+                          ]
                         }
                       }
                     },
@@ -341,6 +598,88 @@
                           "type": "number",
                           "minimum": 0,
                           "maximum": 50
+                        }
+                      }
+                    },
+                    "xKey": {
+                      "type": "string",
+                      "maxLength": 128,
+                      "description": "For points that are objects: the key of the x value."
+                    },
+                    "yKey": {
+                      "type": "string",
+                      "maxLength": 128,
+                      "description": "For points that are objects: the key of the y value."
+                    },
+                    "tooltip": {
+                      "type": "object",
+                      "additionalProperties": false,
+                      "properties": {
+                        "enabled": {
+                          "type": "boolean"
+                        }
+                      }
+                    },
+                    "crosshair": {
+                      "type": "object",
+                      "additionalProperties": false,
+                      "properties": {
+                        "enabled": {
+                          "type": "boolean"
+                        }
+                      }
+                    },
+                    "axis": {
+                      "type": "object",
+                      "additionalProperties": false,
+                      "properties": {
+                        "visible": {
+                          "type": "boolean"
+                        },
+                        "stroke": {
+                          "type": "string",
+                          "maxLength": 64,
+                          "description": "A hex colour or a CSS colour name."
+                        },
+                        "strokeWidth": {
+                          "type": "number",
+                          "minimum": 0,
+                          "maximum": 10
+                        }
+                      }
+                    },
+                    "label": {
+                      "type": "object",
+                      "additionalProperties": false,
+                      "description": "Bar sparklines: the value on each bar.",
+                      "properties": {
+                        "enabled": {
+                          "type": "boolean"
+                        },
+                        "placement": {
+                          "type": "string",
+                          "enum": [
+                            "inside-center",
+                            "inside-base",
+                            "inside-end",
+                            "outside-end"
+                          ]
+                        },
+                        "color": {
+                          "type": "string",
+                          "maxLength": 64
+                        },
+                        "fontSize": {
+                          "type": "number",
+                          "minimum": 6,
+                          "maximum": 24
+                        },
+                        "fontWeight": {
+                          "type": "string",
+                          "enum": [
+                            "normal",
+                            "bold"
+                          ]
                         }
                       }
                     }
@@ -566,7 +905,8 @@
                         "percent",
                         "normalized",
                         "normalizedPercent",
-                        "dateToYear"
+                        "dateToYear",
+                        "compact"
                       ]
                     },
                     "decimalPlaces": {
@@ -740,42 +1080,392 @@
                 "gridPreset": {
                   "type": "object",
                   "additionalProperties": false,
-                  "description": "Parts of an AG Grid grid state (api.getState()): the layout the card opens with until the user changes it.",
                   "properties": {
                     "aggregation": {
-                      "type": "object"
+                      "type": "object",
+                      "additionalProperties": false,
+                      "properties": {
+                        "aggregationModel": {
+                          "type": "array",
+                          "maxItems": 500,
+                          "items": {
+                            "type": "object",
+                            "additionalProperties": false,
+                            "properties": {
+                              "colId": {
+                                "type": "string",
+                                "maxLength": 256
+                              },
+                              "aggFunc": {
+                                "type": "string",
+                                "maxLength": 32
+                              }
+                            }
+                          }
+                        }
+                      }
                     },
                     "columnGroup": {
-                      "type": "object"
+                      "type": "object",
+                      "additionalProperties": false,
+                      "properties": {
+                        "openColumnGroupIds": {
+                          "type": "array",
+                          "maxItems": 500,
+                          "items": {
+                            "type": "string",
+                            "maxLength": 256
+                          }
+                        }
+                      }
                     },
                     "columnOrder": {
-                      "type": "object"
+                      "type": "object",
+                      "additionalProperties": false,
+                      "properties": {
+                        "orderedColIds": {
+                          "type": "array",
+                          "maxItems": 500,
+                          "items": {
+                            "type": "string",
+                            "maxLength": 256
+                          }
+                        }
+                      }
                     },
                     "columnPinning": {
-                      "type": "object"
+                      "type": "object",
+                      "additionalProperties": false,
+                      "properties": {
+                        "leftColIds": {
+                          "type": "array",
+                          "maxItems": 500,
+                          "items": {
+                            "type": "string",
+                            "maxLength": 256
+                          }
+                        },
+                        "rightColIds": {
+                          "type": "array",
+                          "maxItems": 500,
+                          "items": {
+                            "type": "string",
+                            "maxLength": 256
+                          }
+                        }
+                      }
                     },
                     "columnSizing": {
-                      "type": "object"
+                      "type": "object",
+                      "additionalProperties": false,
+                      "properties": {
+                        "columnSizingModel": {
+                          "type": "array",
+                          "maxItems": 500,
+                          "items": {
+                            "type": "object",
+                            "additionalProperties": false,
+                            "properties": {
+                              "colId": {
+                                "type": "string",
+                                "maxLength": 256
+                              },
+                              "width": {
+                                "type": "number",
+                                "minimum": 0,
+                                "maximum": 5000
+                              },
+                              "flex": {
+                                "type": "number",
+                                "minimum": 0,
+                                "maximum": 100
+                              }
+                            }
+                          }
+                        }
+                      }
                     },
                     "columnVisibility": {
-                      "type": "object"
+                      "type": "object",
+                      "additionalProperties": false,
+                      "properties": {
+                        "hiddenColIds": {
+                          "type": "array",
+                          "maxItems": 500,
+                          "items": {
+                            "type": "string",
+                            "maxLength": 256
+                          }
+                        }
+                      }
                     },
                     "filter": {
-                      "type": "object"
+                      "type": "object",
+                      "additionalProperties": false,
+                      "properties": {
+                        "filterModel": {
+                          "$ref": "#/$defs/filterModel"
+                        }
+                      }
                     },
                     "pivot": {
-                      "type": "object"
+                      "type": "object",
+                      "additionalProperties": false,
+                      "properties": {
+                        "pivotMode": {
+                          "type": "boolean"
+                        },
+                        "pivotColIds": {
+                          "type": "array",
+                          "maxItems": 500,
+                          "items": {
+                            "type": "string",
+                            "maxLength": 256
+                          }
+                        }
+                      }
                     },
                     "rowGroup": {
-                      "type": "object"
+                      "type": "object",
+                      "additionalProperties": false,
+                      "properties": {
+                        "groupColIds": {
+                          "type": "array",
+                          "maxItems": 500,
+                          "items": {
+                            "type": "string",
+                            "maxLength": 256
+                          }
+                        }
+                      }
                     },
                     "sideBar": {
-                      "type": "object"
+                      "type": "object",
+                      "additionalProperties": false,
+                      "properties": {
+                        "visible": {
+                          "type": "boolean"
+                        },
+                        "position": {
+                          "type": "string",
+                          "enum": [
+                            "left",
+                            "right"
+                          ]
+                        },
+                        "openToolPanel": {
+                          "type": [
+                            "string",
+                            "null"
+                          ],
+                          "maxLength": 64
+                        },
+                        "toolPanels": {
+                          "type": "object",
+                          "additionalProperties": {
+                            "type": "object",
+                            "additionalProperties": false,
+                            "properties": {
+                              "expandedGroupIds": {
+                                "type": "array",
+                                "maxItems": 500,
+                                "items": {
+                                  "type": "string",
+                                  "maxLength": 256
+                                }
+                              },
+                              "expandedColIds": {
+                                "type": "array",
+                                "maxItems": 500,
+                                "items": {
+                                  "type": "string",
+                                  "maxLength": 256
+                                }
+                              }
+                            }
+                          }
+                        }
+                      }
                     },
                     "sort": {
-                      "type": "object"
+                      "type": "object",
+                      "additionalProperties": false,
+                      "properties": {
+                        "sortModel": {
+                          "type": "array",
+                          "maxItems": 50,
+                          "items": {
+                            "type": "object",
+                            "additionalProperties": false,
+                            "properties": {
+                              "colId": {
+                                "type": "string",
+                                "maxLength": 256
+                              },
+                              "sort": {
+                                "type": "string",
+                                "enum": [
+                                  "asc",
+                                  "desc"
+                                ]
+                              }
+                            }
+                          }
+                        }
+                      }
+                    }
+                  },
+                  "description": "Parts of an AG Grid grid state (api.getState()): the layout a new card opens with."
+                },
+                "filterCondition": {
+                  "type": [
+                    "object",
+                    "null"
+                  ],
+                  "additionalProperties": false,
+                  "description": "One AG Grid column filter model: text, number, date, set or multi.",
+                  "properties": {
+                    "filterType": {
+                      "type": "string",
+                      "maxLength": 32
+                    },
+                    "type": {
+                      "type": "string",
+                      "maxLength": 64
+                    },
+                    "filter": {
+                      "type": [
+                        "string",
+                        "number",
+                        "null"
+                      ],
+                      "maxLength": 500
+                    },
+                    "filterTo": {
+                      "type": [
+                        "string",
+                        "number",
+                        "null"
+                      ],
+                      "maxLength": 500
+                    },
+                    "dateFrom": {
+                      "type": [
+                        "string",
+                        "null"
+                      ],
+                      "maxLength": 40
+                    },
+                    "dateTo": {
+                      "type": [
+                        "string",
+                        "null"
+                      ],
+                      "maxLength": 40
+                    },
+                    "values": {
+                      "type": "array",
+                      "maxItems": 1000,
+                      "items": {
+                        "type": [
+                          "string",
+                          "number",
+                          "boolean",
+                          "null"
+                        ],
+                        "maxLength": 500
+                      }
                     }
                   }
+                },
+                "columnFilter": {
+                  "type": [
+                    "object",
+                    "null"
+                  ],
+                  "additionalProperties": false,
+                  "description": "One AG Grid column filter model: text, number, date, set or multi.",
+                  "properties": {
+                    "filterType": {
+                      "type": "string",
+                      "maxLength": 32
+                    },
+                    "type": {
+                      "type": "string",
+                      "maxLength": 64
+                    },
+                    "filter": {
+                      "type": [
+                        "string",
+                        "number",
+                        "null"
+                      ],
+                      "maxLength": 500
+                    },
+                    "filterTo": {
+                      "type": [
+                        "string",
+                        "number",
+                        "null"
+                      ],
+                      "maxLength": 500
+                    },
+                    "dateFrom": {
+                      "type": [
+                        "string",
+                        "null"
+                      ],
+                      "maxLength": 40
+                    },
+                    "dateTo": {
+                      "type": [
+                        "string",
+                        "null"
+                      ],
+                      "maxLength": 40
+                    },
+                    "values": {
+                      "type": "array",
+                      "maxItems": 1000,
+                      "items": {
+                        "type": [
+                          "string",
+                          "number",
+                          "boolean",
+                          "null"
+                        ],
+                        "maxLength": 500
+                      }
+                    },
+                    "operator": {
+                      "type": "string",
+                      "enum": [
+                        "AND",
+                        "OR"
+                      ]
+                    },
+                    "conditions": {
+                      "type": "array",
+                      "maxItems": 10,
+                      "items": {
+                        "$ref": "#/$defs/filterCondition"
+                      }
+                    },
+                    "filterModels": {
+                      "type": "array",
+                      "maxItems": 10,
+                      "items": {
+                        "$ref": "#/$defs/filterCondition"
+                      }
+                    }
+                  }
+                },
+                "filterModel": {
+                  "type": "object",
+                  "additionalProperties": {
+                    "$ref": "#/$defs/columnFilter"
+                  },
+                  "description": "An AG Grid filter model keyed by column."
                 }
               }
             }
@@ -843,12 +1533,13 @@
               "theme": {
                 "type": "string",
                 "title": "AgGrid theme",
-                "description": "The AgGrid theme of this card; it replaces the backend's and the organization's, in the site's light or dark colours: balham (compact), quartz, alpine or material.",
+                "description": "The AgGrid theme of this card; it replaces the backend's and the organization's, in the site's light or dark colours: balham (compact type), quartz, alpine, material, or compact (small type, short rows, no column lines, shaded rows).",
                 "enum": [
                   "balham",
                   "quartz",
                   "alpine",
-                  "material"
+                  "material",
+                  "compact"
                 ]
               },
               "floatingFilters": {
@@ -860,6 +1551,51 @@
                 "type": "boolean",
                 "title": "Advanced filter",
                 "description": "One filter over all the columns, typed as an expression or made in the filter builder. It replaces the column filters and the Filters tool panel while it is on."
+              },
+              "decimals": {
+                "type": "integer",
+                "title": "Decimal places",
+                "description": "Decimal places of numbers without their own, 0 to 8. Empty follows the site.",
+                "minimum": 0,
+                "maximum": 8
+              },
+              "abbreviateNumbers": {
+                "type": "boolean",
+                "title": "Abbreviate large numbers",
+                "description": "Numbers of a million or more as M, B or T, such as 45.00B. The tooltip shows the full number."
+              },
+              "statusBar": {
+                "type": "boolean",
+                "title": "Status bar",
+                "description": "Row counts and the sum, average, minimum and maximum of the selected cells. On unless turned off."
+              },
+              "pagination": {
+                "type": "string",
+                "title": "Pages",
+                "description": "auto pages above 100 rows unless the backend says otherwise; on and off decide for this card.",
+                "enum": [
+                  "auto",
+                  "on",
+                  "off"
+                ]
+              },
+              "pageSize": {
+                "type": "string",
+                "title": "Rows per page",
+                "description": "auto fits the rows to the card.",
+                "enum": [
+                  "auto",
+                  "50",
+                  "100",
+                  "200",
+                  "500",
+                  "1000"
+                ]
+              },
+              "filterBar": {
+                "type": "boolean",
+                "title": "Active filters bar",
+                "description": "The filters that are on, above the grid, each with a button that removes it. On unless turned off."
               }
             }
           },
@@ -963,6 +1699,24 @@
             "label": "Clear filters and sort",
             "icon": "refresh",
             "placement": "menu"
+          },
+          {
+            "id": "reset-columns",
+            "label": "Reset columns",
+            "icon": "columns",
+            "placement": "menu"
+          },
+          {
+            "id": "transpose",
+            "label": "Transpose rows and columns",
+            "icon": "assets/transpose.svg",
+            "placement": "menu"
+          },
+          {
+            "id": "reverse-columns",
+            "label": "Reverse column order",
+            "icon": "assets/reverse.svg",
+            "placement": "menu"
           }
         ]
       },
@@ -1055,12 +1809,13 @@
               "theme": {
                 "type": "string",
                 "title": "AgGrid theme",
-                "description": "The AgGrid theme of this card; it replaces the backend's and the organization's, in the site's light or dark colours: balham (compact), quartz, alpine or material.",
+                "description": "The AgGrid theme of this card; it replaces the backend's and the organization's, in the site's light or dark colours: balham (compact type), quartz, alpine, material, or compact (small type, short rows, no column lines, shaded rows).",
                 "enum": [
                   "balham",
                   "quartz",
                   "alpine",
-                  "material"
+                  "material",
+                  "compact"
                 ]
               },
               "floatingFilters": {
@@ -1072,6 +1827,16 @@
                 "type": "boolean",
                 "title": "Advanced filter",
                 "description": "One filter over all the columns, typed as an expression or made in the filter builder. It replaces the column filters and the Filters tool panel while it is on."
+              },
+              "statusBar": {
+                "type": "boolean",
+                "title": "Status bar",
+                "description": "Row counts and the sum, average, minimum and maximum of the selected cells. On unless turned off."
+              },
+              "filterBar": {
+                "type": "boolean",
+                "title": "Active filters bar",
+                "description": "The filters that are on, above the grid, each with a button that removes it. On unless turned off."
               }
             }
           },
@@ -1108,6 +1873,12 @@
             "id": "clear-filters",
             "label": "Clear filters and sort",
             "icon": "refresh",
+            "placement": "menu"
+          },
+          {
+            "id": "reset-columns",
+            "label": "Reset columns",
+            "icon": "columns",
             "placement": "menu"
           }
         ]
@@ -1739,18 +2510,29 @@
               "theme": {
                 "type": "string",
                 "title": "AgGrid theme",
-                "description": "The AgGrid theme of this card; it replaces the backend's and the organization's, in the site's light or dark colours: balham (compact), quartz, alpine or material.",
+                "description": "The AgGrid theme of this card; it replaces the backend's and the organization's, in the site's light or dark colours: balham (compact type), quartz, alpine, material, or compact (small type, short rows, no column lines, shaded rows).",
                 "enum": [
                   "balham",
                   "quartz",
                   "alpine",
-                  "material"
+                  "material",
+                  "compact"
                 ]
               },
               "floatingFilters": {
                 "type": "boolean",
                 "title": "Floating filters",
                 "description": "A filter box under each column header."
+              },
+              "statusBar": {
+                "type": "boolean",
+                "title": "Status bar",
+                "description": "Row counts and the sum, average, minimum and maximum of the selected cells. On unless turned off."
+              },
+              "filterBar": {
+                "type": "boolean",
+                "title": "Active filters bar",
+                "description": "The filters that are on, above the grid, each with a button that removes it. On unless turned off."
               }
             }
           },
@@ -1780,6 +2562,12 @@
             "id": "clear-filters",
             "label": "Clear filters and sort",
             "icon": "refresh",
+            "placement": "menu"
+          },
+          {
+            "id": "reset-columns",
+            "label": "Reset columns",
+            "icon": "columns",
             "placement": "menu"
           }
         ]
@@ -1821,7 +2609,8 @@
                     "percent",
                     "normalized",
                     "normalizedPercent",
-                    "dateToYear"
+                    "dateToYear",
+                    "compact"
                   ]
                 },
                 "wsRowIdColumn": {
@@ -1866,53 +2655,254 @@
                 "columnState": {
                   "type": "object",
                   "additionalProperties": false,
-                  "description": "The grid layout a new card opens with: parts of an AG Grid grid state, directly or under `default`. A card's own saved layout replaces it.",
                   "properties": {
                     "aggregation": {
-                      "type": "object"
+                      "type": "object",
+                      "additionalProperties": false,
+                      "properties": {
+                        "aggregationModel": {
+                          "type": "array",
+                          "maxItems": 500,
+                          "items": {
+                            "type": "object",
+                            "additionalProperties": false,
+                            "properties": {
+                              "colId": {
+                                "type": "string",
+                                "maxLength": 256
+                              },
+                              "aggFunc": {
+                                "type": "string",
+                                "maxLength": 32
+                              }
+                            }
+                          }
+                        }
+                      }
                     },
                     "columnGroup": {
-                      "type": "object"
+                      "type": "object",
+                      "additionalProperties": false,
+                      "properties": {
+                        "openColumnGroupIds": {
+                          "type": "array",
+                          "maxItems": 500,
+                          "items": {
+                            "type": "string",
+                            "maxLength": 256
+                          }
+                        }
+                      }
                     },
                     "columnOrder": {
-                      "type": "object"
+                      "type": "object",
+                      "additionalProperties": false,
+                      "properties": {
+                        "orderedColIds": {
+                          "type": "array",
+                          "maxItems": 500,
+                          "items": {
+                            "type": "string",
+                            "maxLength": 256
+                          }
+                        }
+                      }
                     },
                     "columnPinning": {
-                      "type": "object"
+                      "type": "object",
+                      "additionalProperties": false,
+                      "properties": {
+                        "leftColIds": {
+                          "type": "array",
+                          "maxItems": 500,
+                          "items": {
+                            "type": "string",
+                            "maxLength": 256
+                          }
+                        },
+                        "rightColIds": {
+                          "type": "array",
+                          "maxItems": 500,
+                          "items": {
+                            "type": "string",
+                            "maxLength": 256
+                          }
+                        }
+                      }
                     },
                     "columnSizing": {
-                      "type": "object"
+                      "type": "object",
+                      "additionalProperties": false,
+                      "properties": {
+                        "columnSizingModel": {
+                          "type": "array",
+                          "maxItems": 500,
+                          "items": {
+                            "type": "object",
+                            "additionalProperties": false,
+                            "properties": {
+                              "colId": {
+                                "type": "string",
+                                "maxLength": 256
+                              },
+                              "width": {
+                                "type": "number",
+                                "minimum": 0,
+                                "maximum": 5000
+                              },
+                              "flex": {
+                                "type": "number",
+                                "minimum": 0,
+                                "maximum": 100
+                              }
+                            }
+                          }
+                        }
+                      }
                     },
                     "columnVisibility": {
-                      "type": "object"
+                      "type": "object",
+                      "additionalProperties": false,
+                      "properties": {
+                        "hiddenColIds": {
+                          "type": "array",
+                          "maxItems": 500,
+                          "items": {
+                            "type": "string",
+                            "maxLength": 256
+                          }
+                        }
+                      }
                     },
                     "filter": {
-                      "type": "object"
+                      "type": "object",
+                      "additionalProperties": false,
+                      "properties": {
+                        "filterModel": {
+                          "$ref": "#/$defs/filterModel"
+                        }
+                      }
                     },
                     "pivot": {
-                      "type": "object"
+                      "type": "object",
+                      "additionalProperties": false,
+                      "properties": {
+                        "pivotMode": {
+                          "type": "boolean"
+                        },
+                        "pivotColIds": {
+                          "type": "array",
+                          "maxItems": 500,
+                          "items": {
+                            "type": "string",
+                            "maxLength": 256
+                          }
+                        }
+                      }
                     },
                     "rowGroup": {
-                      "type": "object"
+                      "type": "object",
+                      "additionalProperties": false,
+                      "properties": {
+                        "groupColIds": {
+                          "type": "array",
+                          "maxItems": 500,
+                          "items": {
+                            "type": "string",
+                            "maxLength": 256
+                          }
+                        }
+                      }
                     },
                     "sideBar": {
-                      "type": "object"
+                      "type": "object",
+                      "additionalProperties": false,
+                      "properties": {
+                        "visible": {
+                          "type": "boolean"
+                        },
+                        "position": {
+                          "type": "string",
+                          "enum": [
+                            "left",
+                            "right"
+                          ]
+                        },
+                        "openToolPanel": {
+                          "type": [
+                            "string",
+                            "null"
+                          ],
+                          "maxLength": 64
+                        },
+                        "toolPanels": {
+                          "type": "object",
+                          "additionalProperties": {
+                            "type": "object",
+                            "additionalProperties": false,
+                            "properties": {
+                              "expandedGroupIds": {
+                                "type": "array",
+                                "maxItems": 500,
+                                "items": {
+                                  "type": "string",
+                                  "maxLength": 256
+                                }
+                              },
+                              "expandedColIds": {
+                                "type": "array",
+                                "maxItems": 500,
+                                "items": {
+                                  "type": "string",
+                                  "maxLength": 256
+                                }
+                              }
+                            }
+                          }
+                        }
+                      }
                     },
                     "sort": {
-                      "type": "object"
+                      "type": "object",
+                      "additionalProperties": false,
+                      "properties": {
+                        "sortModel": {
+                          "type": "array",
+                          "maxItems": 50,
+                          "items": {
+                            "type": "object",
+                            "additionalProperties": false,
+                            "properties": {
+                              "colId": {
+                                "type": "string",
+                                "maxLength": 256
+                              },
+                              "sort": {
+                                "type": "string",
+                                "enum": [
+                                  "asc",
+                                  "desc"
+                                ]
+                              }
+                            }
+                          }
+                        }
+                      }
                     },
                     "default": {
                       "$ref": "#/$defs/gridPreset"
                     }
-                  }
+                  },
+                  "description": "The grid layout a new card opens with: parts of an AG Grid grid state, directly or under `default`. A card's own saved layout replaces it."
                 },
                 "filterModel": {
-                  "type": "object",
-                  "maxProperties": 200,
-                  "additionalProperties": {
-                    "type": "object"
-                  },
+                  "$ref": "#/$defs/filterModel",
                   "description": "The filters a new card opens with, as an AG Grid filter model keyed by column."
+                },
+                "emptyValue": {
+                  "type": "string",
+                  "maxLength": 16,
+                  "description": "The text of an empty cell, such as - or n/a. Empty by default."
                 }
               },
               "$defs": {
@@ -2005,6 +2995,18 @@
                           "type": "number",
                           "minimum": 0,
                           "maximum": 20
+                        },
+                        "shape": {
+                          "type": "string",
+                          "enum": [
+                            "circle",
+                            "square",
+                            "diamond",
+                            "triangle",
+                            "cross",
+                            "plus",
+                            "star"
+                          ]
                         }
                       }
                     },
@@ -2066,6 +3068,88 @@
                           "type": "number",
                           "minimum": 0,
                           "maximum": 50
+                        }
+                      }
+                    },
+                    "xKey": {
+                      "type": "string",
+                      "maxLength": 128,
+                      "description": "For points that are objects: the key of the x value."
+                    },
+                    "yKey": {
+                      "type": "string",
+                      "maxLength": 128,
+                      "description": "For points that are objects: the key of the y value."
+                    },
+                    "tooltip": {
+                      "type": "object",
+                      "additionalProperties": false,
+                      "properties": {
+                        "enabled": {
+                          "type": "boolean"
+                        }
+                      }
+                    },
+                    "crosshair": {
+                      "type": "object",
+                      "additionalProperties": false,
+                      "properties": {
+                        "enabled": {
+                          "type": "boolean"
+                        }
+                      }
+                    },
+                    "axis": {
+                      "type": "object",
+                      "additionalProperties": false,
+                      "properties": {
+                        "visible": {
+                          "type": "boolean"
+                        },
+                        "stroke": {
+                          "type": "string",
+                          "maxLength": 64,
+                          "description": "A hex colour or a CSS colour name."
+                        },
+                        "strokeWidth": {
+                          "type": "number",
+                          "minimum": 0,
+                          "maximum": 10
+                        }
+                      }
+                    },
+                    "label": {
+                      "type": "object",
+                      "additionalProperties": false,
+                      "description": "Bar sparklines: the value on each bar.",
+                      "properties": {
+                        "enabled": {
+                          "type": "boolean"
+                        },
+                        "placement": {
+                          "type": "string",
+                          "enum": [
+                            "inside-center",
+                            "inside-base",
+                            "inside-end",
+                            "outside-end"
+                          ]
+                        },
+                        "color": {
+                          "type": "string",
+                          "maxLength": 64
+                        },
+                        "fontSize": {
+                          "type": "number",
+                          "minimum": 6,
+                          "maximum": 24
+                        },
+                        "fontWeight": {
+                          "type": "string",
+                          "enum": [
+                            "normal",
+                            "bold"
+                          ]
                         }
                       }
                     }
@@ -2291,7 +3375,8 @@
                         "percent",
                         "normalized",
                         "normalizedPercent",
-                        "dateToYear"
+                        "dateToYear",
+                        "compact"
                       ]
                     },
                     "decimalPlaces": {
@@ -2465,42 +3550,392 @@
                 "gridPreset": {
                   "type": "object",
                   "additionalProperties": false,
-                  "description": "Parts of an AG Grid grid state (api.getState()): the layout the card opens with until the user changes it.",
                   "properties": {
                     "aggregation": {
-                      "type": "object"
+                      "type": "object",
+                      "additionalProperties": false,
+                      "properties": {
+                        "aggregationModel": {
+                          "type": "array",
+                          "maxItems": 500,
+                          "items": {
+                            "type": "object",
+                            "additionalProperties": false,
+                            "properties": {
+                              "colId": {
+                                "type": "string",
+                                "maxLength": 256
+                              },
+                              "aggFunc": {
+                                "type": "string",
+                                "maxLength": 32
+                              }
+                            }
+                          }
+                        }
+                      }
                     },
                     "columnGroup": {
-                      "type": "object"
+                      "type": "object",
+                      "additionalProperties": false,
+                      "properties": {
+                        "openColumnGroupIds": {
+                          "type": "array",
+                          "maxItems": 500,
+                          "items": {
+                            "type": "string",
+                            "maxLength": 256
+                          }
+                        }
+                      }
                     },
                     "columnOrder": {
-                      "type": "object"
+                      "type": "object",
+                      "additionalProperties": false,
+                      "properties": {
+                        "orderedColIds": {
+                          "type": "array",
+                          "maxItems": 500,
+                          "items": {
+                            "type": "string",
+                            "maxLength": 256
+                          }
+                        }
+                      }
                     },
                     "columnPinning": {
-                      "type": "object"
+                      "type": "object",
+                      "additionalProperties": false,
+                      "properties": {
+                        "leftColIds": {
+                          "type": "array",
+                          "maxItems": 500,
+                          "items": {
+                            "type": "string",
+                            "maxLength": 256
+                          }
+                        },
+                        "rightColIds": {
+                          "type": "array",
+                          "maxItems": 500,
+                          "items": {
+                            "type": "string",
+                            "maxLength": 256
+                          }
+                        }
+                      }
                     },
                     "columnSizing": {
-                      "type": "object"
+                      "type": "object",
+                      "additionalProperties": false,
+                      "properties": {
+                        "columnSizingModel": {
+                          "type": "array",
+                          "maxItems": 500,
+                          "items": {
+                            "type": "object",
+                            "additionalProperties": false,
+                            "properties": {
+                              "colId": {
+                                "type": "string",
+                                "maxLength": 256
+                              },
+                              "width": {
+                                "type": "number",
+                                "minimum": 0,
+                                "maximum": 5000
+                              },
+                              "flex": {
+                                "type": "number",
+                                "minimum": 0,
+                                "maximum": 100
+                              }
+                            }
+                          }
+                        }
+                      }
                     },
                     "columnVisibility": {
-                      "type": "object"
+                      "type": "object",
+                      "additionalProperties": false,
+                      "properties": {
+                        "hiddenColIds": {
+                          "type": "array",
+                          "maxItems": 500,
+                          "items": {
+                            "type": "string",
+                            "maxLength": 256
+                          }
+                        }
+                      }
                     },
                     "filter": {
-                      "type": "object"
+                      "type": "object",
+                      "additionalProperties": false,
+                      "properties": {
+                        "filterModel": {
+                          "$ref": "#/$defs/filterModel"
+                        }
+                      }
                     },
                     "pivot": {
-                      "type": "object"
+                      "type": "object",
+                      "additionalProperties": false,
+                      "properties": {
+                        "pivotMode": {
+                          "type": "boolean"
+                        },
+                        "pivotColIds": {
+                          "type": "array",
+                          "maxItems": 500,
+                          "items": {
+                            "type": "string",
+                            "maxLength": 256
+                          }
+                        }
+                      }
                     },
                     "rowGroup": {
-                      "type": "object"
+                      "type": "object",
+                      "additionalProperties": false,
+                      "properties": {
+                        "groupColIds": {
+                          "type": "array",
+                          "maxItems": 500,
+                          "items": {
+                            "type": "string",
+                            "maxLength": 256
+                          }
+                        }
+                      }
                     },
                     "sideBar": {
-                      "type": "object"
+                      "type": "object",
+                      "additionalProperties": false,
+                      "properties": {
+                        "visible": {
+                          "type": "boolean"
+                        },
+                        "position": {
+                          "type": "string",
+                          "enum": [
+                            "left",
+                            "right"
+                          ]
+                        },
+                        "openToolPanel": {
+                          "type": [
+                            "string",
+                            "null"
+                          ],
+                          "maxLength": 64
+                        },
+                        "toolPanels": {
+                          "type": "object",
+                          "additionalProperties": {
+                            "type": "object",
+                            "additionalProperties": false,
+                            "properties": {
+                              "expandedGroupIds": {
+                                "type": "array",
+                                "maxItems": 500,
+                                "items": {
+                                  "type": "string",
+                                  "maxLength": 256
+                                }
+                              },
+                              "expandedColIds": {
+                                "type": "array",
+                                "maxItems": 500,
+                                "items": {
+                                  "type": "string",
+                                  "maxLength": 256
+                                }
+                              }
+                            }
+                          }
+                        }
+                      }
                     },
                     "sort": {
-                      "type": "object"
+                      "type": "object",
+                      "additionalProperties": false,
+                      "properties": {
+                        "sortModel": {
+                          "type": "array",
+                          "maxItems": 50,
+                          "items": {
+                            "type": "object",
+                            "additionalProperties": false,
+                            "properties": {
+                              "colId": {
+                                "type": "string",
+                                "maxLength": 256
+                              },
+                              "sort": {
+                                "type": "string",
+                                "enum": [
+                                  "asc",
+                                  "desc"
+                                ]
+                              }
+                            }
+                          }
+                        }
+                      }
+                    }
+                  },
+                  "description": "Parts of an AG Grid grid state (api.getState()): the layout a new card opens with."
+                },
+                "filterCondition": {
+                  "type": [
+                    "object",
+                    "null"
+                  ],
+                  "additionalProperties": false,
+                  "description": "One AG Grid column filter model: text, number, date, set or multi.",
+                  "properties": {
+                    "filterType": {
+                      "type": "string",
+                      "maxLength": 32
+                    },
+                    "type": {
+                      "type": "string",
+                      "maxLength": 64
+                    },
+                    "filter": {
+                      "type": [
+                        "string",
+                        "number",
+                        "null"
+                      ],
+                      "maxLength": 500
+                    },
+                    "filterTo": {
+                      "type": [
+                        "string",
+                        "number",
+                        "null"
+                      ],
+                      "maxLength": 500
+                    },
+                    "dateFrom": {
+                      "type": [
+                        "string",
+                        "null"
+                      ],
+                      "maxLength": 40
+                    },
+                    "dateTo": {
+                      "type": [
+                        "string",
+                        "null"
+                      ],
+                      "maxLength": 40
+                    },
+                    "values": {
+                      "type": "array",
+                      "maxItems": 1000,
+                      "items": {
+                        "type": [
+                          "string",
+                          "number",
+                          "boolean",
+                          "null"
+                        ],
+                        "maxLength": 500
+                      }
                     }
                   }
+                },
+                "columnFilter": {
+                  "type": [
+                    "object",
+                    "null"
+                  ],
+                  "additionalProperties": false,
+                  "description": "One AG Grid column filter model: text, number, date, set or multi.",
+                  "properties": {
+                    "filterType": {
+                      "type": "string",
+                      "maxLength": 32
+                    },
+                    "type": {
+                      "type": "string",
+                      "maxLength": 64
+                    },
+                    "filter": {
+                      "type": [
+                        "string",
+                        "number",
+                        "null"
+                      ],
+                      "maxLength": 500
+                    },
+                    "filterTo": {
+                      "type": [
+                        "string",
+                        "number",
+                        "null"
+                      ],
+                      "maxLength": 500
+                    },
+                    "dateFrom": {
+                      "type": [
+                        "string",
+                        "null"
+                      ],
+                      "maxLength": 40
+                    },
+                    "dateTo": {
+                      "type": [
+                        "string",
+                        "null"
+                      ],
+                      "maxLength": 40
+                    },
+                    "values": {
+                      "type": "array",
+                      "maxItems": 1000,
+                      "items": {
+                        "type": [
+                          "string",
+                          "number",
+                          "boolean",
+                          "null"
+                        ],
+                        "maxLength": 500
+                      }
+                    },
+                    "operator": {
+                      "type": "string",
+                      "enum": [
+                        "AND",
+                        "OR"
+                      ]
+                    },
+                    "conditions": {
+                      "type": "array",
+                      "maxItems": 10,
+                      "items": {
+                        "$ref": "#/$defs/filterCondition"
+                      }
+                    },
+                    "filterModels": {
+                      "type": "array",
+                      "maxItems": 10,
+                      "items": {
+                        "$ref": "#/$defs/filterCondition"
+                      }
+                    }
+                  }
+                },
+                "filterModel": {
+                  "type": "object",
+                  "additionalProperties": {
+                    "$ref": "#/$defs/columnFilter"
+                  },
+                  "description": "An AG Grid filter model keyed by column."
                 }
               }
             }
@@ -2569,12 +4004,13 @@
               "theme": {
                 "type": "string",
                 "title": "AgGrid theme",
-                "description": "The AgGrid theme of this card; it replaces the backend's and the organization's, in the site's light or dark colours: balham (compact), quartz, alpine or material.",
+                "description": "The AgGrid theme of this card; it replaces the backend's and the organization's, in the site's light or dark colours: balham (compact type), quartz, alpine, material, or compact (small type, short rows, no column lines, shaded rows).",
                 "enum": [
                   "balham",
                   "quartz",
                   "alpine",
-                  "material"
+                  "material",
+                  "compact"
                 ]
               },
               "floatingFilters": {
@@ -2586,6 +4022,51 @@
                 "type": "boolean",
                 "title": "Advanced filter",
                 "description": "One filter over all the columns, typed as an expression or made in the filter builder. It replaces the column filters and the Filters tool panel while it is on."
+              },
+              "decimals": {
+                "type": "integer",
+                "title": "Decimal places",
+                "description": "Decimal places of numbers without their own, 0 to 8. Empty follows the site.",
+                "minimum": 0,
+                "maximum": 8
+              },
+              "abbreviateNumbers": {
+                "type": "boolean",
+                "title": "Abbreviate large numbers",
+                "description": "Numbers of a million or more as M, B or T, such as 45.00B. The tooltip shows the full number."
+              },
+              "statusBar": {
+                "type": "boolean",
+                "title": "Status bar",
+                "description": "Row counts and the sum, average, minimum and maximum of the selected cells. On unless turned off."
+              },
+              "pagination": {
+                "type": "string",
+                "title": "Pages",
+                "description": "auto pages above 100 rows unless the backend says otherwise; on and off decide for this card.",
+                "enum": [
+                  "auto",
+                  "on",
+                  "off"
+                ]
+              },
+              "pageSize": {
+                "type": "string",
+                "title": "Rows per page",
+                "description": "auto fits the rows to the card.",
+                "enum": [
+                  "auto",
+                  "50",
+                  "100",
+                  "200",
+                  "500",
+                  "1000"
+                ]
+              },
+              "filterBar": {
+                "type": "boolean",
+                "title": "Active filters bar",
+                "description": "The filters that are on, above the grid, each with a button that removes it. On unless turned off."
               }
             }
           },
@@ -2622,6 +4103,24 @@
             "id": "clear-filters",
             "label": "Clear filters and sort",
             "icon": "refresh",
+            "placement": "menu"
+          },
+          {
+            "id": "reset-columns",
+            "label": "Reset columns",
+            "icon": "columns",
+            "placement": "menu"
+          },
+          {
+            "id": "transpose",
+            "label": "Transpose rows and columns",
+            "icon": "assets/transpose.svg",
+            "placement": "menu"
+          },
+          {
+            "id": "reverse-columns",
+            "label": "Reverse column order",
+            "icon": "assets/reverse.svg",
             "placement": "menu"
           }
         ]
@@ -2694,12 +4193,13 @@
               "theme": {
                 "type": "string",
                 "title": "AgGrid theme",
-                "description": "The AgGrid theme of this card; it replaces the backend's and the organization's, in the site's light or dark colours: balham (compact), quartz, alpine or material.",
+                "description": "The AgGrid theme of this card; it replaces the backend's and the organization's, in the site's light or dark colours: balham (compact type), quartz, alpine, material, or compact (small type, short rows, no column lines, shaded rows).",
                 "enum": [
                   "balham",
                   "quartz",
                   "alpine",
-                  "material"
+                  "material",
+                  "compact"
                 ]
               }
             }

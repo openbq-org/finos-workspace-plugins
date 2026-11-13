@@ -324,6 +324,30 @@ WIDGETS = {
         refetchInterval=5000,
         h=10,
     ),
+    "ag_table_chart_directory": widget(
+        "Company directory",
+        "formatterFn compact (M, B, T), emptyValue, links that open after the user confirms, long texts in their tooltip, and sparklines of object points with labels and tooltips",
+        "directory",
+        {
+            "emptyValue": "-",
+            "columnsDefs": [
+                {"field": "company", "headerName": "Company", "pinned": "left"},
+                {"field": "website", "headerName": "Website"},
+                {"field": "revenue_usd", "headerName": "Revenue", "formatterFn": "compact", "prefix": "$"},
+                {"field": "employees", "headerName": "Employees", "formatterFn": "int"},
+                {
+                    "field": "quarters",
+                    "headerName": "Quarterly revenue (B)",
+                    "sparkline": {
+                        "type": "bar",
+                        "options": {"xKey": "quarter", "yKey": "revenue", "fill": "#2563eb", "tooltip": {"enabled": True}, "label": {"enabled": True, "placement": "inside-end", "color": "#ffffff", "fontSize": 9}},
+                    },
+                },
+                {"field": "notes", "headerName": "Notes", "minWidth": 240},
+            ],
+        },
+        h=10,
+    ),
     "ag_table_chart_grouped_layout": widget(
         "Grouped trades with a starting layout",
         "rowGroup and aggFunc per column, a field with a dot in its name, Unix times read as dates, and the layout and filter a new card opens with",
@@ -342,6 +366,13 @@ WIDGETS = {
         },
         h=12,
     ),
+}
+
+DIRECTORY_NOTES = {
+    "AAPL": "Designs consumer electronics, software and services; the largest share of its revenue comes from the iPhone, followed by services such as the App Store, iCloud and Apple Music.",
+    "MSFT": None,
+    "JPM": "A universal bank: consumer and community banking, the corporate and investment bank, commercial banking, and asset and wealth management.",
+    "XOM": None,
 }
 
 TRADES_BY_DESK = [
@@ -438,6 +469,23 @@ def live(tick: int) -> list[dict]:
                 "price": round(price * (1 + move), 2),
                 "change": round(move - previous, 4),
                 "volume": 1000000 + ((tick * 7919 + i * 104729) % 500000),
+            }
+        )
+    return rows
+
+
+def directory() -> list[dict]:
+    rows = []
+    for c in COMPANIES:
+        base = c["revenue"] / 4 / 1000
+        rows.append(
+            {
+                "company": c["company"],
+                "website": c["url"],
+                "revenue_usd": c["revenue"] * 1_000_000,
+                "employees": {"AAPL": 164000, "MSFT": 228000, "JPM": 317233, "XOM": None}[c["symbol"]],
+                "quarters": [{"quarter": f"Q{i + 1}", "revenue": round(base * (0.94 + 0.04 * i), 1)} for i in range(4)],
+                "notes": DIRECTORY_NOTES[c["symbol"]],
             }
         )
     return rows
