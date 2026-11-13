@@ -119,9 +119,60 @@ test("enableFormulas: false leaves the Formulas panel out and keeps the others",
   const { el, abort } = await render({ data, definition: { ...definition, enableFormulas: false } });
   try {
     const api = await liveApi(el);
-    assert.deepEqual(api.getGridOption("sideBar").toolPanels.map((p) => p.id ?? p), ["columns", "filters-new"]);
+    assert.deepEqual(api.getGridOption("sideBar").toolPanels.map((p) => p.id ?? p), ["columns", "filters-new", "column-setup"]);
   } finally {
     abort.abort();
+    await settle(100);
+  }
+});
+
+test("column setup: kept only where it fits, and laid over the widget's columnsDefs", async () => {
+  const { savedSetup, withColumnSetup } = await import("../src/columnSetup.js");
+  assert.deepEqual(savedSetup({ a: { headerName: "A", formatterFn: "nope", decimalPlaces: 99, greenRed: true }, b: {} }), { a: { headerName: "A", greenRed: true } });
+  const merged = withColumnSetup(
+    { showAll: true, columnsDefs: [{ field: "x", headerName: "X", renderFn: ["titleCase", "greenRed"] }] },
+    { x: { headerName: "Ex", greenRed: false }, y: { formatterFn: "compact", chartDataType: "series" } },
+  );
+  assert.deepEqual(merged.columnsDefs, [{ field: "x", headerName: "Ex", renderFn: "titleCase" }, { field: "y", formatterFn: "compact", chartDataType: "series" }]);
+});
+
+test("the Column setup panel renames and formats a column, and the card keeps it", async () => {
+  const rows = [{ name: "A", revenue: 45e9 }, { name: "B", revenue: 12e6 }];
+  const first = await render({ data: rows, definition: { columnsDefs: [{ field: "name" }, { field: "revenue", headerName: "Revenue" }] } });
+  let saved;
+  try {
+    const api = await liveApi(first.el);
+    api.openToolPanel("column-setup");
+    await settle();
+    const panel = first.el.querySelector(".ag-grid-setup");
+    const box = [...panel.querySelectorAll(".ag-grid-setup-column")].find((b) => b.textContent.includes("revenue"));
+    const header = box.querySelector('input[aria-label="Revenue: Header"]');
+    header.value = "Sales";
+    header.dispatchEvent(new Event("input"));
+    const format = box.querySelector('select[aria-label="Revenue: format"]');
+    format.value = "compact";
+    format.dispatchEvent(new Event("change"));
+    panel.querySelector(".ag-grid-setup-save").click();
+    await settle(200);
+    assert.equal(api.getColumn("revenue").getColDef().headerName, "Sales");
+    assert.equal(api.getCellValue({ rowNode: api.getDisplayedRowAtIndex(0), colKey: "revenue", useFormatter: true }), "45.00B");
+    saved = first.model.get("state");
+    assert.deepEqual(saved.columnSetup, { revenue: { headerName: "Sales", formatterFn: "compact" } });
+  } finally {
+    first.abort.abort();
+    await settle(100);
+  }
+  const again = await render({ data: rows, definition: { columnsDefs: [{ field: "name" }, { field: "revenue", headerName: "Revenue" }] }, state: saved });
+  try {
+    const api = await liveApi(again.el);
+    assert.equal(api.getColumn("revenue").getColDef().headerName, "Sales", "the card keeps its setup");
+    api.openToolPanel("column-setup");
+    await settle();
+    again.el.querySelector(".ag-grid-setup-reset").click();
+    await settle(200);
+    assert.equal(api.getColumn("revenue").getColDef().headerName, "Revenue");
+  } finally {
+    again.abort.abort();
     await settle(100);
   }
 });

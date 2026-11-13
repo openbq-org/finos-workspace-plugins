@@ -1,4 +1,5 @@
 import { mountFilterBar } from "./filterBar.js";
+import { mountTips, TIPS } from "./tips.js";
 import { hasRowIds } from "./ssrm.js";
 import {
   applyTheme,
@@ -12,6 +13,7 @@ import {
   visibleRowsOf,
   createStateChannel,
   createTracker,
+  exportsAllowed,
   FILTERS_TOOL_PANEL,
   gridOptionsFor,
   idFieldOf,
@@ -180,8 +182,8 @@ export default {
   initialize({ model }) {
     setLicense(model);
     return {
-      exportOptions: () => (api ? LOADED_EXPORTS : []),
-      exportData: (id) => (api ? loadedExport(api, id) : null),
+      exportOptions: () => (api && exportsAllowed(model) ? LOADED_EXPORTS : []),
+      exportData: (id) => (api && exportsAllowed(model) ? loadedExport(api, id) : null),
       copilotContext: () => {
         if (!api) return null;
         const loaded = visibleRowsOf(api, 500, (fn) => api.forEachNode(fn));
@@ -220,6 +222,7 @@ export default {
     let detach = () => {};
     let detachActions = () => {};
     let filterBar = null;
+    let tipStrip = null;
     let gridOptions = {};
 
     const start = () => {
@@ -238,6 +241,17 @@ export default {
       detachActions = attachCardActions(api, model);
       filterBar = mountFilterBar(api, root, { before: gridEl, enabled: () => (model.get("config") || {}).filterBar !== false });
       tracker.gridRestored();
+      if (saved.tipsDone === true) tracker.state.tipsDone = true;
+      tipStrip = mountTips(root, {
+        tips: TIPS.infinite,
+        model,
+        done: saved.tipsDone === true,
+        before: root.children[1] ?? null,
+        onDone: () => {
+          tracker.state.tipsDone = true;
+          tracker.persist();
+        },
+      });
       say("");
     };
     say("Loading…");
@@ -263,6 +277,7 @@ export default {
       detach();
       detachActions();
       filterBar?.destroy();
+      tipStrip?.destroy();
       api?.destroy();
       api = null;
     });

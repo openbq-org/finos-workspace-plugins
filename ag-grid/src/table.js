@@ -1,6 +1,11 @@
-import { canChart, createChartView } from "./ag-table-chart/chartView.js";
+import { AgCharts } from "ag-charts-enterprise";
+import { axisNumber, canChart, createChartView, defaultChartColumns } from "./ag-table-chart/chartView.js";
+import { DEFAULT_PERIODS, forecastRows, MAX_PERIODS, MIN_POINTS } from "./forecast.js";
 import { agTableChartColumnDefs, changeTrackedColumns, transpose, truncationCheck } from "./ag-table-chart/columns.js";
 import { mountFilterBar } from "./filterBar.js";
+import { chartName } from "./names.js";
+import { ColumnSetupPanel, SETUP_PANEL, savedSetup, withColumnSetup } from "./columnSetup.js";
+import { mountTips, TIPS } from "./tips.js";
 import { FormulasPanel, formulaColumnDefs, formulaColumnsOf, savedFormulas } from "./formulas.js";
 import {
   applyPresetState,
@@ -15,12 +20,14 @@ import {
   createStateChannel,
   createTracker,
   displaySettingsOf,
+  exportsAllowed,
   fieldsOf,
   FILTERS_TOOL_PANEL,
   gridOptionsFor,
   gridStateOf,
   idFieldOf,
   noRowsText,
+  plainCell,
   paginationFor,
   presetStateOf,
   rawCsv,
@@ -39,6 +46,7 @@ export const ACTION_DOWNLOAD_CHART = "download-chart";
 export const ACTION_TRANSPOSE = "transpose";
 export const ACTION_REVERSE_COLUMNS = "reverse-columns";
 export const ACTION_ADD_CHART = "add-chart-widget";
+export const ACTION_FORECAST = "forecast";
 export const MAX_CHART_WIDGET_ROWS = 1000;
 
 function plainValue(value) {
@@ -183,12 +191,12 @@ export function chartSettingsOf(model) {
   return { navigator: flag(config.chartNavigator), miniChart: flag(config.chartMiniChart), distinctColors: config.chartDistinctColors === true };
 }
 
-/** The table's side bar: the Columns and Filters panels and, unless the definition turns it off, Formulas. */
-export function sideBarFor(table, formulasPanel) {
+/** The table's side bar: the Columns and Filters panels, then Formulas (unless the definition turns it off) and Column setup. */
+export function sideBarFor(table, extraPanels = []) {
   if (table.enableAdvanced === false) return { sideBar: false };
-  const panels = ["columns", FILTERS_TOOL_PANEL, ...(formulasPanel ? [formulasPanel] : [])];
+  const panels = ["columns", FILTERS_TOOL_PANEL, ...extraPanels];
   if (table.enableAdvanced === true) return { sideBar: { toolPanels: panels, defaultToolPanel: "columns" } };
-  return formulasPanel ? { sideBar: { toolPanels: panels, defaultToolPanel: "" } } : {};
+  return extraPanels.length ? { sideBar: { toolPanels: panels, defaultToolPanel: "" } } : {};
 }
 export const GRID_EVENTS = [
   "cellClicked",
@@ -274,10 +282,12 @@ function element(className, style = {}) {
   return node;
 }
 
-export function mountTable({ model, el, signal, experimental, tracker, saved = {} }) {
+export function mountTable({ model, el, signal, experimental, tracker, saved = {}, tips = TIPS.table }) {
   el.replaceChildren();
 
-  const definition = model.get("definition") || {};
+  let columnSetup = savedSetup(saved.columnSetup);
+  const defOf = () => withColumnSetup(model.get("definition") || {}, columnSetup);
+  const definition = defOf();
   let transposedChoice = typeof saved.transposed === "boolean" ? saved.transposed : undefined;
   const formulasOn = definition.enableFormulas !== false;
   let formulas = formulasOn ? savedFormulas(saved.formulas) : [];
@@ -374,7 +384,31 @@ export function mountTable({ model, el, signal, experimental, tracker, saved = {
           tracker.state.formulas = formulas;
           tracker.persist();
           const data = model.get("data");
-          if (data !== undefined && data !== null) apply(normalizeData(data, model.get("definition") || {}, transposedChoice, formulas));
+          if (data !== undefined && data !== null) apply(normalizeData(data, defOf(), transposedChoice, formulas));
+        },
+      },
+    };
+  }
+
+  function setupPanel() {
+    return {
+      id: SETUP_PANEL,
+      labelDefault: "Column setup",
+      labelKey: "columnSetup",
+      iconKey: "columns",
+      toolPanel: ColumnSetupPanel,
+      toolPanelParams: {
+        setup: () => columnSetup,
+        columns: () =>
+          baseColumnDefs
+            .filter((d) => d.field && !String(d.colId ?? d.field).startsWith("formula_") && !String(d.field).startsWith("__"))
+            .map((d) => ({ field: d.field, label: d.headerName ?? d.field })),
+        save: (next) => {
+          columnSetup = savedSetup(next);
+          tracker.state.columnSetup = columnSetup;
+          tracker.persist();
+          const data = model.get("data");
+          if (data !== undefined && data !== null) apply(normalizeData(data, defOf(), transposedChoice, formulas));
         },
       },
     };
@@ -388,7 +422,7 @@ export function mountTable({ model, el, signal, experimental, tracker, saved = {
     enableCharts: chartsOn,
     tooltipShowMode: "standard",
     ...(activeRules.length ? { rowClassRules: { "ag-table-chart-row-active": (params) => isActiveRow(activeRules, params.data, currentParams) } } : {}),
-    ...sideBarFor(table, formulasOn ? formulasPanel() : null),
+    ...sideBarFor(table, [...(formulasOn ? [formulasPanel()] : []), setupPanel()]),
   };
   context.isTruncated = truncationCheck(gridEl);
   const api = createGrid(gridEl, gridOptionsFor({ model, gridOptions: currentGridOptions, ...own }));
@@ -396,6 +430,17 @@ export function mountTable({ model, el, signal, experimental, tracker, saved = {
   const detachActions = attachCardActions(api, model);
   const detachShortcuts = attachSelectionShortcuts(api, gridEl);
   const filterBar = mountFilterBar(api, container, { before: body, enabled: () => (model.get("config") || {}).filterBar !== false });
+  if (saved.tipsDone === true) tracker.state.tipsDone = true;
+  const tipStrip = mountTips(container, {
+    tips,
+    model,
+    done: saved.tipsDone === true,
+    before: container.firstChild,
+    onDone: () => {
+      tracker.state.tipsDone = true;
+      tracker.persist();
+    },
+  });
   const updateOverlay = () => {
     if (!api.isDestroyed()) api.setGridOption("overlayNoRowsTemplate", `<span class="ag-overlay-no-rows-center">${noRowsText(api)}</span>`);
   };
@@ -500,8 +545,84 @@ export function mountTable({ model, el, signal, experimental, tracker, saved = {
       notify("info", "The chart has no columns to add.");
       return;
     }
-    await invoke("core:dashboard:add-widget", { widget: "table", data: made.data });
+    await invoke("core:dashboard:add-widget", { widget: "table", data: made.data, name: chartName(made.data.columnDefs) });
     if (made.truncated) notify("info", `The new widget holds the first ${MAX_CHART_WIDGET_ROWS.toLocaleString("en-US")} rows of the chart.`);
+  };
+
+  let forecastPanel = null;
+  const closeForecast = () => {
+    forecastPanel?.chart?.destroy?.();
+    forecastPanel?.el.remove();
+    forecastPanel = null;
+  };
+  /** The forecast of the chart's first series (or the table's first number column) over its category. */
+  const showForecast = () => {
+    closeForecast();
+    let columns = [];
+    try {
+      const models = api.getChartModels?.() ?? [];
+      const chartModel = models.find((m) => m.chartId === chartToDownload(models.map((m) => m.chartId), chartView));
+      columns = (chartModel?.cellRange?.columns ?? []).map((c) => (typeof c === "string" ? c : c?.getColId?.())).filter(Boolean);
+    } catch {
+      columns = [];
+    }
+    if (columns.length < 2) columns = defaultChartColumns(api, table.chartView ?? {});
+    const [category, series] = columns;
+    if (!category || !series) {
+      notify("info", "A forecast needs a category or date column and a number column.");
+      return;
+    }
+    let points = [];
+    api.forEachNodeAfterFilterAndSort((node) => {
+      if (node.group || !node.data) return;
+      const y = api.getCellValue({ rowNode: node, colKey: series });
+      const x = plainCell(api.getCellValue({ rowNode: node, colKey: category }));
+      if (typeof y === "number" && Number.isFinite(y) && x !== null) points.push({ x, y });
+    });
+    const sortable = points.every((p) => typeof p.x === "number") || points.every((p) => typeof p.x === "string" && /^\d{4}-\d{2}-\d{2}/.test(p.x));
+    if (sortable) points = points.sort((a, b) => (a.x < b.x ? -1 : a.x > b.x ? 1 : 0));
+    const periods = Math.min(MAX_PERIODS, Math.max(1, Number((model.get("config") || {}).forecastPeriods) || DEFAULT_PERIODS));
+    const made = forecastRows(points, periods);
+    if (!made) {
+      notify("info", `A forecast needs at least ${MIN_POINTS} rows with a number.`);
+      return;
+    }
+    const name = (id) => api.getDisplayNameForColumn(api.getColumn(id), "header") || id;
+    const panel = element("ag-grid-forecast", { position: "absolute", inset: "0", display: "flex", flexDirection: "column", zIndex: "5" });
+    const head = element("ag-grid-forecast-head");
+    const title = element("ag-grid-forecast-title");
+    title.textContent = `Forecast of ${name(series)}: the next ${periods} periods, with a 95% band (Holt's linear trend, computed in the browser)`;
+    const close = document.createElement("button");
+    close.type = "button";
+    close.className = "ag-grid-forecast-close";
+    close.textContent = "Close";
+    close.addEventListener("click", closeForecast);
+    head.append(title, close);
+    const chartHost = element("ag-grid-forecast-chart", { flex: "1 1 auto", minHeight: "0" });
+    panel.append(head, chartHost);
+    body.appendChild(panel);
+    let chart = null;
+    try {
+      chart = AgCharts.create({
+        container: chartHost,
+        data: made.rows,
+        theme: (model.get("theme") || {}).mode === "dark" ? "ag-default-dark" : "ag-default",
+        background: { fill: "transparent" },
+        legend: { position: "top" },
+        series: [
+          { type: "range-area", xKey: "x", yLowKey: "lower", yHighKey: "upper", yName: "95% band", fillOpacity: 0.2, strokeOpacity: 0 },
+          { type: "line", xKey: "x", yKey: "actual", yName: name(series), marker: { enabled: false } },
+          { type: "line", xKey: "x", yKey: "forecast", yName: "Forecast", lineDash: [6, 4], marker: { enabled: false } },
+        ],
+        axes: [
+          { type: "category", position: "bottom", title: { text: name(category) } },
+          { type: "number", position: "left", label: { formatter: ({ value }) => axisNumber(value) } },
+        ],
+      });
+    } catch (error) {
+      console.warn("ag-grid forecast chart:", error?.message);
+    }
+    forecastPanel = { el: panel, chart, rows: made.rows };
   };
 
   const setTransposed = (on) => {
@@ -510,7 +631,7 @@ export function mountTable({ model, el, signal, experimental, tracker, saved = {
     tracker.persist();
     if (on && chartView?.isOpen) chartView.close();
     const data = model.get("data");
-    if (data !== undefined && data !== null) apply(normalizeData(data, model.get("definition") || {}, transposedChoice, formulas));
+    if (data !== undefined && data !== null) apply(normalizeData(data, defOf(), transposedChoice, formulas));
   };
 
   const onAction = (event) => {
@@ -519,6 +640,8 @@ export function mountTable({ model, el, signal, experimental, tracker, saved = {
       downloadChart().catch((error) => notify("warning", `The chart was not downloaded: ${error?.message ?? error}`));
     } else if (event.id === ACTION_TRANSPOSE) {
       setTransposed(!(transposedChoice ?? table.transpose === true));
+    } else if (event.id === ACTION_FORECAST) {
+      showForecast();
     } else if (event.id === ACTION_ADD_CHART) {
       addChartWidget().catch((error) => notify("warning", `The chart was not added: ${error?.message ?? error}`));
     } else if (event.id === ACTION_REVERSE_COLUMNS) {
@@ -606,7 +729,7 @@ export function mountTable({ model, el, signal, experimental, tracker, saved = {
   const onDataChange = () => {
     const data = model.get("data");
     if (data === undefined || data === null) return;
-    apply(normalizeData(data, model.get("definition") || {}, transposedChoice, formulas));
+    apply(normalizeData(data, defOf(), transposedChoice, formulas));
   };
 
   let chartSettings = JSON.stringify(chartSettingsOf(model));
@@ -654,7 +777,9 @@ export function mountTable({ model, el, signal, experimental, tracker, saved = {
     detachActions();
     detachShortcuts();
     filterBar.destroy();
+    tipStrip.destroy();
     chartView?.destroy();
+    closeForecast();
     api.destroy();
   });
 
@@ -664,18 +789,19 @@ export function mountTable({ model, el, signal, experimental, tracker, saved = {
     setRows,
     idField: () => idField,
     chartOpen: () => chartView?.isOpen ?? false,
+    forecast: () => forecastPanel?.rows ?? null,
   };
 }
 
-export function tableExports(getHandle, getTracker) {
+export function tableExports(getHandle, getTracker, model) {
   return {
-    exportOptions: () => [
+    exportOptions: () => exportsAllowed(model) ? [
       { id: "csv", label: "Rows (CSV)", extension: "csv", mime: "text/csv" },
       { id: "xlsx", label: "Rows (Excel)", extension: "xlsx", mime: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" },
-    ],
+    ] : [],
     exportData: (id) => {
       const handle = getHandle();
-      if (!handle) return null;
+      if (!handle || !exportsAllowed(model)) return null;
       if (id === "csv") return rawCsv(handle.api);
       if (id === "xlsx") return rawExcel(handle.api) ?? null;
       return null;
@@ -698,7 +824,7 @@ let tracker = null;
 export default {
   initialize({ model }) {
     setLicense(model);
-    return tableExports(() => handle, () => tracker);
+    return tableExports(() => handle, () => tracker, model);
   },
 
   async render({ model, el, signal, experimental }) {
@@ -709,6 +835,7 @@ export default {
       grid: saved.grid ?? null,
       transposed: typeof saved.transposed === "boolean" ? saved.transposed : null,
       formulas: savedFormulas(saved.formulas),
+      columnSetup: savedSetup(saved.columnSetup),
     });
     handle = mountTable({ model, el, signal, experimental, tracker, saved });
     signal.addEventListener("abort", () => { handle = null; });

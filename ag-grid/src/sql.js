@@ -1,5 +1,7 @@
 import { renderMarkdown } from "./ag-table-chart/markdown.js";
-import { compactColumnDefs, createGrid, createStateChannel, formatNumber, gridOptionsFor, MAX_STATE_TEXT, applyTheme, paintSite, rowsOf, setLicense, STATE_PARAM } from "./grid.js";
+import { compactColumnDefs, createGrid, createStateChannel, exportsAllowed, formatNumber, gridOptionsFor, MAX_STATE_TEXT, applyTheme, paintSite, rowsOf, setLicense, STATE_PARAM } from "./grid.js";
+import { queryName } from "./names.js";
+import { mountTips, TIPS } from "./tips.js";
 import { PARAM_TYPES, placeholdersOf, savedSqlParams, savedSqlValues, substitute } from "./sqlParams.js";
 import { createDatasource, optionsFor as serverOptionsFor, startColumnsOf } from "./ssrm.js";
 
@@ -163,14 +165,14 @@ export default {
     setLicense(model);
     return {
       async exportOptions() {
-        if (!lastRun?.result) return [];
+        if (!lastRun?.result || !exportsAllowed(model)) return [];
         return [
           { id: "csv", label: "Result (CSV)", extension: "csv", mime: "text/csv" },
           { id: "json", label: "Result and query (JSON)", extension: "json", mime: "application/json" },
         ];
       },
       async exportData(id) {
-        if (!lastRun?.result) return null;
+        if (!lastRun?.result || !exportsAllowed(model)) return null;
         if (id === "csv") return csvOf(lastRun.result);
         if (id === "json") return JSON.stringify({ engine: lastRun.engine, sql: lastRun.sql, ...lastRun.result }, null, 2);
         return null;
@@ -245,6 +247,7 @@ export default {
     let editorHeight = Number.isInteger(saved?.editorHeight) && saved.editorHeight >= 40 && saved.editorHeight <= 2000 ? saved.editorHeight : null;
     if (editorHeight) editor.style.height = `${editorHeight}px`;
     let lastSent = null;
+    let tipsDone = saved?.tipsDone === true;
     const sourceKey = () => JSON.stringify([editor.value, sqlValues]);
 
     let api = null;
@@ -426,7 +429,7 @@ export default {
     const save = () => {
       clearTimeout(saveTimer);
       saveTimer = setTimeout(() => {
-        model.set("state", { sql: editor.value, sqlParams: sqlDefs, sqlValues, editorHidden, ...(editorHeight ? { editorHeight } : {}) });
+        model.set("state", { sql: editor.value, sqlParams: sqlDefs, sqlValues, editorHidden, ...(editorHeight ? { editorHeight } : {}), ...(tipsDone ? { tipsDone } : {}) });
         model.save_changes();
       }, SAVE_MS);
     };
@@ -633,6 +636,17 @@ export default {
         }
       }).observe(editor);
     }
+    const tipStrip = mountTips(root, {
+      tips: TIPS.sql,
+      model,
+      done: tipsDone,
+      before: paramStrip,
+      onDone: () => {
+        tipsDone = true;
+        save();
+      },
+    });
+    signal.addEventListener("abort", () => tipStrip.destroy());
     setEditorHidden(editorHidden);
     drawParams();
     updateBadge();
@@ -788,7 +802,7 @@ export default {
       }
       const data = staticTableData(lastRun.result);
       try {
-        await experimental.invoke("core:dashboard:add-widget", { widget: STATIC_WIDGET, data }, { signal });
+        await experimental.invoke("core:dashboard:add-widget", { widget: STATIC_WIDGET, data, name: queryName(lastRun.sql) }, { signal });
         const total = lastRun.result.rows.length;
         status.textContent = data.rowData.length < total ? `Static widget created with the first ${data.rowData.length.toLocaleString("en")} of ${total.toLocaleString("en")} rows` : "Static widget created";
       } catch (error) {

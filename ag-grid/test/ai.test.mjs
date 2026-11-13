@@ -62,3 +62,52 @@ test("the context menu asks the AI agent about the selected cells, and copies al
     await settle(50);
   }
 });
+
+test("first-run tips cycle, Got it is saved with the card, and the admin setting turns them off", async () => {
+  const first = await render({ data, definition });
+  let saved;
+  try {
+    const strip = first.el.querySelector(".ag-grid-tips");
+    assert.ok(strip, "the tips show on a new card");
+    assert.match(strip.textContent, /^Tip 1 of 4: Select cells and right-click/);
+    const [next, gotIt] = strip.querySelectorAll("button");
+    next.click();
+    assert.match(strip.textContent, /^Tip 2 of 4: Double-click a column header/);
+    gotIt.click();
+    assert.equal(first.el.querySelector(".ag-grid-tips"), null);
+    await settle(50);
+    saved = first.model.get("state");
+    assert.equal(saved.tipsDone, true);
+  } finally {
+    first.abort.abort();
+    await settle(50);
+  }
+  const again = await render({ data, definition, state: saved });
+  try {
+    assert.equal(again.el.querySelector(".ag-grid-tips"), null, "not again on the same card");
+  } finally {
+    again.abort.abort();
+    await settle(50);
+  }
+  const off = await render({ data, definition, adminSettings: { showTips: false } });
+  try {
+    assert.equal(off.el.querySelector(".ag-grid-tips"), null);
+  } finally {
+    off.abort.abort();
+    await settle(50);
+  }
+});
+
+test("the admin setting allowExports: false takes every export away", async () => {
+  const { el, abort, exposed } = await render({ data, definition, adminSettings: { allowExports: false } });
+  try {
+    const api = await liveApi(el);
+    assert.deepEqual(exposed.exportOptions(), []);
+    assert.equal(exposed.exportData("csv"), null);
+    assert.equal(api.getGridOption("suppressCsvExport"), true);
+    assert.equal(api.getGridOption("suppressExcelExport"), true);
+  } finally {
+    abort.abort();
+    await settle(50);
+  }
+});

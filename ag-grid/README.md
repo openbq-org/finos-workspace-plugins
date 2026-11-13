@@ -112,6 +112,29 @@ package serves FINOS Workspace and BQ Workspace.
   with raw values. The server-side and infinite widgets export the rows loaded so far, as CSV or
   Excel.
 
+## Tips, forecasts, column setup, names and the export switch
+
+- **First-run tips.** A new card shows a strip of short tips for its widget (how to chart a
+  selection, the Formulas panel, dropping a file, `{{name}}` parameters), one at a time with
+  **Next tip** and **Got it**. Got it is saved with the card. The organization's admin setting
+  `showTips: false` turns tips off.
+- **Forecast.** The table, streaming and file widgets' menu item **Forecast the chart's series**
+  forecasts the chart view's first series (or the table's first number column) over its category:
+  Holt's linear trend, with its smoothing chosen by the least one-step error over the history, and
+  a 95% band that widens with the horizon. It is computed in the browser, so no data leaves the
+  frame. Dates continue at their step (monthly and quarterly ends stay month ends); numbers at
+  their step; other categories become +1, +2. The card's `forecastPeriods` setting (1 to 60,
+  default 6) sets the horizon. It needs at least four rows with a number.
+- **Column setup.** The side bar's **Column setup** panel (table, streaming and file widgets) lets
+  a user set each column's header, format, decimal places, prefix and suffix, green and red, chart
+  role and whether it is hidden. The settings are saved with the card and laid over the widget's
+  `columnsDefs`; **Reset** returns to the widget's own.
+- **Names.** A widget the plugin adds gets a name from what it holds: a chart from its series and
+  category (*Revenue and Cost by Quarter*), a file copy from its file and sheet, a SQL copy from
+  the table its query reads (*trades query*).
+- **The export switch.** The organization's admin setting `allowExports: false` takes every export
+  away: the card's Export menu and AG Grid's own CSV and Excel export.
+
 ## Two-way communication with the backend
 
 A widget never calls a backend itself. It writes the widget's params with `core:params:write`, and

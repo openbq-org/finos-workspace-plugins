@@ -86,6 +86,16 @@
           "title": "Chart font",
           "description": "The font of every chart's text, such as Inter, sans-serif. Empty keeps the chart theme's font.",
           "maxLength": 200
+        },
+        "allowExports": {
+          "type": "boolean",
+          "title": "Exports",
+          "description": "Off takes every AgGrid export away: the card's Export menu and AG Grid's own CSV and Excel export. On unless turned off."
+        },
+        "showTips": {
+          "type": "boolean",
+          "title": "First-run tips",
+          "description": "A short tip strip on new cards, which the user closes with Got it. On unless turned off."
         }
       }
     },
@@ -1672,6 +1682,13 @@
                 "type": "boolean",
                 "title": "One colour per bar",
                 "description": "Bar and column charts of one series give each category its own colour."
+              },
+              "forecastPeriods": {
+                "type": "integer",
+                "title": "Forecast periods",
+                "description": "How many periods Forecast adds, 1 to 60 (6 by default).",
+                "minimum": 1,
+                "maximum": 60
               }
             }
           },
@@ -1859,6 +1876,12 @@
             "id": "add-chart-widget",
             "label": "Add chart as a widget",
             "icon": "chart",
+            "placement": "menu"
+          },
+          {
+            "id": "forecast",
+            "label": "Forecast the chart's series",
+            "icon": "zap",
             "placement": "menu"
           }
         ]
@@ -4427,6 +4450,13 @@
                 "type": "boolean",
                 "title": "One colour per bar",
                 "description": "Bar and column charts of one series give each category its own colour."
+              },
+              "forecastPeriods": {
+                "type": "integer",
+                "title": "Forecast periods",
+                "description": "How many periods Forecast adds, 1 to 60 (6 by default).",
+                "minimum": 1,
+                "maximum": 60
               }
             }
           },
@@ -4481,6 +4511,12 @@
             "id": "reverse-columns",
             "label": "Reverse column order",
             "icon": "assets/reverse.svg",
+            "placement": "menu"
+          },
+          {
+            "id": "forecast",
+            "label": "Forecast the chart's series",
+            "icon": "zap",
             "placement": "menu"
           }
         ]
@@ -6048,6 +6084,13 @@
                 "type": "boolean",
                 "title": "One colour per bar",
                 "description": "Bar and column charts of one series give each category its own colour."
+              },
+              "forecastPeriods": {
+                "type": "integer",
+                "title": "Forecast periods",
+                "description": "How many periods Forecast adds, 1 to 60 (6 by default).",
+                "minimum": 1,
+                "maximum": 60
               }
             }
           },
@@ -6114,6 +6157,12 @@
             "id": "add-file-table",
             "label": "Add as a table widget",
             "icon": "table",
+            "placement": "menu"
+          },
+          {
+            "id": "forecast",
+            "label": "Forecast the chart's series",
+            "icon": "zap",
             "placement": "menu"
           }
         ],

@@ -1,4 +1,5 @@
 import { mountFilterBar } from "./filterBar.js";
+import { mountTips, TIPS } from "./tips.js";
 import {
   applyTheme,
   attachCardActions,
@@ -12,6 +13,7 @@ import {
   visibleRowsOf,
   createStateChannel,
   createTracker,
+  exportsAllowed,
   displaySettingsOf,
   fieldsOf,
   filterModelOf,
@@ -215,8 +217,8 @@ export default {
   initialize({ model }) {
     setLicense(model);
     return {
-      exportOptions: () => (api ? LOADED_EXPORTS : []),
-      exportData: (id) => (api ? loadedExport(api, id) : null),
+      exportOptions: () => (api && exportsAllowed(model) ? LOADED_EXPORTS : []),
+      exportData: (id) => (api && exportsAllowed(model) ? loadedExport(api, id) : null),
       copilotContext: () => {
         if (!api) return null;
         const loaded = visibleRowsOf(api, 500, (fn) => api.forEachNode(fn));
@@ -264,6 +266,7 @@ export default {
     let detach = () => {};
     let detachActions = () => {};
     let filterBar = null;
+    let tipStrip = null;
     let gridOptions = {};
 
     const start = () => {
@@ -283,6 +286,17 @@ export default {
       filterBar = mountFilterBar(api, root, { before: toolbar ?? body, enabled: () => (model.get("config") || {}).filterBar !== false });
       if (toolbar) chartView = mountPageChart({ api, toolbar, gridEl, chartEl, chartView: definition.chartView ?? {}, saved: saved.chartView, model, tracker });
       tracker.gridRestored();
+      if (saved.tipsDone === true) tracker.state.tipsDone = true;
+      tipStrip = mountTips(root, {
+        tips: TIPS.ssrm,
+        model,
+        done: saved.tipsDone === true,
+        before: root.children[1] ?? null,
+        onDone: () => {
+          tracker.state.tipsDone = true;
+          tracker.persist();
+        },
+      });
       if (channel.declared) say("");
     };
     if (!channel.declared) say(`The widget declares no ${STATE_PARAM} body parameter in widgets.json.`);
@@ -326,6 +340,7 @@ export default {
       detach();
       detachActions();
       filterBar?.destroy();
+      tipStrip?.destroy();
       chartView?.destroy();
       api?.destroy();
       api = null;

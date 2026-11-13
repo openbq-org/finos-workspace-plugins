@@ -1,5 +1,6 @@
 import { createTracker, keyOf, setLicense } from "./grid.js";
 import { mountTable, normalizeData, tableExports } from "./table.js";
+import { TIPS } from "./tips.js";
 
 export const FLUSH_MS = 150;
 
@@ -86,7 +87,7 @@ let tracker = null;
 export default {
   initialize({ model }) {
     setLicense(model);
-    return tableExports(() => handle, () => tracker);
+    return tableExports(() => handle, () => tracker, model);
   },
 
   async render({ model, el, signal, experimental }) {
@@ -102,8 +103,8 @@ export default {
     el.appendChild(root);
 
     const saved = model.get("state") || {};
-    tracker = createTracker(model, { chartView: saved.chartView ?? null, agentPrompt: null, grid: saved.grid ?? null });
-    handle = mountTable({ model, el: gridEl, signal, experimental, tracker, saved });
+    tracker = createTracker(model, { chartView: saved.chartView ?? null, agentPrompt: null, grid: saved.grid ?? null, formulas: saved.formulas ?? [], columnSetup: saved.columnSetup ?? {}, transposed: typeof saved.transposed === "boolean" ? saved.transposed : null });
+    handle = mountTable({ model, el: gridEl, signal, experimental, tracker, saved, tips: TIPS.streaming });
 
     const byId = new Map();
     const idField = () => handle.idField();

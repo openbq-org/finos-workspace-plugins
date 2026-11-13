@@ -164,6 +164,11 @@ export function typeForRows(chartType, rows) {
   return rows === 1 && LINES.has(chartType) ? "groupedColumn" : chartType;
 }
 
+/** The columns the chart view would start with: the category, then the series. */
+export function defaultChartColumns(api, chartView = {}) {
+  return chartColumns(columnsOf(api), chartView, chartView.chartType);
+}
+
 /** True when the grid has a column to chart: at least one series besides the category. */
 export function canChart(api, chartView = {}) {
   const columns = chartColumns(columnsOf(api), chartView, chartView.chartType);

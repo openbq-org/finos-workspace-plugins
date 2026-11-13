@@ -209,3 +209,35 @@ test("a pivot chart is added as a widget of the pivot table flattened, and chart
     await settle(100);
   }
 });
+
+test("Forecast draws the chart's series with the next periods and a band, and says when there is too little data", async () => {
+  const data = ["2024-01-31", "2024-02-29", "2024-03-31", "2024-04-30", "2024-05-31", "2024-06-30"].map((month, i) => ({ month, sales: 100 + i * 10 + (i % 2) * 3 }));
+  const definition = { chartView: { enabled: true, chartType: "line" }, columnsDefs: [{ field: "month", chartDataType: "category" }, { field: "sales", chartDataType: "series" }] };
+  const { model, el, abort } = await render({ data, definition, config: { forecastPeriods: 3 } });
+  try {
+    await settle(200);
+    model.emit("msg:custom", { kind: "workspace-event", name: "action", id: "forecast" });
+    await settle(200);
+    const panel = el.querySelector(".ag-grid-forecast");
+    assert.ok(panel, "the forecast panel opens");
+    assert.match(panel.querySelector(".ag-grid-forecast-title").textContent, /Forecast of Sales: the next 3 periods/);
+    assert.ok(panel.querySelector(".ag-grid-forecast-chart").children.length > 0, "AG Charts drew the forecast");
+    const { tableExports } = await import("../src/table.js");
+    assert.ok(tableExports);
+    panel.querySelector(".ag-grid-forecast-close").click();
+    assert.equal(el.querySelector(".ag-grid-forecast"), null);
+  } finally {
+    abort.abort();
+    await settle(50);
+  }
+  const short = await render({ data: data.slice(0, 2), definition });
+  try {
+    notifications.length = 0;
+    short.model.emit("msg:custom", { kind: "workspace-event", name: "action", id: "forecast" });
+    await settle(50);
+    assert.ok(notifications.some(([name, msg]) => name === "core:ui:notify" && /at least 4 rows/.test(msg.text)));
+  } finally {
+    short.abort.abort();
+    await settle(50);
+  }
+});

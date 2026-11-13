@@ -543,3 +543,40 @@ body[data-mode="light"] {
 
 .sx-preview[hidden] { display: none; }
 .sx-preview[data-state="error"] { color: #ea580c; opacity: 1; }
+
+/* First-run tips. */
+.ag-grid-tips {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 8px;
+  margin: 0 0 4px;
+  flex: 0 0 auto;
+  font: 11px var(--ws-font-family);
+  color: var(--ws-foreground);
+  background: color-mix(in srgb, var(--ws-accent) 10%, transparent);
+  border-radius: 4px;
+}
+
+.ag-grid-tips-text { flex: 1 1 auto; min-width: 0; }
+.ag-grid-tips-button { font: inherit; color: var(--ws-accent); background: transparent; border: 0; cursor: pointer; font-weight: 600; white-space: nowrap; }
+.ag-grid-tips-button[hidden] { display: none; }
+
+/* The forecast panel. */
+.ag-grid-forecast { background: var(--ws-background); }
+.ag-grid-forecast-head { display: flex; align-items: center; gap: 8px; padding: 4px 6px; font: 11px var(--ws-font-family); color: var(--ws-foreground); }
+.ag-grid-forecast-title { flex: 1 1 auto; min-width: 0; opacity: 0.85; }
+.ag-grid-forecast-close { font: inherit; color: inherit; background: transparent; border: 1px solid var(--ws-border); border-radius: 4px; padding: 1px 8px; cursor: pointer; }
+
+/* The Column setup panel. */
+.ag-grid-setup { display: flex; flex-direction: column; gap: 8px; padding: 8px; height: 100%; box-sizing: border-box; overflow: auto; font: 12px var(--ws-font-family); color: var(--ws-foreground); }
+.ag-grid-setup-note { margin: 0; font-size: 11px; opacity: 0.75; }
+.ag-grid-setup-list { display: flex; flex-direction: column; gap: 6px; }
+.ag-grid-setup-column { display: flex; flex-wrap: wrap; gap: 4px; border: 1px solid var(--ws-border); border-radius: 4px; padding: 4px 6px 6px; margin: 0; }
+.ag-grid-setup-field { font-weight: 600; padding: 0 2px; }
+.ag-grid-setup-input { font: inherit; color: inherit; background: transparent; border: 1px solid var(--ws-border); border-radius: 4px; padding: 2px 4px; box-sizing: border-box; }
+.ag-grid-setup-check { display: inline-flex; align-items: center; gap: 2px; font-size: 11px; }
+.ag-grid-setup-actions { display: flex; gap: 6px; flex-wrap: wrap; }
+.ag-grid-setup-save,
+.ag-grid-setup-reset { font: inherit; border-radius: 4px; padding: 2px 10px; cursor: pointer; border: 1px solid var(--ws-border); background: transparent; color: inherit; }
+.ag-grid-setup-save { background: var(--ws-accent); border-color: var(--ws-accent); color: #ffffff; }

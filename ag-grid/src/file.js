@@ -6,9 +6,11 @@
  * dashboard; Add as a table widget keeps a copy of its first rows.
  */
 import { fileOfAnswer, readFile } from "./files.js";
+import { fileName } from "./names.js";
 import { createTracker, rowsOf, setLicense } from "./grid.js";
 import { staticTableData } from "./sql.js";
 import { mountTable, tableExports } from "./table.js";
+import { TIPS } from "./tips.js";
 
 export const ACTION_OPEN_FILE = "open-file";
 export const ACTION_ADD_TABLE = "add-file-table";
@@ -59,7 +61,7 @@ let tracker = null;
 export default {
   initialize({ model }) {
     setLicense(model);
-    return tableExports(() => handle, () => tracker);
+    return tableExports(() => handle, () => tracker, model);
   },
 
   async render({ model, el, signal, experimental }) {
@@ -90,10 +92,11 @@ export default {
       grid: saved.grid ?? null,
       transposed: typeof saved.transposed === "boolean" ? saved.transposed : null,
       formulas: saved.formulas ?? [],
+      columnSetup: saved.columnSetup ?? {},
       sheet: typeof saved.sheet === "string" ? saved.sheet : null,
     });
     const rows = rowsModel(model);
-    handle = mountTable({ model: rows, el: gridEl, signal, experimental, tracker, saved });
+    handle = mountTable({ model: rows, el: gridEl, signal, experimental, tracker, saved, tips: TIPS.file });
 
     let current = null;
     let source = null;
@@ -191,7 +194,7 @@ export default {
       }
       const data = staticTableData(fileResult(current.columns, current.rows));
       try {
-        await experimental.invoke("core:dashboard:add-widget", { widget: "table", data }, { signal });
+        await experimental.invoke("core:dashboard:add-widget", { widget: "table", data, name: fileName(current.name, current.sheets?.length > 1 ? current.sheet : null) }, { signal });
         say(data.rowData.length < current.rows.length ? `Table widget added with the first ${data.rowData.length.toLocaleString("en")} of ${current.rows.length.toLocaleString("en")} rows` : "Table widget added");
       } catch (error) {
         say(error instanceof Error ? error.message : String(error));

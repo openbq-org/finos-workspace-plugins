@@ -114,7 +114,7 @@ test("Create static widget adds a table of the last result, and says when there 
     await settle(20);
     const added = calls.filter(([name]) => name === "core:dashboard:add-widget");
     assert.equal(added.length, 1);
-    assert.deepEqual(added[0][1], { widget: "table", data: { columnDefs: [{ field: "0", headerName: "desk" }, { field: "1", headerName: "n", type: "numericColumn" }], rowData: [{ 0: "FX", 1: 3 }, { 0: "Rates", 1: 2 }] } });
+    assert.deepEqual(added[0][1], { widget: "table", name: "trades query", data: { columnDefs: [{ field: "0", headerName: "desk" }, { field: "1", headerName: "n", type: "numericColumn" }], rowData: [{ 0: "FX", 1: 3 }, { 0: "Rates", 1: 2 }] } });
     assert.equal(status(), "Static widget created");
 
     refuse = new Error("the dashboard is read-only");

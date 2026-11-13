@@ -556,6 +556,11 @@ export function attachSelectionShortcuts(api, el) {
   };
 }
 
+/** False when the organization's admin turned exports off (`allowExports: false`). */
+export function exportsAllowed(model) {
+  return (model?.get("adminSettings") || {}).allowExports !== false;
+}
+
 /** The exports of a server-side or infinite grid: the rows it has loaded, as CSV or Excel. */
 export const LOADED_EXPORTS = [
   { id: "csv", label: "Loaded rows (CSV)", extension: "csv", mime: "text/csv" },
@@ -623,6 +628,10 @@ export function gridOptionsFor({ model, gridOptions = {}, serverSide = false, ba
     ...backend,
     defaultColDef: { ...DEFAULT_COL_DEF, ...(backend.defaultColDef || {}), ...(floatingFilter === undefined ? {} : { floatingFilter }) },
   };
+  if (!exportsAllowed(model)) {
+    options.suppressCsvExport = true;
+    options.suppressExcelExport = true;
+  }
   fullStatusBars.set(options, options.statusBar);
   if (!displaySettingsOf(model).statusBar) options.statusBar = undefined;
   if (!allowsAdvancedFilter(options.rowModelType)) {

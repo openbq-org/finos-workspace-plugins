@@ -53,7 +53,7 @@ test("every skill is a markdown file under src/skills, and the artifact has a cl
 });
 
 test("the grid widgets have the card's floating filters button and its two menu items, and the SQL widget creates a static table", () => {
-  const icons = new Set(["chart", "columns", "download", "filter", "refresh", "sliders", "table", "upload"]);
+  const icons = new Set(["chart", "columns", "download", "filter", "refresh", "sliders", "table", "upload", "zap"]);
   for (const widget of widgets) {
     const actions = widget.actions ?? [];
     const placed = (placement) => actions.some((a) => a.placement === placement);
@@ -65,7 +65,7 @@ test("the grid widgets have the card's floating filters button and its two menu 
     }
   }
   assert.deepEqual(widgets.find((w) => w.id === "file").actions.map((a) => a.id), [
-    "floating-filters", "advanced-filter", "open-file", "autosize", "clear-filters", "reset-columns", "transpose", "reverse-columns", "add-file-table",
+    "floating-filters", "advanced-filter", "open-file", "autosize", "clear-filters", "reset-columns", "transpose", "reverse-columns", "add-file-table", "forecast",
   ]);
   for (const id of ["table", "ssrm", "infinite", "streaming"]) {
     assert.deepEqual(widgets.find((w) => w.id === id).actions.map((a) => [a.id, a.placement, a.toggles ?? null]), [
@@ -77,6 +77,7 @@ test("the grid widgets have the card's floating filters button and its two menu 
       ["reset-columns", "menu", null],
       ...(["table", "streaming"].includes(id) ? [["transpose", "menu", null], ["reverse-columns", "menu", null]] : []),
       ...(id === "table" ? [["add-chart-widget", "menu", null]] : []),
+      ...(["table", "streaming"].includes(id) ? [["forecast", "menu", null]] : []),
     ]);
   }
   assert.ok(widgets.find((w) => w.id === "table").permissions.includes("core:download:save"));

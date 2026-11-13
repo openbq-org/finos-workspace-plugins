@@ -144,3 +144,13 @@ test("the truncation check measures the cell on screen", () => {
   Object.defineProperty(value, "scrollWidth", { value: 100, configurable: true });
   assert.equal(check({ id: "r1" }, column("name")), false);
 });
+
+test("names of the widgets the plugin adds", async () => {
+  const { chartName, fileName, queryName } = await import("../src/names.js");
+  assert.equal(chartName([{ field: "q", headerName: "Quarter", chartDataType: "category" }, { field: "r", headerName: "Revenue" }, { field: "c", headerName: "Cost" }]), "Revenue and Cost by Quarter");
+  assert.equal(chartName([{ field: "g", headerName: "Region", chartDataType: "category" }, { field: "a" }, { field: "b" }, { field: "c" }]), "a, b and 1 more by Region");
+  assert.equal(fileName("positions.xlsx", "By desk"), "positions (By desk)");
+  assert.equal(fileName("trades.csv"), "trades");
+  assert.equal(queryName('SELECT * FROM "sales"."orders" o WHERE x'), "sales.orders query");
+  assert.equal(queryName("SELECT 1"), "Query result");
+});
