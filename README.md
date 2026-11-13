@@ -7,6 +7,7 @@ package, `dist/<plugin id>/<version>/`, which a deployment places in its plugins
 |---|---|---|
 | [`ag-grid/`](ag-grid/README.md) | AgGrid | `aggrid-table`, `aggrid-ssrm`, `aggrid-infinite`, `aggrid-streaming`, `aggrid-sql`: AG Grid Enterprise with integrated charts |
 | [`mermaid/`](mermaid/README.md) | Mermaid | `mermaid`: flowcharts, sequence, class, state, ER, Gantt and the other Mermaid diagrams, with zoom, pan and SVG and PNG export; pies drawn as a donut |
+| [`plotly-charts/`](plotly-charts/README.md) | Plotly charts | `plotly`: any backend's Plotly figure, drawn with plotly.js, with a data table, a modebar toggle, a saved zoom and static copies |
 | [`react-flow/`](react-flow/README.md) | React Flow | `reactflow`: editable flow diagrams of nodes and edges, laid out automatically, which the user rearranges and the AI agent reads and rewrites |
 
 ## Shared tooling
