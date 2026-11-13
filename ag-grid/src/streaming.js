@@ -1,25 +1,49 @@
-import { createTracker, setLicense } from "./grid.js";
+import { createTracker, keyOf, setLicense } from "./grid.js";
 import { mountTable, normalizeData, tableExports } from "./table.js";
 
 export const FLUSH_MS = 150;
 
-export function applyMessage(byId, message, idField = "id") {
+export const DEFAULT_MAX_STREAM_ROWS = 5000;
+
+/** The fields an update may change: those of columns with `enableCellChangeWs: true`, when any column says so. */
+export function updatableFields(definition) {
+  const defs = Array.isArray(definition?.columnsDefs) ? definition.columnsDefs : [];
+  const fields = defs.filter((d) => d?.field && d.enableCellChangeWs === true).map((d) => d.field);
+  return fields.length ? new Set(fields) : null;
+}
+
+/**
+ * Applies one stream message to the rows by id. A message is `{ op: "snapshot", rows }`,
+ * `{ op: "upsert", rows }` or `{ op: "remove", ids }`, whose rows need an id; or a row, or a list
+ * of rows, with no `op`, which updates the rows it identifies and adds the others after the last
+ * row, a row without an id included, as a log or a tape is. `options`: `allowed`, the fields an update may change
+ * (all when null), and `maxRows`, above which the oldest rows go.
+ */
+export function applyMessage(byId, message, idField = "id", { allowed = null, maxRows = DEFAULT_MAX_STREAM_ROWS, counter = { next: 0 } } = {}) {
   const touched = new Set();
   const removed = new Set();
   let replaced = false;
-  const keep = (row) => {
-    if (!row || typeof row !== "object" || row[idField] === undefined || row[idField] === null) return;
-    const id = String(row[idField]);
-    byId.set(id, byId.has(id) ? { ...byId.get(id), ...row } : row);
+  const keep = (row, append = false) => {
+    if (!row || typeof row !== "object" || Array.isArray(row)) return;
+    const own = keyOf(row, idField);
+    if (own === null && !append) return;
+    const id = own ?? `~s${counter.next++}`;
+    if (byId.has(id)) {
+      const current = byId.get(id);
+      const changes = allowed ? Object.fromEntries(Object.entries(row).filter(([key]) => allowed.has(key))) : row;
+      byId.set(id, { ...current, ...changes });
+    } else {
+      byId.set(id, row);
+    }
     touched.add(id);
     removed.delete(id);
   };
   if (message?.op === "snapshot" && Array.isArray(message.rows)) {
     byId.clear();
     replaced = true;
-    message.rows.forEach(keep);
+    for (const row of message.rows) keep(row);
   } else if (message?.op === "upsert" && Array.isArray(message.rows)) {
-    message.rows.forEach(keep);
+    for (const row of message.rows) keep(row);
   } else if (message?.op === "remove" && Array.isArray(message.ids)) {
     for (const raw of message.ids) {
       const id = String(raw);
@@ -27,6 +51,16 @@ export function applyMessage(byId, message, idField = "id") {
       touched.delete(id);
       removed.add(id);
     }
+  } else if (Array.isArray(message)) {
+    for (const row of message) keep(row, true);
+  } else if (message && typeof message === "object" && message.op === undefined) {
+    keep(message, true);
+  }
+  while (byId.size > maxRows) {
+    const oldest = byId.keys().next().value;
+    byId.delete(oldest);
+    touched.delete(oldest);
+    removed.add(oldest);
   }
   return { touched, removed, replaced };
 }
@@ -65,10 +99,16 @@ export default {
 
     const byId = new Map();
     const idField = () => handle.idField();
+    const counter = { next: 0 };
+    const streamOptions = () => {
+      const definition = model.get("definition") || {};
+      const maxRows = Number.isInteger(definition.maxStreamRows) && definition.maxStreamRows > 0 ? definition.maxStreamRows : DEFAULT_MAX_STREAM_ROWS;
+      return { allowed: updatableFields(definition), maxRows, counter };
+    };
     const seed = () => {
       const rows = normalizeData(model.get("data"), model.get("definition") || {}).rowData ?? [];
       byId.clear();
-      for (const row of rows) if (row && row[idField()] !== undefined && row[idField()] !== null) byId.set(String(row[idField()]), row);
+      for (const row of rows) if (row && typeof row === "object") byId.set(keyOf(row, idField()) ?? `~s${counter.next++}`, row);
     };
     seed();
 
@@ -91,7 +131,7 @@ export default {
         say(statusText(event), event.state === "live");
       } else if (event.name === "stream" && Array.isArray(event.messages)) {
         for (const message of event.messages) {
-          const change = applyMessage(byId, message, idField());
+          const change = applyMessage(byId, message, idField(), streamOptions());
           if (change.replaced || change.touched.size || change.removed.size) dirty = true;
         }
       }

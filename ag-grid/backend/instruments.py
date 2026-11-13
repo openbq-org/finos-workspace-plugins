@@ -77,3 +77,32 @@ async def trade_updates(websocket) -> None:
             await websocket.send_text(json.dumps({"op": "transaction", "route": [], "update": trades.price_moves(rng)}))
     except Exception:
         return
+
+
+TAPE_SECONDS = 1.0
+TAPE_SYMBOLS = ["AAPL", "MSFT", "NVDA", "AMZN", "JPM"]
+
+
+def tape_print(rng: random.Random, tick: int) -> dict:
+    """One print of the trade tape: no id, so the grid adds it after the others."""
+    return {"time": tick, "symbol": rng.choice(TAPE_SYMBOLS), "side": rng.choice(["BUY", "SELL"]), "quantity": rng.randrange(100, 5000, 100), "price": round(rng.uniform(90, 500), 2)}
+
+
+def tape_rows() -> list[dict]:
+    rng = random.Random(7)
+    return [tape_print(rng, -i) for i in range(5, 0, -1)]
+
+
+async def tape(websocket) -> None:
+    """Plain rows, one or a few at a time, with no op and no id: a log the grid appends to."""
+    await websocket.accept()
+    rng = random.Random()
+    tick = 0
+    try:
+        while True:
+            await asyncio.sleep(TAPE_SECONDS)
+            tick += 1
+            prints = [tape_print(rng, tick) for _ in range(rng.randint(1, 3))]
+            await websocket.send_text(json.dumps(prints if len(prints) > 1 else prints[0]))
+    except Exception:
+        return

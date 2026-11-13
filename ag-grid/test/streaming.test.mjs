@@ -81,3 +81,49 @@ test("the first rows may arrive after the first render, and changes flash", asyn
   assert.ok(el.querySelector('.ag-row[row-id="a"] .ag-cell[col-id="price"]').classList.contains("ag-table-chart-cell-down"));
   abort.abort();
 });
+
+test("plain rows: updates by a combined id, a log without ids, only the columns that may change, and a row cap", async () => {
+  const { idFieldOf, keyOf } = await import("../src/grid.js");
+  const { updatableFields } = await import("../src/streaming.js");
+  const idField = idFieldOf({ wsRowIdColumns: ["venue", "symbol"] });
+  assert.deepEqual(idField, ["venue", "symbol"]);
+  assert.equal(keyOf({ venue: "NYSE", symbol: "IBM" }, idField), "NYSE-IBM");
+  assert.equal(keyOf({ venue: "NYSE" }, idField), null);
+  assert.equal(idFieldOf({ wsRowIdColumns: ["sym"] }), "sym");
+  assert.equal(idFieldOf({ wsRowIdColumn: "sym" }), "sym");
+
+  const byId = new Map();
+  applyMessage(byId, [{ venue: "NYSE", symbol: "IBM", price: 1, note: "a" }, { venue: "LSE", symbol: "IBM", price: 2, note: "b" }], idField);
+  assert.deepEqual([...byId.keys()], ["NYSE-IBM", "LSE-IBM"]);
+  const allowed = updatableFields({ columnsDefs: [{ field: "price", enableCellChangeWs: true }, { field: "note" }] });
+  assert.deepEqual([...allowed], ["price"]);
+  applyMessage(byId, { venue: "NYSE", symbol: "IBM", price: 5, note: "changed" }, idField, { allowed });
+  assert.deepEqual(byId.get("NYSE-IBM"), { venue: "NYSE", symbol: "IBM", price: 5, note: "a" }, "only price may change");
+  assert.equal(updatableFields({ columnsDefs: [{ field: "price" }] }), null, "no list: every field may change");
+
+  const tape = new Map();
+  const counter = { next: 0 };
+  for (let i = 0; i < 5; i++) applyMessage(tape, { time: i, price: i }, "id", { maxRows: 3, counter });
+  assert.deepEqual([...tape.values()].map((r) => r.time), [2, 3, 4], "a log keeps its newest rows");
+});
+
+test("a stream of plain rows with a combined id updates rows in the grid and adds new ones", async () => {
+  const { liveApi } = await import("./dom.mjs");
+  const definition = { wsRowIdColumns: ["venue", "symbol"], columnsDefs: [{ field: "venue" }, { field: "symbol" }, { field: "price", enableCellChangeWs: true }, { field: "note" }] };
+  const model = makeModel({ data: [{ venue: "NYSE", symbol: "IBM", price: 1, note: "first" }], definition });
+  const { el, abort } = mount();
+  plugin.initialize({ model });
+  await plugin.render({ model, el, signal: abort.signal, experimental });
+  try {
+    await settle();
+    stream(model, [{ venue: "NYSE", symbol: "IBM", price: 2, note: "ignored" }, { venue: "LSE", symbol: "IBM", price: 3, note: "new" }]);
+    await settle(FLUSH_MS * 3);
+    const api = await liveApi(el);
+    assert.equal(api.getDisplayedRowCount(), 2);
+    assert.deepEqual(api.getRowNode("NYSE-IBM")?.data, { venue: "NYSE", symbol: "IBM", price: 2, note: "first" });
+    assert.equal(api.getRowNode("LSE-IBM")?.data.note, "new");
+  } finally {
+    abort.abort();
+    await settle(50);
+  }
+});

@@ -137,6 +137,10 @@ async def infinite_list(request: Request) -> JSONResponse:
         return JSONResponse({"error": str(error)})
 
 
+async def tape_rows(_request: Request) -> JSONResponse:
+    return JSONResponse(instruments.tape_rows())
+
+
 async def instrument_rows(_request: Request) -> JSONResponse:
     return JSONResponse(instruments.snapshot_rows())
 
@@ -174,6 +178,8 @@ app = Starlette(
         Route("/ag-grid/trades/infinite/list", infinite_list, methods=["GET"]),
         WebSocketRoute("/ag-grid/trades/updates", instruments.trade_updates),
         Route("/ag-grid/instruments", instrument_rows, methods=["GET"]),
+        Route("/ag-grid/tape", tape_rows, methods=["GET"]),
+        WebSocketRoute("/ag-grid/tape/stream", instruments.tape),
         WebSocketRoute("/ag-grid/instruments/stream", instruments.stream),
         Route("/ag-grid/sql", sql, methods=["POST"]),
         Route("/ag-grid/sql-pages", sql_pages, methods=["POST"]),

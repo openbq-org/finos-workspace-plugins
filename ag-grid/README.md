@@ -361,6 +361,17 @@ messages are JSON:
 - `{ "op": "upsert", "rows": [...] }` merges each row into the row with its id, or adds it as a new
   row.
 - `{ "op": "remove", "ids": [...] }` removes rows by id.
+- A row, or a list of rows, with no `op`: each updates the row with its id, or is added after the
+  last row. A row without an id is always added, so a feed of prints or log lines needs no ids.
+
+`wsRowIdColumns` names several fields that together identify a row (their values joined with `-`,
+such as `NYSE-IBM`); it replaces `wsRowIdColumn`. When any column has `enableCellChangeWs: true`,
+an update changes only those columns and keeps the others as they were; without one, it changes
+every field it has. A stream keeps at most `maxStreamRows` rows (5,000 by default), dropping the
+oldest. A backend whose WebSocket was declared as `wsEndpoint` sets `data.streamEndpoint` to it.
+The widget does not send messages up the WebSocket: Workspace opens `data.streamEndpoint` as it is
+written, without the widget's params, and only receives on it, so the feed cannot change with the
+params.
 
 Changes are applied every 150 ms. Changed cells flash with `showCellChange`. The strip above the
 grid shows whether the feed is live, retrying or closed. The widget takes the same configuration

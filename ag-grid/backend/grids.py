@@ -86,6 +86,13 @@ WIDGETS = {
         "/ag-grid/instruments",
         data={"aggrid-streaming": {"showAll": False, "columnsDefs": INSTRUMENT_COLUMNS}, "streamEndpoint": "/ag-grid/instruments/stream"},
     ),
+    "aggrid_streaming_tape": widget(
+        "Trade tape",
+        "aggrid-streaming: a WebSocket sends plain rows with no id, which the grid appends, keeping the newest 200 (maxStreamRows)",
+        "aggrid-streaming",
+        "/ag-grid/tape",
+        data={"aggrid-streaming": {"maxStreamRows": 200, "columnsDefs": [{"field": "time"}, {"field": "symbol"}, {"field": "side", "renderFn": "columnColor", "renderFnParams": {"colorRules": [{"condition": "eq", "value": "BUY", "color": "green"}, {"condition": "eq", "value": "SELL", "color": "red"}]}}, {"field": "quantity", "formatterFn": "int"}, {"field": "price", "decimalPlaces": 2}]}, "streamEndpoint": "/ag-grid/tape/stream"},
+    ),
     "aggrid_sql": widget(
         "Trades SQL",
         "aggrid-sql: SQLite over the trades and desks, with completion from the backend's schema",

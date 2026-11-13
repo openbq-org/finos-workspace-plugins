@@ -437,6 +437,21 @@
                 "enableFormulas": {
                   "type": "boolean",
                   "description": "The Formulas panel of the side bar, where a user adds columns computed from the others, such as [Revenue] / [Shares]. On unless false."
+                },
+                "wsRowIdColumns": {
+                  "type": "array",
+                  "maxItems": 10,
+                  "items": {
+                    "type": "string",
+                    "maxLength": 128
+                  },
+                  "description": "Several fields that together identify a row: their values joined with - make its id. Replaces wsRowIdColumn."
+                },
+                "maxStreamRows": {
+                  "type": "integer",
+                  "minimum": 1,
+                  "maximum": 100000,
+                  "description": "The most rows a stream keeps; the oldest go first (5,000 by default)."
                 }
               },
               "$defs": {
@@ -899,7 +914,8 @@
                       ]
                     },
                     "enableCellChangeWs": {
-                      "type": "boolean"
+                      "type": "boolean",
+                      "description": "false: the column does not flash when it changes. true on any column: a streamed update changes only the columns marked true."
                     },
                     "formatterFn": {
                       "type": "string",
@@ -3034,6 +3050,21 @@
                 "enableFormulas": {
                   "type": "boolean",
                   "description": "The Formulas panel of the side bar, where a user adds columns computed from the others, such as [Revenue] / [Shares]. On unless false."
+                },
+                "wsRowIdColumns": {
+                  "type": "array",
+                  "maxItems": 10,
+                  "items": {
+                    "type": "string",
+                    "maxLength": 128
+                  },
+                  "description": "Several fields that together identify a row: their values joined with - make its id. Replaces wsRowIdColumn."
+                },
+                "maxStreamRows": {
+                  "type": "integer",
+                  "minimum": 1,
+                  "maximum": 100000,
+                  "description": "The most rows a stream keeps; the oldest go first (5,000 by default)."
                 }
               },
               "$defs": {
@@ -3496,7 +3527,8 @@
                       ]
                     },
                     "enableCellChangeWs": {
-                      "type": "boolean"
+                      "type": "boolean",
+                      "description": "false: the column does not flash when it changes. true on any column: a streamed update changes only the columns marked true."
                     },
                     "formatterFn": {
                       "type": "string",

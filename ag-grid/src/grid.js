@@ -162,25 +162,42 @@ export function setLicense(model) {
   if (key) LicenseManager.setLicenseKey(key);
 }
 
+/**
+ * The field that identifies a row: `wsRowIdColumns` (several fields, whose values joined with `-`
+ * make the id), else `wsRowIdColumn`, else `id`.
+ */
 export function idFieldOf(definition) {
+  const many = Array.isArray(definition?.wsRowIdColumns) ? definition.wsRowIdColumns.filter((f) => typeof f === "string" && f) : [];
+  if (many.length > 1) return many;
+  if (many.length === 1) return many[0];
   return definition && typeof definition.wsRowIdColumn === "string" && definition.wsRowIdColumn ? definition.wsRowIdColumn : "id";
 }
 
+/** The id of a row by its id field or fields, or null when it has none. */
+export function keyOf(row, idField = "id") {
+  if (!row || typeof row !== "object") return null;
+  if (Array.isArray(idField)) {
+    const parts = idField.map((field) => row[field]);
+    return parts.every((v) => v !== undefined && v !== null) ? parts.map(String).join("-") : null;
+  }
+  const value = row[idField];
+  return value === undefined || value === null ? null : String(value);
+}
+
 export function rowIdOf(row, index, idField = "id") {
-  if (row && typeof row === "object" && row[idField] !== undefined && row[idField] !== null) return String(row[idField]);
-  return String(index);
+  return keyOf(row, idField) ?? String(index);
 }
 
 export function hasIds(rows, idField = "id") {
-  return rows.length > 0 && rows.every((row) => row && row[idField] !== undefined && row[idField] !== null);
+  return rows.length > 0 && rows.every((row) => keyOf(row, idField) !== null);
 }
 
 export function rowIdGetter(idField) {
   const generated = new WeakMap();
   let next = 0;
   return ({ data }) => {
-    const value = data?.[idField];
-    if (value !== undefined && value !== null) return String(value);
+    const key = keyOf(data, idField);
+    if (key !== null) return key;
     if (!generated.has(data)) generated.set(data, `~${next++}`);
     return generated.get(data);
   };
