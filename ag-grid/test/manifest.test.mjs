@@ -11,14 +11,16 @@ const root = join(dirname(fileURLToPath(import.meta.url)), "..");
 const manifest = JSON.parse(readFileSync(join(root, "src/plugin.json"), "utf8"));
 const widgets = manifest.contributes.widgets;
 
-test("the five widget types, each drawn by its own module", () => {
+test("the six widget types, each drawn by its own module", () => {
   assert.deepEqual(widgets.map((w) => [w.id, w.handles.map((h) => h.type)]), [
     ["table", ["aggrid-table"]],
     ["ssrm", ["aggrid-ssrm"]],
     ["infinite", ["aggrid-infinite"]],
     ["streaming", ["aggrid-streaming"]],
+    ["file", ["aggrid-file"]],
     ["sql", ["aggrid-sql"]],
   ]);
+  assert.equal(widgets.find((w) => w.id === "file").standalone, true, "a file widget needs no backend");
   assert.deepEqual(Object.keys(WIDGETS).sort(), widgets.map((w) => w.id).sort());
 });
 
@@ -51,7 +53,7 @@ test("every skill is a markdown file under src/skills, and the artifact has a cl
 });
 
 test("the grid widgets have the card's floating filters button and its two menu items, and the SQL widget creates a static table", () => {
-  const icons = new Set(["chart", "columns", "download", "filter", "refresh", "sliders", "table"]);
+  const icons = new Set(["chart", "columns", "download", "filter", "refresh", "sliders", "table", "upload"]);
   for (const widget of widgets) {
     const actions = widget.actions ?? [];
     const placed = (placement) => actions.some((a) => a.placement === placement);
@@ -62,6 +64,9 @@ test("the grid widgets have the card's floating filters button and its two menu 
       if (action.toggles) assert.equal(widget.settings.schema.properties[action.toggles].type, "boolean");
     }
   }
+  assert.deepEqual(widgets.find((w) => w.id === "file").actions.map((a) => a.id), [
+    "floating-filters", "advanced-filter", "open-file", "autosize", "clear-filters", "reset-columns", "transpose", "reverse-columns", "add-file-table",
+  ]);
   for (const id of ["table", "ssrm", "infinite", "streaming"]) {
     assert.deepEqual(widgets.find((w) => w.id === id).actions.map((a) => [a.id, a.placement, a.toggles ?? null]), [
       ["floating-filters", "navbar", "floatingFilters"],

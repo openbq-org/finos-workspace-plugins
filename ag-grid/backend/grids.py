@@ -93,6 +93,18 @@ WIDGETS = {
         "/ag-grid/tape",
         data={"aggrid-streaming": {"maxStreamRows": 200, "columnsDefs": [{"field": "time"}, {"field": "symbol"}, {"field": "side", "renderFn": "columnColor", "renderFnParams": {"colorRules": [{"condition": "eq", "value": "BUY", "color": "green"}, {"condition": "eq", "value": "SELL", "color": "red"}]}}, {"field": "quantity", "formatterFn": "int"}, {"field": "price", "decimalPlaces": 2}]}, "streamEndpoint": "/ag-grid/tape/stream"},
     ),
+    "aggrid_file_workbook": widget(
+        "Positions workbook",
+        "aggrid-file: an .xlsx workbook sent as base64 in JSON, with a title row above its header, dates, and two sheets to pick from",
+        "aggrid-file",
+        "/ag-grid/files/positions",
+    ),
+    "aggrid_file_csv": widget(
+        "Trades CSV",
+        "aggrid-file: a CSV sent as text in JSON ({ csv }); the card can also open a file from the computer",
+        "aggrid-file",
+        "/ag-grid/files/trades-csv",
+    ),
     "aggrid_sql": widget(
         "Trades SQL",
         "aggrid-sql: SQLite over the trades and desks, with completion from the backend's schema",

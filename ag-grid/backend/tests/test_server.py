@@ -61,7 +61,7 @@ def test_every_widget_answers_and_follows_the_plugins_definition(client):
     jsonschema = pytest.importorskip("jsonschema")
     known = handles()
     widgets = client.get("/widgets.json").json()
-    assert len(widgets) == 24
+    assert len(widgets) == 26
     assert {w["type"] for w in widgets.values()} == set(known)
     for key, widget in widgets.items():
         handle = known[widget["type"]]
@@ -271,3 +271,16 @@ def test_server_side_sql_pages_sorts_and_filters_a_query(client):
     assert "no column" in bad["error"]
     refused = client.post("/ag-grid/sql-pages", json={"sql": "DELETE FROM trades", "gridState": ""}).json()
     assert "error" in refused
+
+
+def test_the_file_widget_examples_carry_a_workbook_and_a_csv(client):
+    import base64
+    import io
+    import zipfile
+
+    workbook = client.get("/ag-grid/files/positions").json()["file"]
+    assert workbook["name"] == "positions.xlsx"
+    parts = zipfile.ZipFile(io.BytesIO(base64.b64decode(workbook["base64"]))).namelist()
+    assert {"xl/workbook.xml", "xl/worksheets/sheet1.xml", "xl/worksheets/sheet2.xml", "xl/styles.xml"} <= set(parts)
+    csv = client.get("/ag-grid/files/trades-csv").json()["csv"]
+    assert csv.startswith("id,desk,product,quantity,price\n") and len(csv.splitlines()) == 101

@@ -4328,6 +4328,1640 @@
         ]
       },
       {
+        "id": "file",
+        "name": "AgGrid file",
+        "description": "A CSV, TSV, JSON or Excel (.xlsx) file as an AgGrid table: from the widget's endpoint, or opened from the computer or dropped on the card, with sheets, sorting, filtering, grouping, formulas, charts and exports.",
+        "category": "Data",
+        "handles": [
+          {
+            "type": "aggrid-file",
+            "response": {
+              "accepts": "json",
+              "description": "A file carried in JSON: { file: { name, base64 } } for .xlsx (or any file), { file: { name, text } } or { csv } / { tsv } for text, or rows as the table widget takes them. data[\"aggrid-file\"] takes the table configuration, dataKey and sheet."
+            },
+            "definition": {
+              "type": "object",
+              "additionalProperties": false,
+              "description": "The table configuration, and how to read the file.",
+              "properties": {
+                "enableCharts": {
+                  "type": "boolean"
+                },
+                "showAll": {
+                  "type": "boolean"
+                },
+                "transpose": {
+                  "type": "boolean"
+                },
+                "enableAdvanced": {
+                  "type": "boolean"
+                },
+                "formatterFn": {
+                  "type": "string",
+                  "enum": [
+                    "int",
+                    "none",
+                    "percent",
+                    "normalized",
+                    "normalizedPercent",
+                    "dateToYear",
+                    "compact"
+                  ]
+                },
+                "wsRowIdColumn": {
+                  "type": "string",
+                  "maxLength": 128
+                },
+                "chartView": {
+                  "$ref": "#/$defs/chartView"
+                },
+                "columnsDefs": {
+                  "type": "array",
+                  "maxItems": 200,
+                  "items": {
+                    "$ref": "#/$defs/column"
+                  }
+                },
+                "gridEvents": {
+                  "type": "array",
+                  "maxItems": 11,
+                  "items": {
+                    "type": "string",
+                    "enum": [
+                      "cellClicked",
+                      "cellDoubleClicked",
+                      "cellValueChanged",
+                      "selectionChanged",
+                      "filterChanged",
+                      "sortChanged",
+                      "columnRowGroupChanged",
+                      "columnPivotChanged",
+                      "columnValueChanged",
+                      "columnPivotModeChanged",
+                      "rowGroupOpened"
+                    ]
+                  },
+                  "description": "The grid events that send the grid state to the endpoint, in the gridState body param, so the backend can answer them. None by default."
+                },
+                "enableCellExpressions": {
+                  "type": "boolean",
+                  "description": "Cell values that start with = are expressions over the row, such as =[quantity] * [price]. Evaluated by the plugin, never as code."
+                },
+                "columnState": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "aggregation": {
+                      "type": "object",
+                      "additionalProperties": false,
+                      "properties": {
+                        "aggregationModel": {
+                          "type": "array",
+                          "maxItems": 500,
+                          "items": {
+                            "type": "object",
+                            "additionalProperties": false,
+                            "properties": {
+                              "colId": {
+                                "type": "string",
+                                "maxLength": 256
+                              },
+                              "aggFunc": {
+                                "type": "string",
+                                "maxLength": 32
+                              }
+                            }
+                          }
+                        }
+                      }
+                    },
+                    "columnGroup": {
+                      "type": "object",
+                      "additionalProperties": false,
+                      "properties": {
+                        "openColumnGroupIds": {
+                          "type": "array",
+                          "maxItems": 500,
+                          "items": {
+                            "type": "string",
+                            "maxLength": 256
+                          }
+                        }
+                      }
+                    },
+                    "columnOrder": {
+                      "type": "object",
+                      "additionalProperties": false,
+                      "properties": {
+                        "orderedColIds": {
+                          "type": "array",
+                          "maxItems": 500,
+                          "items": {
+                            "type": "string",
+                            "maxLength": 256
+                          }
+                        }
+                      }
+                    },
+                    "columnPinning": {
+                      "type": "object",
+                      "additionalProperties": false,
+                      "properties": {
+                        "leftColIds": {
+                          "type": "array",
+                          "maxItems": 500,
+                          "items": {
+                            "type": "string",
+                            "maxLength": 256
+                          }
+                        },
+                        "rightColIds": {
+                          "type": "array",
+                          "maxItems": 500,
+                          "items": {
+                            "type": "string",
+                            "maxLength": 256
+                          }
+                        }
+                      }
+                    },
+                    "columnSizing": {
+                      "type": "object",
+                      "additionalProperties": false,
+                      "properties": {
+                        "columnSizingModel": {
+                          "type": "array",
+                          "maxItems": 500,
+                          "items": {
+                            "type": "object",
+                            "additionalProperties": false,
+                            "properties": {
+                              "colId": {
+                                "type": "string",
+                                "maxLength": 256
+                              },
+                              "width": {
+                                "type": "number",
+                                "minimum": 0,
+                                "maximum": 5000
+                              },
+                              "flex": {
+                                "type": "number",
+                                "minimum": 0,
+                                "maximum": 100
+                              }
+                            }
+                          }
+                        }
+                      }
+                    },
+                    "columnVisibility": {
+                      "type": "object",
+                      "additionalProperties": false,
+                      "properties": {
+                        "hiddenColIds": {
+                          "type": "array",
+                          "maxItems": 500,
+                          "items": {
+                            "type": "string",
+                            "maxLength": 256
+                          }
+                        }
+                      }
+                    },
+                    "filter": {
+                      "type": "object",
+                      "additionalProperties": false,
+                      "properties": {
+                        "filterModel": {
+                          "$ref": "#/$defs/filterModel"
+                        }
+                      }
+                    },
+                    "pivot": {
+                      "type": "object",
+                      "additionalProperties": false,
+                      "properties": {
+                        "pivotMode": {
+                          "type": "boolean"
+                        },
+                        "pivotColIds": {
+                          "type": "array",
+                          "maxItems": 500,
+                          "items": {
+                            "type": "string",
+                            "maxLength": 256
+                          }
+                        }
+                      }
+                    },
+                    "rowGroup": {
+                      "type": "object",
+                      "additionalProperties": false,
+                      "properties": {
+                        "groupColIds": {
+                          "type": "array",
+                          "maxItems": 500,
+                          "items": {
+                            "type": "string",
+                            "maxLength": 256
+                          }
+                        }
+                      }
+                    },
+                    "sideBar": {
+                      "type": "object",
+                      "additionalProperties": false,
+                      "properties": {
+                        "visible": {
+                          "type": "boolean"
+                        },
+                        "position": {
+                          "type": "string",
+                          "enum": [
+                            "left",
+                            "right"
+                          ]
+                        },
+                        "openToolPanel": {
+                          "type": [
+                            "string",
+                            "null"
+                          ],
+                          "maxLength": 64
+                        },
+                        "toolPanels": {
+                          "type": "object",
+                          "additionalProperties": {
+                            "type": "object",
+                            "additionalProperties": false,
+                            "properties": {
+                              "expandedGroupIds": {
+                                "type": "array",
+                                "maxItems": 500,
+                                "items": {
+                                  "type": "string",
+                                  "maxLength": 256
+                                }
+                              },
+                              "expandedColIds": {
+                                "type": "array",
+                                "maxItems": 500,
+                                "items": {
+                                  "type": "string",
+                                  "maxLength": 256
+                                }
+                              }
+                            }
+                          }
+                        }
+                      }
+                    },
+                    "sort": {
+                      "type": "object",
+                      "additionalProperties": false,
+                      "properties": {
+                        "sortModel": {
+                          "type": "array",
+                          "maxItems": 50,
+                          "items": {
+                            "type": "object",
+                            "additionalProperties": false,
+                            "properties": {
+                              "colId": {
+                                "type": "string",
+                                "maxLength": 256
+                              },
+                              "sort": {
+                                "type": "string",
+                                "enum": [
+                                  "asc",
+                                  "desc"
+                                ]
+                              }
+                            }
+                          }
+                        }
+                      }
+                    },
+                    "default": {
+                      "$ref": "#/$defs/gridPreset"
+                    }
+                  },
+                  "description": "The grid layout a new card opens with: parts of an AG Grid grid state, directly or under `default`. A card's own saved layout replaces it."
+                },
+                "filterModel": {
+                  "$ref": "#/$defs/filterModel",
+                  "description": "The filters a new card opens with, as an AG Grid filter model keyed by column."
+                },
+                "emptyValue": {
+                  "type": "string",
+                  "maxLength": 16,
+                  "description": "The text of an empty cell, such as - or n/a. Empty by default."
+                },
+                "enableFormulas": {
+                  "type": "boolean",
+                  "description": "The Formulas panel of the side bar, where a user adds columns computed from the others, such as [Revenue] / [Shares]. On unless false."
+                },
+                "wsRowIdColumns": {
+                  "type": "array",
+                  "maxItems": 10,
+                  "items": {
+                    "type": "string",
+                    "maxLength": 128
+                  },
+                  "description": "Several fields that together identify a row: their values joined with - make its id. Replaces wsRowIdColumn."
+                },
+                "maxStreamRows": {
+                  "type": "integer",
+                  "minimum": 1,
+                  "maximum": 100000,
+                  "description": "The most rows a stream keeps; the oldest go first (5,000 by default)."
+                },
+                "dataKey": {
+                  "type": "string",
+                  "maxLength": 200,
+                  "description": "For a JSON file: the path of its rows, such as result.items."
+                },
+                "sheet": {
+                  "type": "string",
+                  "maxLength": 100,
+                  "description": "For a workbook: the sheet it opens on (the first by default)."
+                }
+              },
+              "$defs": {
+                "pointStyle": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "fill": {
+                      "type": "string",
+                      "maxLength": 64,
+                      "description": "A hex colour or a CSS colour name."
+                    },
+                    "stroke": {
+                      "type": "string",
+                      "maxLength": 64,
+                      "description": "A hex colour or a CSS colour name."
+                    },
+                    "strokeWidth": {
+                      "type": "number",
+                      "minimum": 0,
+                      "maximum": 20
+                    },
+                    "size": {
+                      "type": "number",
+                      "minimum": 0,
+                      "maximum": 40
+                    }
+                  }
+                },
+                "sparklineOptions": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "stroke": {
+                      "type": "string",
+                      "maxLength": 64,
+                      "description": "A hex colour or a CSS colour name."
+                    },
+                    "strokeWidth": {
+                      "type": "number",
+                      "minimum": 0,
+                      "maximum": 20
+                    },
+                    "fill": {
+                      "type": "string",
+                      "maxLength": 64,
+                      "description": "A hex colour or a CSS colour name."
+                    },
+                    "fillOpacity": {
+                      "type": "number",
+                      "minimum": 0,
+                      "maximum": 1
+                    },
+                    "min": {
+                      "type": "number"
+                    },
+                    "max": {
+                      "type": "number"
+                    },
+                    "direction": {
+                      "type": "string",
+                      "enum": [
+                        "vertical",
+                        "horizontal"
+                      ]
+                    },
+                    "markers": {
+                      "type": "object",
+                      "additionalProperties": false,
+                      "properties": {
+                        "enabled": {
+                          "type": "boolean"
+                        },
+                        "size": {
+                          "type": "number",
+                          "minimum": 0,
+                          "maximum": 40
+                        },
+                        "fill": {
+                          "type": "string",
+                          "maxLength": 64,
+                          "description": "A hex colour or a CSS colour name."
+                        },
+                        "stroke": {
+                          "type": "string",
+                          "maxLength": 64,
+                          "description": "A hex colour or a CSS colour name."
+                        },
+                        "strokeWidth": {
+                          "type": "number",
+                          "minimum": 0,
+                          "maximum": 20
+                        },
+                        "shape": {
+                          "type": "string",
+                          "enum": [
+                            "circle",
+                            "square",
+                            "diamond",
+                            "triangle",
+                            "cross",
+                            "plus",
+                            "star"
+                          ]
+                        }
+                      }
+                    },
+                    "pointsOfInterest": {
+                      "type": "object",
+                      "additionalProperties": false,
+                      "properties": {
+                        "firstLast": {
+                          "$ref": "#/$defs/pointStyle"
+                        },
+                        "minimum": {
+                          "$ref": "#/$defs/pointStyle"
+                        },
+                        "maximum": {
+                          "$ref": "#/$defs/pointStyle"
+                        },
+                        "highlighted": {
+                          "$ref": "#/$defs/pointStyle"
+                        },
+                        "positiveNegative": {
+                          "type": "object",
+                          "additionalProperties": false,
+                          "properties": {
+                            "positive": {
+                              "$ref": "#/$defs/pointStyle"
+                            },
+                            "negative": {
+                              "$ref": "#/$defs/pointStyle"
+                            }
+                          }
+                        }
+                      }
+                    },
+                    "customFormatter": {
+                      "type": "string",
+                      "maxLength": 2000,
+                      "description": "An arrow function in a string, (params) => ({ fill, stroke, ... }). Evaluated without eval: literals, params.*, operators, ?: and Math functions."
+                    },
+                    "padding": {
+                      "type": "object",
+                      "additionalProperties": false,
+                      "properties": {
+                        "top": {
+                          "type": "number",
+                          "minimum": 0,
+                          "maximum": 50
+                        },
+                        "right": {
+                          "type": "number",
+                          "minimum": 0,
+                          "maximum": 50
+                        },
+                        "bottom": {
+                          "type": "number",
+                          "minimum": 0,
+                          "maximum": 50
+                        },
+                        "left": {
+                          "type": "number",
+                          "minimum": 0,
+                          "maximum": 50
+                        }
+                      }
+                    },
+                    "xKey": {
+                      "type": "string",
+                      "maxLength": 128,
+                      "description": "For points that are objects: the key of the x value."
+                    },
+                    "yKey": {
+                      "type": "string",
+                      "maxLength": 128,
+                      "description": "For points that are objects: the key of the y value."
+                    },
+                    "tooltip": {
+                      "type": "object",
+                      "additionalProperties": false,
+                      "properties": {
+                        "enabled": {
+                          "type": "boolean"
+                        }
+                      }
+                    },
+                    "crosshair": {
+                      "type": "object",
+                      "additionalProperties": false,
+                      "properties": {
+                        "enabled": {
+                          "type": "boolean"
+                        }
+                      }
+                    },
+                    "axis": {
+                      "type": "object",
+                      "additionalProperties": false,
+                      "properties": {
+                        "visible": {
+                          "type": "boolean"
+                        },
+                        "stroke": {
+                          "type": "string",
+                          "maxLength": 64,
+                          "description": "A hex colour or a CSS colour name."
+                        },
+                        "strokeWidth": {
+                          "type": "number",
+                          "minimum": 0,
+                          "maximum": 10
+                        }
+                      }
+                    },
+                    "label": {
+                      "type": "object",
+                      "additionalProperties": false,
+                      "description": "Bar sparklines: the value on each bar.",
+                      "properties": {
+                        "enabled": {
+                          "type": "boolean"
+                        },
+                        "placement": {
+                          "type": "string",
+                          "enum": [
+                            "inside-center",
+                            "inside-base",
+                            "inside-end",
+                            "outside-end"
+                          ]
+                        },
+                        "color": {
+                          "type": "string",
+                          "maxLength": 64
+                        },
+                        "fontSize": {
+                          "type": "number",
+                          "minimum": 6,
+                          "maximum": 24
+                        },
+                        "fontWeight": {
+                          "type": "string",
+                          "enum": [
+                            "normal",
+                            "bold"
+                          ]
+                        }
+                      }
+                    }
+                  }
+                },
+                "sparkline": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "type": {
+                      "type": "string",
+                      "enum": [
+                        "line",
+                        "area",
+                        "bar"
+                      ]
+                    },
+                    "dataField": {
+                      "type": "string",
+                      "maxLength": 128
+                    },
+                    "options": {
+                      "$ref": "#/$defs/sparklineOptions"
+                    }
+                  },
+                  "required": [
+                    "type"
+                  ]
+                },
+                "colorRule": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "condition": {
+                      "type": "string",
+                      "enum": [
+                        "eq",
+                        "ne",
+                        "gt",
+                        "lt",
+                        "gte",
+                        "lte",
+                        "between",
+                        "contains",
+                        "notContains"
+                      ]
+                    },
+                    "value": {
+                      "type": [
+                        "number",
+                        "string"
+                      ],
+                      "maxLength": 200
+                    },
+                    "range": {
+                      "type": "object",
+                      "additionalProperties": false,
+                      "properties": {
+                        "min": {
+                          "type": "number"
+                        },
+                        "max": {
+                          "type": "number"
+                        }
+                      }
+                    },
+                    "color": {
+                      "type": "string",
+                      "maxLength": 64,
+                      "description": "A hex colour or a CSS colour name."
+                    },
+                    "fill": {
+                      "type": "boolean"
+                    }
+                  },
+                  "required": [
+                    "condition",
+                    "color"
+                  ]
+                },
+                "renderFnParams": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "actionType": {
+                      "type": "string",
+                      "enum": [
+                        "groupBy",
+                        "sendToAgent",
+                        "openUrl"
+                      ]
+                    },
+                    "groupBy": {
+                      "type": "object",
+                      "additionalProperties": false,
+                      "properties": {
+                        "paramName": {
+                          "type": "string",
+                          "maxLength": 64
+                        },
+                        "valueField": {
+                          "type": "string",
+                          "maxLength": 128
+                        },
+                        "forceUpdate": {
+                          "type": "boolean"
+                        }
+                      },
+                      "required": [
+                        "paramName"
+                      ]
+                    },
+                    "sendToAgent": {
+                      "type": "object",
+                      "additionalProperties": false,
+                      "properties": {
+                        "markdown": {
+                          "type": "string",
+                          "maxLength": 4000
+                        },
+                        "agentId": {
+                          "type": "string",
+                          "maxLength": 128
+                        }
+                      }
+                    },
+                    "url": {
+                      "type": "string",
+                      "maxLength": 2000,
+                      "description": "openUrl: the link, with {field} placeholders. Without it, the cell's value is the link."
+                    },
+                    "colorValueKey": {
+                      "type": "string",
+                      "maxLength": 128
+                    },
+                    "hoverCardData": {
+                      "type": "array",
+                      "maxItems": 50,
+                      "items": {
+                        "type": "string",
+                        "maxLength": 128
+                      }
+                    },
+                    "colorRules": {
+                      "type": "array",
+                      "maxItems": 50,
+                      "items": {
+                        "$ref": "#/$defs/colorRule"
+                      }
+                    },
+                    "hoverCard": {
+                      "type": "object",
+                      "additionalProperties": false,
+                      "properties": {
+                        "cellField": {
+                          "type": "string",
+                          "maxLength": 128
+                        },
+                        "title": {
+                          "type": "string",
+                          "maxLength": 200
+                        },
+                        "markdown": {
+                          "type": "string",
+                          "maxLength": 4000
+                        }
+                      }
+                    }
+                  }
+                },
+                "column": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "field": {
+                      "type": "string",
+                      "maxLength": 128
+                    },
+                    "headerName": {
+                      "type": "string",
+                      "maxLength": 200
+                    },
+                    "headerTooltip": {
+                      "type": "string",
+                      "maxLength": 500
+                    },
+                    "chartDataType": {
+                      "type": "string",
+                      "enum": [
+                        "category",
+                        "series",
+                        "time",
+                        "excluded"
+                      ]
+                    },
+                    "cellDataType": {
+                      "type": "string",
+                      "enum": [
+                        "text",
+                        "number",
+                        "boolean",
+                        "date",
+                        "dateString",
+                        "object"
+                      ]
+                    },
+                    "align": {
+                      "type": "string",
+                      "enum": [
+                        "left",
+                        "center",
+                        "right"
+                      ]
+                    },
+                    "enableCellChangeWs": {
+                      "type": "boolean",
+                      "description": "false: the column does not flash when it changes. true on any column: a streamed update changes only the columns marked true."
+                    },
+                    "formatterFn": {
+                      "type": "string",
+                      "enum": [
+                        "int",
+                        "none",
+                        "percent",
+                        "normalized",
+                        "normalizedPercent",
+                        "dateToYear",
+                        "compact"
+                      ]
+                    },
+                    "decimalPlaces": {
+                      "type": "integer",
+                      "minimum": 0,
+                      "maximum": 12
+                    },
+                    "renderFn": {
+                      "type": [
+                        "string",
+                        "array"
+                      ],
+                      "maxLength": 32,
+                      "maxItems": 6,
+                      "items": {
+                        "type": "string",
+                        "enum": [
+                          "greenRed",
+                          "titleCase",
+                          "hoverCard",
+                          "cellOnClick",
+                          "columnColor",
+                          "showCellChange"
+                        ]
+                      },
+                      "description": "One of greenRed, titleCase, hoverCard, cellOnClick, columnColor, showCellChange, or a list of them."
+                    },
+                    "renderFnParams": {
+                      "$ref": "#/$defs/renderFnParams"
+                    },
+                    "width": {
+                      "type": "number",
+                      "minimum": 10,
+                      "maximum": 4000
+                    },
+                    "minWidth": {
+                      "type": "number",
+                      "minimum": 10,
+                      "maximum": 4000
+                    },
+                    "maxWidth": {
+                      "type": "number",
+                      "minimum": 10,
+                      "maximum": 4000
+                    },
+                    "hide": {
+                      "type": "boolean"
+                    },
+                    "pinned": {
+                      "type": "string",
+                      "enum": [
+                        "left",
+                        "right"
+                      ]
+                    },
+                    "prefix": {
+                      "type": "string",
+                      "maxLength": 32
+                    },
+                    "suffix": {
+                      "type": "string",
+                      "maxLength": 32
+                    },
+                    "sparkline": {
+                      "$ref": "#/$defs/sparkline"
+                    },
+                    "calculatedExpression": {
+                      "type": "string",
+                      "maxLength": 2000,
+                      "description": "The column's value as an expression over the row's columns, such as [revenue] - [cost]: literals, [column], + - * / %, comparisons, && || ??, ?: and Math functions."
+                    },
+                    "rowGroup": {
+                      "type": "boolean",
+                      "description": "Groups the rows by this column when the card opens."
+                    },
+                    "rowGroupIndex": {
+                      "type": "integer",
+                      "minimum": 0,
+                      "maximum": 50,
+                      "description": "The column's place among the row groups."
+                    },
+                    "pivot": {
+                      "type": "boolean",
+                      "description": "Pivots on this column when the card opens (with pivot mode on)."
+                    },
+                    "aggFunc": {
+                      "type": "string",
+                      "enum": [
+                        "sum",
+                        "min",
+                        "max",
+                        "count",
+                        "avg",
+                        "first",
+                        "last"
+                      ],
+                      "description": "The aggregation of this column in group and pivot rows."
+                    }
+                  },
+                  "required": [
+                    "field"
+                  ]
+                },
+                "chartView": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "enabled": {
+                      "type": "boolean"
+                    },
+                    "chartType": {
+                      "type": "string",
+                      "enum": [
+                        "column",
+                        "groupedColumn",
+                        "stackedColumn",
+                        "normalizedColumn",
+                        "bar",
+                        "groupedBar",
+                        "stackedBar",
+                        "normalizedBar",
+                        "line",
+                        "scatter",
+                        "bubble",
+                        "pie",
+                        "donut",
+                        "doughnut",
+                        "area",
+                        "stackedArea",
+                        "normalizedArea",
+                        "histogram",
+                        "radarLine",
+                        "radarArea",
+                        "nightingale",
+                        "radialColumn",
+                        "radialBar",
+                        "sunburst",
+                        "rangeBar",
+                        "rangeArea",
+                        "boxPlot",
+                        "treemap",
+                        "heatmap",
+                        "waterfall",
+                        "columnLineCombo",
+                        "areaColumnCombo",
+                        "customCombo",
+                        "stackedLine",
+                        "normalizedLine",
+                        "funnel",
+                        "coneFunnel",
+                        "pyramid"
+                      ]
+                    },
+                    "cellRangeCols": {
+                      "type": "object",
+                      "additionalProperties": {
+                        "type": "array",
+                        "maxItems": 50,
+                        "items": {
+                          "type": "string",
+                          "maxLength": 128
+                        }
+                      }
+                    },
+                    "ignoreCellRange": {
+                      "type": "boolean"
+                    },
+                    "chartNavigatorEnabled": {
+                      "type": "boolean"
+                    },
+                    "chartMiniChartEnabled": {
+                      "type": "boolean"
+                    },
+                    "xLabel": {
+                      "type": "string",
+                      "maxLength": 100,
+                      "description": "The title of the category or time axis."
+                    },
+                    "yLabel": {
+                      "type": "string",
+                      "maxLength": 100,
+                      "description": "The title of the number axis."
+                    },
+                    "dateLabels": {
+                      "type": "string",
+                      "enum": [
+                        "date",
+                        "quarter",
+                        "year"
+                      ],
+                      "description": "Dates on the category axis as dates, as quarters (Q3 2024) or as fiscal years (FY 2024)."
+                    }
+                  }
+                },
+                "gridPreset": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "aggregation": {
+                      "type": "object",
+                      "additionalProperties": false,
+                      "properties": {
+                        "aggregationModel": {
+                          "type": "array",
+                          "maxItems": 500,
+                          "items": {
+                            "type": "object",
+                            "additionalProperties": false,
+                            "properties": {
+                              "colId": {
+                                "type": "string",
+                                "maxLength": 256
+                              },
+                              "aggFunc": {
+                                "type": "string",
+                                "maxLength": 32
+                              }
+                            }
+                          }
+                        }
+                      }
+                    },
+                    "columnGroup": {
+                      "type": "object",
+                      "additionalProperties": false,
+                      "properties": {
+                        "openColumnGroupIds": {
+                          "type": "array",
+                          "maxItems": 500,
+                          "items": {
+                            "type": "string",
+                            "maxLength": 256
+                          }
+                        }
+                      }
+                    },
+                    "columnOrder": {
+                      "type": "object",
+                      "additionalProperties": false,
+                      "properties": {
+                        "orderedColIds": {
+                          "type": "array",
+                          "maxItems": 500,
+                          "items": {
+                            "type": "string",
+                            "maxLength": 256
+                          }
+                        }
+                      }
+                    },
+                    "columnPinning": {
+                      "type": "object",
+                      "additionalProperties": false,
+                      "properties": {
+                        "leftColIds": {
+                          "type": "array",
+                          "maxItems": 500,
+                          "items": {
+                            "type": "string",
+                            "maxLength": 256
+                          }
+                        },
+                        "rightColIds": {
+                          "type": "array",
+                          "maxItems": 500,
+                          "items": {
+                            "type": "string",
+                            "maxLength": 256
+                          }
+                        }
+                      }
+                    },
+                    "columnSizing": {
+                      "type": "object",
+                      "additionalProperties": false,
+                      "properties": {
+                        "columnSizingModel": {
+                          "type": "array",
+                          "maxItems": 500,
+                          "items": {
+                            "type": "object",
+                            "additionalProperties": false,
+                            "properties": {
+                              "colId": {
+                                "type": "string",
+                                "maxLength": 256
+                              },
+                              "width": {
+                                "type": "number",
+                                "minimum": 0,
+                                "maximum": 5000
+                              },
+                              "flex": {
+                                "type": "number",
+                                "minimum": 0,
+                                "maximum": 100
+                              }
+                            }
+                          }
+                        }
+                      }
+                    },
+                    "columnVisibility": {
+                      "type": "object",
+                      "additionalProperties": false,
+                      "properties": {
+                        "hiddenColIds": {
+                          "type": "array",
+                          "maxItems": 500,
+                          "items": {
+                            "type": "string",
+                            "maxLength": 256
+                          }
+                        }
+                      }
+                    },
+                    "filter": {
+                      "type": "object",
+                      "additionalProperties": false,
+                      "properties": {
+                        "filterModel": {
+                          "$ref": "#/$defs/filterModel"
+                        }
+                      }
+                    },
+                    "pivot": {
+                      "type": "object",
+                      "additionalProperties": false,
+                      "properties": {
+                        "pivotMode": {
+                          "type": "boolean"
+                        },
+                        "pivotColIds": {
+                          "type": "array",
+                          "maxItems": 500,
+                          "items": {
+                            "type": "string",
+                            "maxLength": 256
+                          }
+                        }
+                      }
+                    },
+                    "rowGroup": {
+                      "type": "object",
+                      "additionalProperties": false,
+                      "properties": {
+                        "groupColIds": {
+                          "type": "array",
+                          "maxItems": 500,
+                          "items": {
+                            "type": "string",
+                            "maxLength": 256
+                          }
+                        }
+                      }
+                    },
+                    "sideBar": {
+                      "type": "object",
+                      "additionalProperties": false,
+                      "properties": {
+                        "visible": {
+                          "type": "boolean"
+                        },
+                        "position": {
+                          "type": "string",
+                          "enum": [
+                            "left",
+                            "right"
+                          ]
+                        },
+                        "openToolPanel": {
+                          "type": [
+                            "string",
+                            "null"
+                          ],
+                          "maxLength": 64
+                        },
+                        "toolPanels": {
+                          "type": "object",
+                          "additionalProperties": {
+                            "type": "object",
+                            "additionalProperties": false,
+                            "properties": {
+                              "expandedGroupIds": {
+                                "type": "array",
+                                "maxItems": 500,
+                                "items": {
+                                  "type": "string",
+                                  "maxLength": 256
+                                }
+                              },
+                              "expandedColIds": {
+                                "type": "array",
+                                "maxItems": 500,
+                                "items": {
+                                  "type": "string",
+                                  "maxLength": 256
+                                }
+                              }
+                            }
+                          }
+                        }
+                      }
+                    },
+                    "sort": {
+                      "type": "object",
+                      "additionalProperties": false,
+                      "properties": {
+                        "sortModel": {
+                          "type": "array",
+                          "maxItems": 50,
+                          "items": {
+                            "type": "object",
+                            "additionalProperties": false,
+                            "properties": {
+                              "colId": {
+                                "type": "string",
+                                "maxLength": 256
+                              },
+                              "sort": {
+                                "type": "string",
+                                "enum": [
+                                  "asc",
+                                  "desc"
+                                ]
+                              }
+                            }
+                          }
+                        }
+                      }
+                    }
+                  },
+                  "description": "Parts of an AG Grid grid state (api.getState()): the layout a new card opens with."
+                },
+                "filterCondition": {
+                  "type": [
+                    "object",
+                    "null"
+                  ],
+                  "additionalProperties": false,
+                  "description": "One AG Grid column filter model: text, number, date, set or multi.",
+                  "properties": {
+                    "filterType": {
+                      "type": "string",
+                      "maxLength": 32
+                    },
+                    "type": {
+                      "type": "string",
+                      "maxLength": 64
+                    },
+                    "filter": {
+                      "type": [
+                        "string",
+                        "number",
+                        "null"
+                      ],
+                      "maxLength": 500
+                    },
+                    "filterTo": {
+                      "type": [
+                        "string",
+                        "number",
+                        "null"
+                      ],
+                      "maxLength": 500
+                    },
+                    "dateFrom": {
+                      "type": [
+                        "string",
+                        "null"
+                      ],
+                      "maxLength": 40
+                    },
+                    "dateTo": {
+                      "type": [
+                        "string",
+                        "null"
+                      ],
+                      "maxLength": 40
+                    },
+                    "values": {
+                      "type": "array",
+                      "maxItems": 1000,
+                      "items": {
+                        "type": [
+                          "string",
+                          "number",
+                          "boolean",
+                          "null"
+                        ],
+                        "maxLength": 500
+                      }
+                    }
+                  }
+                },
+                "columnFilter": {
+                  "type": [
+                    "object",
+                    "null"
+                  ],
+                  "additionalProperties": false,
+                  "description": "One AG Grid column filter model: text, number, date, set or multi.",
+                  "properties": {
+                    "filterType": {
+                      "type": "string",
+                      "maxLength": 32
+                    },
+                    "type": {
+                      "type": "string",
+                      "maxLength": 64
+                    },
+                    "filter": {
+                      "type": [
+                        "string",
+                        "number",
+                        "null"
+                      ],
+                      "maxLength": 500
+                    },
+                    "filterTo": {
+                      "type": [
+                        "string",
+                        "number",
+                        "null"
+                      ],
+                      "maxLength": 500
+                    },
+                    "dateFrom": {
+                      "type": [
+                        "string",
+                        "null"
+                      ],
+                      "maxLength": 40
+                    },
+                    "dateTo": {
+                      "type": [
+                        "string",
+                        "null"
+                      ],
+                      "maxLength": 40
+                    },
+                    "values": {
+                      "type": "array",
+                      "maxItems": 1000,
+                      "items": {
+                        "type": [
+                          "string",
+                          "number",
+                          "boolean",
+                          "null"
+                        ],
+                        "maxLength": 500
+                      }
+                    },
+                    "operator": {
+                      "type": "string",
+                      "enum": [
+                        "AND",
+                        "OR"
+                      ]
+                    },
+                    "conditions": {
+                      "type": "array",
+                      "maxItems": 10,
+                      "items": {
+                        "$ref": "#/$defs/filterCondition"
+                      }
+                    },
+                    "filterModels": {
+                      "type": "array",
+                      "maxItems": 10,
+                      "items": {
+                        "$ref": "#/$defs/filterCondition"
+                      }
+                    }
+                  }
+                },
+                "filterModel": {
+                  "type": "object",
+                  "additionalProperties": {
+                    "$ref": "#/$defs/columnFilter"
+                  },
+                  "description": "An AG Grid filter model keyed by column."
+                }
+              }
+            }
+          }
+        ],
+        "permissions": [
+          "core:data:read",
+          "core:params:write",
+          "core:export:provide",
+          "core:copilot:context",
+          "core:clipboard:write",
+          "core:state:write",
+          "core:ui:notify",
+          "core:ui:open-link",
+          "core:ui:button",
+          "core:ui:menu",
+          "core:dashboard:add-widget"
+        ],
+        "model": {
+          "traits": {
+            "data": {
+              "bind": "data",
+              "access": "read"
+            },
+            "definition": {
+              "bind": "definition",
+              "access": "read"
+            },
+            "config": {
+              "bind": "config",
+              "access": "read"
+            },
+            "theme": {
+              "bind": "theme",
+              "access": "read"
+            },
+            "adminSettings": {
+              "bind": "adminSettings",
+              "access": "read"
+            },
+            "state": {
+              "bind": "state",
+              "access": "readwrite"
+            },
+            "params": {
+              "bind": "params",
+              "access": "readwrite"
+            },
+            "meta": {
+              "bind": "meta",
+              "access": "read"
+            }
+          }
+        },
+        "settings": {
+          "schema": {
+            "type": "object",
+            "properties": {
+              "licenseKey": {
+                "type": "string",
+                "title": "AgGrid license key",
+                "description": "AgGrid Enterprise license key for this card. It replaces the organization's key.",
+                "maxLength": 1024
+              },
+              "theme": {
+                "type": "string",
+                "title": "AgGrid theme",
+                "description": "The AgGrid theme of this card; it replaces the backend's and the organization's, in the site's light or dark colours: balham (compact type), quartz, alpine, material, or compact (small type, short rows, no column lines, shaded rows).",
+                "enum": [
+                  "balham",
+                  "quartz",
+                  "alpine",
+                  "material",
+                  "compact"
+                ]
+              },
+              "floatingFilters": {
+                "type": "boolean",
+                "title": "Floating filters",
+                "description": "A filter box under each column header."
+              },
+              "advancedFilter": {
+                "type": "boolean",
+                "title": "Advanced filter",
+                "description": "One filter over all the columns, typed as an expression or made in the filter builder. It replaces the column filters and the Filters tool panel while it is on."
+              },
+              "decimals": {
+                "type": "integer",
+                "title": "Decimal places",
+                "description": "Decimal places of numbers without their own, 0 to 8. Empty follows the site.",
+                "minimum": 0,
+                "maximum": 8
+              },
+              "abbreviateNumbers": {
+                "type": "boolean",
+                "title": "Abbreviate large numbers",
+                "description": "Numbers of a million or more as M, B or T, such as 45.00B. The tooltip shows the full number."
+              },
+              "statusBar": {
+                "type": "boolean",
+                "title": "Status bar",
+                "description": "Row counts and the sum, average, minimum and maximum of the selected cells. On unless turned off."
+              },
+              "pagination": {
+                "type": "string",
+                "title": "Pages",
+                "description": "auto pages above 100 rows unless the backend says otherwise; on and off decide for this card.",
+                "enum": [
+                  "auto",
+                  "on",
+                  "off"
+                ]
+              },
+              "pageSize": {
+                "type": "string",
+                "title": "Rows per page",
+                "description": "auto fits the rows to the card.",
+                "enum": [
+                  "auto",
+                  "50",
+                  "100",
+                  "200",
+                  "500",
+                  "1000"
+                ]
+              },
+              "filterBar": {
+                "type": "boolean",
+                "title": "Active filters bar",
+                "description": "The filters that are on, above the grid, each with a button that removes it. On unless turned off."
+              },
+              "chartNavigator": {
+                "type": "boolean",
+                "title": "Chart navigator",
+                "description": "A range selector under cartesian charts. Unset follows the widget's chartView."
+              },
+              "chartMiniChart": {
+                "type": "boolean",
+                "title": "Chart navigator with mini chart",
+                "description": "The navigator draws a small copy of the chart. Unset follows the widget's chartView."
+              },
+              "chartDistinctColors": {
+                "type": "boolean",
+                "title": "One colour per bar",
+                "description": "Bar and column charts of one series give each category its own colour."
+              }
+            }
+          },
+          "defaults": {}
+        },
+        "grid": {
+          "w": 40,
+          "h": 20,
+          "minW": 10,
+          "minH": 8
+        },
+        "actions": [
+          {
+            "id": "floating-filters",
+            "label": "Floating filters",
+            "icon": "filter",
+            "placement": "navbar",
+            "toggles": "floatingFilters"
+          },
+          {
+            "id": "advanced-filter",
+            "label": "Advanced filter",
+            "icon": "sliders",
+            "placement": "navbar",
+            "toggles": "advancedFilter"
+          },
+          {
+            "id": "open-file",
+            "label": "Open a file from this computer",
+            "icon": "upload",
+            "placement": "navbar"
+          },
+          {
+            "id": "autosize",
+            "label": "Autosize columns",
+            "icon": "assets/autosize.svg",
+            "placement": "menu"
+          },
+          {
+            "id": "clear-filters",
+            "label": "Clear filters and sort",
+            "icon": "refresh",
+            "placement": "menu"
+          },
+          {
+            "id": "reset-columns",
+            "label": "Reset columns",
+            "icon": "columns",
+            "placement": "menu"
+          },
+          {
+            "id": "transpose",
+            "label": "Transpose rows and columns",
+            "icon": "assets/transpose.svg",
+            "placement": "menu"
+          },
+          {
+            "id": "reverse-columns",
+            "label": "Reverse column order",
+            "icon": "assets/reverse.svg",
+            "placement": "menu"
+          },
+          {
+            "id": "add-file-table",
+            "label": "Add as a table widget",
+            "icon": "table",
+            "placement": "menu"
+          }
+        ],
+        "standalone": true
+      },
+      {
         "id": "sql",
         "name": "AgGrid SQL",
         "description": "A SQL editor with completion for the backend's database: the query is the widget's sql body param, and the result shows in AgGrid.",

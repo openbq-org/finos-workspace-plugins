@@ -510,3 +510,23 @@ body[data-mode="light"] {
 .sx-param-actions { display: flex; align-items: center; gap: 8px; }
 .sx-editor { resize: vertical; }
 .sx-markdown { padding: 8px 12px; overflow: auto; height: 100%; box-sizing: border-box; }
+
+/* Phase 6: the file widget. */
+.ag-file-strip { display: flex; align-items: center; gap: 8px; }
+.ag-file-name { font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+.ag-file-status { margin-left: auto; opacity: 0.75; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+.ag-file-sheet[hidden] { display: none; }
+
+.ag-file-sheet,
+.ag-file-open {
+  font: inherit;
+  font-size: 11px;
+  color: inherit;
+  background: transparent;
+  border: 1px solid var(--ws-border);
+  border-radius: 4px;
+  padding: 2px 8px;
+}
+
+.ag-file-open { cursor: pointer; }
+.ag-stack.ag-file-dropping { outline: 2px dashed var(--ws-accent); outline-offset: -4px; }

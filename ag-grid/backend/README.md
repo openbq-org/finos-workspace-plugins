@@ -49,6 +49,8 @@ One example of each widget type ([grids.py](grids.py)), in the category *AgGrid 
 | Trades, infinite (skip and top) | `aggrid-infinite` | `GET /ag-grid/trades/infinite/list` | Hidden `skip` and `top` params, mapped with `requestParams`, answered with a plain list and no total: a short block ends the table. It takes no filter or sort, so the grid offers neither. |
 | Live instruments | `aggrid-streaming` | `GET /ag-grid/instruments` | The first rows; the WebSocket `/ag-grid/instruments/stream` sends a snapshot, then price updates, new instruments and removals by row id ([instruments.py](instruments.py)). |
 | Trade tape | `aggrid-streaming` | `GET /ag-grid/tape` | The WebSocket `/ag-grid/tape/stream` sends plain rows with no `op` and no id, one or a list at a time; the grid appends them and keeps the newest 200 (`maxStreamRows`). |
+| Positions workbook | `aggrid-file` | `GET /ag-grid/files/positions` | An `.xlsx` workbook written with the standard library's `zipfile` ([files.py](files.py)) and sent as base64: a title row above the header, dates, and a second sheet, *By desk*. |
+| Trades CSV | `aggrid-file` | `GET /ag-grid/files/trades-csv` | A CSV sent as text (`{ "csv": ... }`). |
 | Trades SQL | `aggrid-sql` | `POST /ag-grid/sql` | SQLite over the trades and desks ([sqldb.py](sqldb.py)), opened read-only, with an authorizer that allows one read, and a time limit. |
 | Trades SQL, paged on the server | `aggrid-sql` | `POST /ag-grid/sql-pages` | `serverSide: true`: the query and the `gridState` body param; the backend pages, sorts and filters the query as a subquery, with column names checked against the query's own and values bound as parameters. |
 

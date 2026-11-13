@@ -17,6 +17,7 @@ from starlette.routing import Route, WebSocketRoute
 
 import ag_table_chart
 import grids
+import files
 import instruments
 import positions
 import sqldb
@@ -179,6 +180,8 @@ app = Starlette(
         WebSocketRoute("/ag-grid/trades/updates", instruments.trade_updates),
         Route("/ag-grid/instruments", instrument_rows, methods=["GET"]),
         Route("/ag-grid/tape", tape_rows, methods=["GET"]),
+        Route("/ag-grid/files/positions", table(files.positions_workbook), methods=["GET"]),
+        Route("/ag-grid/files/trades-csv", table(files.trades_csv), methods=["GET"]),
         WebSocketRoute("/ag-grid/tape/stream", instruments.tape),
         WebSocketRoute("/ag-grid/instruments/stream", instruments.stream),
         Route("/ag-grid/sql", sql, methods=["POST"]),

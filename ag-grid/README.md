@@ -1,6 +1,6 @@
 # AgGrid widgets for Workspace
 
-A Workspace widget plugin with five widgets built on [AG Grid](https://www.ag-grid.com/)
+A Workspace widget plugin with six widgets built on [AG Grid](https://www.ag-grid.com/)
 Enterprise 34.3 and AG Charts Enterprise 12.3. Each widget handles its own widget type, and
 each one gets its rows from its widget's endpoint in `widgets.json`.
 
@@ -10,7 +10,8 @@ each one gets its rows from its widget's endpoint in `widgets.json`.
 | `ssrm` | `aggrid-ssrm` | Server-side | A large table that the backend pages, sorts, filters, groups, aggregates and pivots. Each request of the grid is a POST to the endpoint. |
 | `infinite` | `aggrid-infinite` | Infinite | A long table that loads in blocks as the user scrolls, from a backend that answers `startRow` and `endRow`, `offset` and `limit`, or the grid state. |
 | `streaming` | `aggrid-streaming` | Client-side | A table kept current by a WebSocket that Workspace opens, which updates rows, inserts new ones and removes them. |
-| `sql` | `aggrid-sql` | Client-side | A SQL editor with completion for the backend's database, with the result in a grid. |
+| `file` | `aggrid-file` | Client-side | A CSV, TSV, JSON or Excel (.xlsx) file, from the endpoint or the user's computer, as a table. |
+| `sql` | `aggrid-sql` | Client-side or server-side | A SQL editor with completion for the backend's database and `{{name}}` parameters, with the result in a grid, or paged on the server. |
 
 Nothing in the plugin imports Workspace code. It talks to Workspace only through the widget plugin
 contract: `plugin.json`, the AFM module in `entry.js`, traits and host commands. The same built
@@ -376,6 +377,33 @@ params.
 Changes are applied every 150 ms. Changed cells flash with `showCellChange`. The strip above the
 grid shows whether the feed is live, retrying or closed. The widget takes the same configuration
 as the table widget.
+
+## The file widget (`aggrid-file`)
+
+The widget shows a file as an AgGrid table, with everything the table widget has: formats,
+filters, formulas, charts, exports and the card's settings. The file comes from:
+
+- **The widget's endpoint**, as JSON, because Workspace passes plugins JSON answers only:
+  `{ "file": { "name": "positions.xlsx", "base64": "..." } }` for a workbook (or any file),
+  `{ "file": { "name": "trades.csv", "text": "..." } }`, `{ "csv": "..." }` or `{ "tsv": "..." }`
+  for text, or rows as the table widget takes them.
+- **The user's computer**: the **Open file** button, or a file dropped on the card. Such a file
+  stays in the card until it is closed or reloaded; it is not saved with the dashboard, because a
+  card saves its state, not files. **Add as a table widget** keeps a copy, as the SQL widget's
+  static copy does (the first 1,000 rows and 60 columns).
+
+It reads `.csv` and `.txt` (the delimiter is the one of comma, tab and semicolon the first line has
+most of), `.tsv`, `.json` (a list of records, the list at `dataKey`, any shape the table widget
+reads, or one record) and Excel `.xlsx` workbooks. A workbook is read in the frame with the
+browser's own zip and XML support, so the package carries no spreadsheet library: a sheet picker
+lists its sheets (`sheet` sets the first, and the user's pick is saved with the card), formulas show
+their last computed values, error cells are empty, and cells with a date format are ISO dates. The
+header is the first row with more than one value, so a title row above it is skipped; empty
+headers become *Column N*, repeated ones get a number, and rows and columns with no value are
+dropped. Numbers, `true` and `false` in text files are read as values. An `.xls` workbook is
+refused with a request to save it as `.xlsx`. Files are read up to 50 MB and 200,000 rows.
+
+The widget is standalone, so it can be added without a backend and opened on a file.
 
 ## The SQL widget (`aggrid-sql`)
 
