@@ -405,16 +405,48 @@ export function selectionMarkdown(api) {
   return `${lines.join("\n")}${more}`.slice(0, MAX_PROMPT_TEXT);
 }
 
-/** The rows the user sees as tab-separated text with a header row, for the clipboard. */
+/** True for a grid that holds all its rows; a server-side or infinite grid holds the blocks it loaded. */
+export function holdsAllRows(api) {
+  const type = api.getGridOption("rowModelType");
+  return type === undefined || type === "clientSide";
+}
+
+/** The rows the user sees (or, on a server-side or infinite grid, has loaded) as tab-separated text with a header row. */
 export function visibleRowsText(api) {
   const columns = visibleColumnsOf(api);
   const cell = (v) => (v === null || v === undefined ? "" : String(v)).replace(/[\t\r\n]+/g, " ");
   const lines = [columns.map((c) => cell(api.getDisplayNameForColumn(c, "header") || c.getColId())).join("\t")];
-  api.forEachNodeAfterFilterAndSort((node) => {
+  const each = holdsAllRows(api) ? (fn) => api.forEachNodeAfterFilterAndSort(fn) : (fn) => api.forEachNode(fn);
+  each((node) => {
     if (node.group || !node.data) return;
     lines.push(columns.map((c) => cell(plainCell(api.getCellValue({ rowNode: node, colKey: c })))).join("\t"));
   });
   return lines.join("\n");
+}
+
+/**
+ * The clipboard actions of a grid's context menu: copy a text, and give the AI agent a prompt
+ * (copied, and kept in the widget's Copilot context through the tracker).
+ */
+export function clipboardActions({ experimental, tracker }) {
+  const invoke = (command, message) => (experimental?.invoke ? experimental.invoke(command, message) : Promise.reject(new Error("host commands are unavailable")));
+  const notify = (level, text) => invoke("core:ui:notify", { level, text }).catch(() => {});
+  return {
+    copyText(text, done) {
+      invoke("core:clipboard:write", { text })
+        .then(() => notify("info", done))
+        .catch(() => notify("warning", "The clipboard refused the copy."));
+    },
+    sendToAgent(markdown) {
+      if (tracker) {
+        tracker.state.agentPrompt = { markdown, agentId: null, timestamp: Date.now() };
+        tracker.persist();
+      }
+      invoke("core:clipboard:write", { text: markdown })
+        .then(() => notify("info", "Prompt copied. Paste it into the AI agent."))
+        .catch(() => notify("info", "The prompt is in the widget's context for the AI agent."));
+    },
+  };
 }
 
 /**
@@ -434,7 +466,10 @@ export function contextMenuItems(params) {
       },
     });
   }
-  if (actions?.copyText) extra.push({ name: "Copy all rows", action: () => actions.copyText(visibleRowsText(params.api), "Rows copied, with their headers.") });
+  if (actions?.copyText) {
+    const all = holdsAllRows(params.api);
+    extra.push({ name: all ? "Copy all rows" : "Copy loaded rows", action: () => actions.copyText(visibleRowsText(params.api), all ? "Rows copied, with their headers." : "The loaded rows copied, with their headers.") });
+  }
   return extra.length ? [...items, "separator", ...extra] : items;
 }
 
@@ -495,6 +530,18 @@ export function attachSelectionShortcuts(api, el) {
     el.removeEventListener("dblclick", onHeader);
     if (!api.isDestroyed()) api.removeEventListener("cellDoubleClicked", onCell);
   };
+}
+
+/** The exports of a server-side or infinite grid: the rows it has loaded, as CSV or Excel. */
+export const LOADED_EXPORTS = [
+  { id: "csv", label: "Loaded rows (CSV)", extension: "csv", mime: "text/csv" },
+  { id: "xlsx", label: "Loaded rows (Excel)", extension: "xlsx", mime: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" },
+];
+
+export function loadedExport(api, id) {
+  if (id === "csv") return rawCsv(api);
+  if (id === "xlsx") return rawExcel(api) ?? null;
+  return null;
 }
 
 /** The rows as an Excel workbook, with raw values as in the CSV. */

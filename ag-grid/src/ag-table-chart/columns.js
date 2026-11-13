@@ -5,7 +5,7 @@
  */
 import { fieldsOf, inferColumnType } from "../infer.js";
 import { columnColorStyle, greenRedStyle } from "./colors.js";
-import { clipped, formatValue, headerFromField, titleCase, yearOf } from "./format.js";
+import { clipped, formatValue, headerFromField, MAX_CELL_TEXT, titleCase, yearOf } from "./format.js";
 import { fillTemplate, renderMarkdown } from "./markdown.js";
 import { sparklineOptions, sparklinePoints } from "./sparkline.js";
 
@@ -177,7 +177,25 @@ export function tooltipTextOf(params, colDef) {
     return shown && /[MBT]$/.test(shown.replace(colDef.suffix ?? "", "")) ? formatValue(value, { locale: params.context?.locale, decimals: params.context?.decimals }) : undefined;
   }
   if (typeof value !== "string") return undefined;
-  return params.context?.truncatedTooltips || value.length > TOOLTIP_TEXT_AT ? value : undefined;
+  if (value.length > MAX_CELL_TEXT) return value;
+  const cut = params.context?.isTruncated?.(params.node, params.column);
+  if (typeof cut === "boolean") return cut ? value : undefined;
+  return value.length > TOOLTIP_TEXT_AT ? value : undefined;
+}
+
+/**
+ * A check of whether a cell's text is cut by its column's width, for the grid's context: the
+ * tooltip of a text shows only then. Undefined when the cell is not on screen.
+ */
+export function truncationCheck(root) {
+  const quote = (text) => String(text).replace(/["\\]/g, "\\$&");
+  return (node, column) => {
+    const colId = column?.getColId?.();
+    if (!node || !colId) return undefined;
+    const cell = root.querySelector(`.ag-row[row-id="${quote(node.id)}"] .ag-cell[col-id="${quote(colId)}"]`);
+    const text = cell?.querySelector(".ag-cell-value") ?? cell;
+    return text ? text.scrollWidth > text.clientWidth + 1 : undefined;
+  };
 }
 
 /** A link cell: the URL, opened through the host (which asks the user first) when it is clicked. */

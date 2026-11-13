@@ -3,7 +3,7 @@ import { test } from "node:test";
 
 import "./dom.mjs";
 import { abbreviated, clipped, formatValue, MAX_CELL_TEXT } from "../src/ag-table-chart/format.js";
-import { looksLikeLinks, tooltipTextOf } from "../src/ag-table-chart/columns.js";
+import { looksLikeLinks, tooltipTextOf, truncationCheck } from "../src/ag-table-chart/columns.js";
 import { sparklineOptions, sparklinePoints } from "../src/ag-table-chart/sparkline.js";
 import { conditionText, filterChips } from "../src/filterBar.js";
 import { displaySettingsOf, orgThemeParams, paginationFor } from "../src/grid.js";
@@ -37,7 +37,9 @@ test("links and tooltips", () => {
   const long = "a long description that goes on and on past forty characters";
   assert.equal(tooltipTextOf({ value: long, context: {} }, {}), long);
   assert.equal(tooltipTextOf({ value: "short", context: {} }, {}), undefined);
-  assert.equal(tooltipTextOf({ value: "short", context: { truncatedTooltips: true } }, {}), "short");
+  assert.equal(tooltipTextOf({ value: "short", context: { isTruncated: () => true } }, {}), "short", "a cut-off text shows in full");
+  assert.equal(tooltipTextOf({ value: long, context: { isTruncated: () => false } }, {}), undefined, "a text that fits needs no tooltip");
+  assert.equal(tooltipTextOf({ value: "x".repeat(300), context: { isTruncated: () => false } }, {}).length, 300, "a clipped long text always shows in full");
   assert.equal(tooltipTextOf({ value: 45e9, valueFormatted: "45.00B", context: { locale: "en-US" } }, {}), "45,000,000,000");
   assert.equal(tooltipTextOf({ value: 45, valueFormatted: "45", context: {} }, {}), undefined);
 });
@@ -127,4 +129,18 @@ test("the column menu adds Hide column, and Narrow column for a wide one", async
   items[3].action();
   assert.deepEqual(calls, [["hide", [wide], false], ["width", [{ key: wide, newWidth: 150 }]]]);
   assert.deepEqual(columnMenuItems({ api, column: { getActualWidth: () => 120 }, defaultItems: [] }).map((i) => i.name ?? i), ["separator", "Hide column"]);
+});
+
+test("the truncation check measures the cell on screen", () => {
+  const root = document.createElement("div");
+  root.innerHTML = '<div class="ag-row" row-id="r1"><div class="ag-cell" col-id="name"><span class="ag-cell-value">A long name</span></div></div>';
+  const value = root.querySelector(".ag-cell-value");
+  Object.defineProperty(value, "scrollWidth", { value: 300, configurable: true });
+  Object.defineProperty(value, "clientWidth", { value: 100, configurable: true });
+  const check = truncationCheck(root);
+  const column = (id) => ({ getColId: () => id });
+  assert.equal(check({ id: "r1" }, column("name")), true);
+  assert.equal(check({ id: "r2" }, column("name")), undefined, "a cell off screen is not measured");
+  Object.defineProperty(value, "scrollWidth", { value: 100, configurable: true });
+  assert.equal(check({ id: "r1" }, column("name")), false);
 });

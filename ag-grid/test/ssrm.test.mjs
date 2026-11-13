@@ -207,3 +207,37 @@ test("the AI agent gets the rows the server-side grid has loaded", async () => {
     await settle(50);
   }
 });
+
+test("the server-side chart view charts the current page, follows the page, and exports and AI items work on loaded rows", async () => {
+  const rowsOnly = (state) => ({ seq: state.seq, rowData: rows.slice(state.startRow, state.endRow), rowCount: rows.length });
+  const model = hostModel(
+    { data: { rowData: rows.slice(0, 50), rowCount: rows.length }, definition: { pageSize: 50, wsRowIdColumns: ["desk", "id"], chartView: { enabled: true, chartType: "groupedColumn", cellRangeCols: { groupedColumn: ["id", "qty"] } } } },
+    { answer: rowsOnly },
+  );
+  const { el, abort } = mount();
+  const exposed = plugin.initialize({ model });
+  await plugin.render({ model, el, signal: abort.signal, experimental: (await import("./dom.mjs")).experimental });
+  try {
+    await settle(500);
+    const api = await liveApi(el);
+    assert.equal(api.getDisplayedRowAtIndex(0).id, "FX-T0", "ids from several columns");
+    let [chart] = api.getChartModels();
+    assert.ok(chart, "the chart view draws");
+    assert.deepEqual([chart.cellRange.rowStartIndex, chart.cellRange.rowEndIndex], [0, 49]);
+    api.paginationGoToNextPage();
+    await settle(600);
+    [chart] = api.getChartModels();
+    assert.deepEqual([chart.cellRange.rowStartIndex, chart.cellRange.rowEndIndex], [50, 99], "the chart follows the page");
+    assert.match(el.querySelector(".ag-table-chart-toolbar-button:last-child").textContent, /this page/);
+
+    assert.deepEqual(exposed.exportOptions().map((o) => o.id), ["csv", "xlsx"]);
+    assert.ok(exposed.exportData("xlsx"), "an Excel file of the loaded rows");
+    const { contextMenuItems } = await import("../src/grid.js");
+    api.addCellRange({ rowStartIndex: 50, rowEndIndex: 51, columns: ["id", "qty"] });
+    const names = contextMenuItems({ api, context: api.getGridOption("context"), defaultItems: [] }).map((i) => i.name ?? i);
+    assert.deepEqual(names, ["separator", "Ask the AI agent about these cells", "Copy loaded rows"]);
+  } finally {
+    abort.abort();
+    await settle(50);
+  }
+});

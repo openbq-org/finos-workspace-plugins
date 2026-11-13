@@ -1,5 +1,5 @@
 import { canChart, createChartView } from "./ag-table-chart/chartView.js";
-import { agTableChartColumnDefs, changeTrackedColumns, transpose } from "./ag-table-chart/columns.js";
+import { agTableChartColumnDefs, changeTrackedColumns, transpose, truncationCheck } from "./ag-table-chart/columns.js";
 import { mountFilterBar } from "./filterBar.js";
 import { FormulasPanel, formulaColumnDefs, formulaColumnsOf, savedFormulas } from "./formulas.js";
 import {
@@ -307,15 +307,11 @@ export function mountTable({ model, el, signal, experimental, tracker, saved = {
   };
 
   const theme = model.get("theme") || {};
-  const hoverCards = (Array.isArray(table.columnsDefs) ? table.columnsDefs : []).some((def) => {
-    const fns = Array.isArray(def?.renderFn) ? def.renderFn : [def?.renderFn];
-    return fns.includes("hoverCard") || (Array.isArray(def?.renderFnParams?.hoverCardData) && def.renderFnParams.hoverCardData.length > 0);
-  });
   const context = {
     locale: theme.locale,
     decimals: settings.decimals ?? theme.decimals,
     abbreviate: settings.abbreviate,
-    truncatedTooltips: !hoverCards,
+    isTruncated: null,
     actions,
     changes: new Map(),
     deltas: new Map(),
@@ -361,10 +357,11 @@ export function mountTable({ model, el, signal, experimental, tracker, saved = {
     rowData: [],
     context,
     enableCharts: chartsOn,
-    tooltipShowMode: hoverCards ? "standard" : "whenTruncated",
+    tooltipShowMode: "standard",
     ...(activeRules.length ? { rowClassRules: { "ag-table-chart-row-active": (params) => isActiveRow(activeRules, params.data, currentParams) } } : {}),
     ...sideBarFor(table, formulasOn ? formulasPanel() : null),
   };
+  context.isTruncated = truncationCheck(gridEl);
   const api = createGrid(gridEl, gridOptionsFor({ model, gridOptions: currentGridOptions, ...own }));
   const detach = tracker.attach(api);
   const detachActions = attachCardActions(api, model);

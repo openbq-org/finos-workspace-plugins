@@ -54,8 +54,9 @@ package serves FINOS Workspace and BQ Workspace.
   copies the selected cells (the first range, up to 100 rows and 20 columns) as a Markdown table
   in a prompt, for the user to paste into the AI agent, and keeps it in the widget's Copilot
   context. Workspace has no command that posts a message to the agent, so the clipboard carries
-  it. **Copy all rows** copies the rows the user sees, with their headers, as tab-separated text.
-  Both are on the table, streaming and file widgets and the table in the chat.
+  it. **Copy all rows** copies the rows the user sees, with their headers, as tab-separated text;
+  on the server-side and infinite widgets it is **Copy loaded rows**. Both are on every grid but
+  the SQL widget's.
 - **Card actions.** The card's header has a **Floating filters** button, which switches the
   card's `floatingFilters` setting and shows a filter box under each column header while it is on.
   The card's options menu has **Autosize columns**, which sizes every column to its content,
@@ -104,7 +105,8 @@ package serves FINOS Workspace and BQ Workspace.
   bars) redraw the chart, keeping what the user arranged. AG Grid's own chart menu keeps the chart
   type, data and format panels and the image download.
 - **Exports.** The table and streaming widgets export the rows as CSV and as an Excel workbook,
-  with raw values. The server-side and infinite widgets export the rows loaded so far as CSV.
+  with raw values. The server-side and infinite widgets export the rows loaded so far, as CSV or
+  Excel.
 
 ## Two-way communication with the backend
 
@@ -317,6 +319,12 @@ widget params, not a body of the widget's own: in Python,
 `request = json.loads(body["gridState"] or "{}")`. Its own params go in the query string or the
 body as their `in` says.
 
+**Chart of the page.** With `chartView` (or `enableCharts: true`), a *Table / Chart (this page)*
+toolbar shows a chart of the current page's rows, as the table widget's chart view does
+(`chartType`, `cellRangeCols`, `xLabel`, `yLabel`, `dateLabels`, and the card's chart settings).
+The chart follows the page and its rows when they change, keeping the chart type the user picked.
+`wsRowIdColumns` names several fields that identify a row, as on the streaming widget.
+
 `definition.pageSize` (default 100), or the card's `pageSize` setting, is the page and block size;
 the setting takes effect when the card opens again. The columns size to their content when the
 row groups, values or pivot change. With `wsRowIdColumn` and a
@@ -357,7 +365,9 @@ answer says `hasMore: false`, `has_more: false` or `next: null`. For any other s
 
 The first block is the answer Workspace already has for the widget's params, so the first screen
 needs no second request. The columns come from that answer's `columnDefs`, from
-`definition.columnsDefs`, or from the keys of its rows.
+`definition.columnsDefs`, or from the keys of its rows. `wsRowIdColumn` or `wsRowIdColumns` name
+the fields that identify a row. A selection of loaded rows can be charted from the context menu;
+the widget has no chart view, because its rows have no pages to chart.
 
 ## The streaming widget (`aggrid-streaming`)
 

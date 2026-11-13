@@ -231,13 +231,13 @@ function columnsOf(api) {
  * Manages the chart for one grid. `onChange({ open, model })` is called when the view or the
  * chart changes, to save it.
  */
-export function createChartView({ api, gridEl, chartEl, chartView = {}, saved, mode, onChange, settings = () => ({}), onProblem = () => {} }) {
+export function createChartView({ api, gridEl, chartEl, chartView = {}, saved, mode, onChange, settings = () => ({}), onProblem = () => {}, rowRange = null }) {
   let ref = null;
   let open = false;
   let drawnColumns = 0;
   let drawnRows = 0;
   let currentMode = mode;
-  const type = agChartType(chartView.chartType);
+  let type = agChartType(chartView.chartType);
 
   const save = () => {
     let model = ref ? null : saved?.model ?? null;
@@ -283,7 +283,7 @@ export function createChartView({ api, gridEl, chartEl, chartView = {}, saved, m
     }
     ref = api.createRangeChart({
       chartType,
-      cellRange: { columns },
+      cellRange: { columns, ...(rowRange?.() ?? {}) },
       chartThemeName: chartThemeName(currentMode),
       chartContainer: chartEl,
       suppressChartRanges: true,
@@ -323,6 +323,22 @@ export function createChartView({ api, gridEl, chartEl, chartView = {}, saved, m
     },
     close() {
       show(false);
+      save();
+    },
+    /**
+     * Draws the chart afresh over the rows `rowRange` gives now (a server-side grid's current page),
+     * keeping the chart type the user picked.
+     */
+    rebuild() {
+      if (!open) return;
+      try {
+        const current = ref ? (api.getChartModels?.() ?? []).find((m) => m.chartId === ref.chartId) : null;
+        if (current?.chartType) type = current.chartType;
+      } catch {
+        /* keep the type */
+      }
+      destroyChart();
+      try { create(null, false); } catch (e) { console.warn("ag-grid createRangeChart:", e.message); }
       save();
     },
     /** Draws the chart again with the card's new settings, keeping what the user arranged. */

@@ -126,3 +126,35 @@ test("a widget with no block param says so", async () => {
   assert.match(el.querySelector(".ag-strip").textContent, /declares no block param/);
   abort.abort();
 });
+
+test("the infinite grid exports its loaded rows as Excel, has the AI items, ids from several columns, and charts a selection", async () => {
+  const { experimental, notifications } = await import("./dom.mjs");
+  const rows = [...Array(120)].map((_, i) => ({ desk: i % 2 ? "FX" : "Rates", id: `T${i}`, qty: i }));
+  const model = makeModel({ data: rows.slice(0, 100), params: { offset: 0, limit: 100 }, definition: { blockSize: 100, wsRowIdColumns: ["desk", "id"] } });
+  const { el, abort } = mount();
+  const exposed = plugin.initialize({ model });
+  await plugin.render({ model, el, signal: abort.signal, experimental });
+  try {
+    await settle(300);
+    const api = await liveApi(el);
+    assert.equal(api.getDisplayedRowAtIndex(0).id, "Rates-T0");
+    assert.deepEqual(exposed.exportOptions().map((o) => o.id), ["csv", "xlsx"]);
+    assert.ok(exposed.exportData("xlsx"));
+    api.addCellRange({ rowStartIndex: 0, rowEndIndex: 9, columns: ["id", "qty"] });
+    const { contextMenuItems } = await import("../src/grid.js");
+    const items = contextMenuItems({ api, context: api.getGridOption("context"), defaultItems: ["chartRange"] });
+    assert.deepEqual(items.map((i) => i.name ?? i), ["Chart", "separator", "Ask the AI agent about these cells", "Copy loaded rows"]);
+    notifications.length = 0;
+    items[3].action();
+    await settle(50);
+    assert.match(notifications.find(([n]) => n === "core:clipboard:write")[1].text, /^Desk\tId\tQty\nRates\tT0\t0\n/);
+    const container = document.createElement("div");
+    el.appendChild(container);
+    api.createRangeChart({ chartType: "groupedColumn", cellRange: { rowStartIndex: 0, rowEndIndex: 9, columns: ["id", "qty"] }, chartContainer: container });
+    await settle(200);
+    assert.equal(api.getChartModels().length, 1, "a range chart of loaded rows works on the infinite grid");
+  } finally {
+    abort.abort();
+    await settle(50);
+  }
+});

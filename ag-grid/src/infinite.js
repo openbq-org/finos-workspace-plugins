@@ -1,19 +1,22 @@
 import { mountFilterBar } from "./filterBar.js";
+import { hasRowIds } from "./ssrm.js";
 import {
   applyTheme,
   attachCardActions,
+  clipboardActions,
   backendOptions,
   columnFieldsOf,
   columnHeadersOf,
   createGrid,
   sampleRows,
   visibleRowsOf,
-  rawCsv,
   createStateChannel,
   createTracker,
   FILTERS_TOOL_PANEL,
   gridOptionsFor,
   idFieldOf,
+  LOADED_EXPORTS,
+  loadedExport,
   rowIdGetter,
   rowsOf,
   setLicense,
@@ -101,7 +104,7 @@ export function blockOf(data, request, definition = {}) {
   return { rows: rows.slice(0, size), lastRow, seq: object?.seq };
 }
 
-export function optionsFor({ model, definition, columnDefs, gridOptions = {}, datasource, initialState }) {
+export function optionsFor({ model, definition, columnDefs, gridOptions = {}, datasource, initialState, context }) {
   const blockSize = definition.blockSize ?? DEFAULT_BLOCK_SIZE;
   const can = capabilitiesOf(new Set(Object.keys(model.get("params") || {})), definition);
   const sideBar = { toolPanels: [{ id: "columns", labelDefault: "Columns", labelKey: "columns", iconKey: "columns", toolPanel: "agColumnsToolPanel", toolPanelParams: { suppressRowGroups: true, suppressValues: true, suppressPivots: true, suppressPivotMode: true } }, FILTERS_TOOL_PANEL], defaultToolPanel: "" };
@@ -131,7 +134,8 @@ export function optionsFor({ model, definition, columnDefs, gridOptions = {}, da
     sideBar,
     columnDefs: limitColumns(columnDefs, can),
     ...(initialState && typeof initialState === "object" ? { initialState: can.filters ? initialState : { ...initialState, filter: undefined } } : {}),
-    ...(typeof definition.wsRowIdColumn === "string" ? { getRowId: rowIdGetter(idFieldOf(definition)) } : {}),
+    ...(hasRowIds(definition) ? { getRowId: rowIdGetter(idFieldOf(definition)) } : {}),
+    ...(context ? { context } : {}),
   });
   if (!can.filters) options.sideBar = withoutFilterPanels(options.sideBar);
   if (!can.filters && options.defaultColDef) options.defaultColDef = { ...options.defaultColDef, filter: false, floatingFilter: false };
@@ -176,8 +180,8 @@ export default {
   initialize({ model }) {
     setLicense(model);
     return {
-      exportOptions: () => (api ? [{ id: "csv", label: "Loaded rows (CSV)", extension: "csv", mime: "text/csv" }] : []),
-      exportData: (id) => (api && id === "csv" ? rawCsv(api) : null),
+      exportOptions: () => (api ? LOADED_EXPORTS : []),
+      exportData: (id) => (api ? loadedExport(api, id) : null),
       copilotContext: () => {
         if (!api) return null;
         const loaded = visibleRowsOf(api, 500, (fn) => api.forEachNode(fn));
@@ -194,7 +198,7 @@ export default {
     };
   },
 
-  async render({ model, el, signal }) {
+  async render({ model, el, signal, experimental }) {
     el.replaceChildren();
     const definition = model.get("definition") || {};
     const root = document.createElement("div");
@@ -228,7 +232,8 @@ export default {
       gridOptions = object.gridOptions && typeof object.gridOptions === "object" ? object.gridOptions : {};
       const columnDefs = normalizeData(Array.isArray(object.columnDefs) ? { columnDefs: object.columnDefs, rowData: first.rows ?? [], gridOptions } : first.rows, definition).columnDefs;
       const datasource = createDatasource({ model, definition, channel, say, signal });
-      api = createGrid(gridEl, optionsFor({ model, definition, columnDefs, gridOptions: backendOptions(gridOptions), datasource, initialState: saved.grid }));
+      const context = { actions: clipboardActions({ experimental, tracker }) };
+      api = createGrid(gridEl, optionsFor({ model, definition, columnDefs, gridOptions: backendOptions(gridOptions), datasource, initialState: saved.grid, context }));
       detach = tracker.attach(api);
       detachActions = attachCardActions(api, model);
       filterBar = mountFilterBar(api, root, { before: gridEl, enabled: () => (model.get("config") || {}).filterBar !== false });

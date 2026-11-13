@@ -2,6 +2,7 @@ import { mountFilterBar } from "./filterBar.js";
 import {
   applyTheme,
   attachCardActions,
+  clipboardActions,
   cellExpressionsOf,
   columnFieldsOf,
   columnHeadersOf,
@@ -9,7 +10,6 @@ import {
   createGrid,
   sampleRows,
   visibleRowsOf,
-  rawCsv,
   createStateChannel,
   createTracker,
   displaySettingsOf,
@@ -18,13 +18,19 @@ import {
   gridOptionsFor,
   groupingOf,
   idFieldOf,
+  keyOf,
+  modeOf,
+  LOADED_EXPORTS,
+  loadedExport,
   MAX_STATE_TEXT,
   setLicense,
   sortModelOf,
   STATE_PARAM,
   withExpressions,
 } from "./grid.js";
+import { createChartView } from "./ag-table-chart/chartView.js";
 import { headerFromField } from "./ag-table-chart/format.js";
+import { chartSettingsOf } from "./table.js";
 import { ANSWER_TIMEOUT_MS, createParamRequests, REFUSAL_GRACE_MS } from "./requests.js";
 
 export const DEFAULT_PAGE_SIZE = 100;
@@ -32,14 +38,19 @@ export const PIVOT_SEPARATOR = "|";
 
 export function ssrmRowId(idField) {
   return ({ api, data, level, parentKeys = [] }) => {
-    const own = data?.[idField];
-    if (own !== undefined && own !== null) return [...parentKeys, String(own)].join("/");
+    const own = keyOf(data, idField);
+    if (own !== null) return [...parentKeys, own].join("/");
     const groupField = api.getRowGroupColumns()[level]?.getColDef().field;
     return [...parentKeys, String(groupField ? data?.[groupField] : JSON.stringify(data))].join("/");
   };
 }
 
-export function optionsFor({ model, definition, columnDefs, gridOptions = {}, datasource, initialState }) {
+/** True when the definition names the fields that identify a row. */
+export function hasRowIds(definition) {
+  return typeof definition?.wsRowIdColumn === "string" || (Array.isArray(definition?.wsRowIdColumns) && definition.wsRowIdColumns.length > 0);
+}
+
+export function optionsFor({ model, definition, columnDefs, gridOptions = {}, datasource, initialState, context }) {
   const pageSize = displaySettingsOf(model).pageSize ?? definition.pageSize ?? DEFAULT_PAGE_SIZE;
   return gridOptionsFor({
     model,
@@ -55,7 +66,8 @@ export function optionsFor({ model, definition, columnDefs, gridOptions = {}, da
     maxBlocksInCache: 10,
     columnDefs,
     ...(initialState && typeof initialState === "object" ? { initialState } : {}),
-    ...(typeof definition.wsRowIdColumn === "string" ? { getRowId: ssrmRowId(idFieldOf(definition)) } : {}),
+    ...(hasRowIds(definition) ? { getRowId: ssrmRowId(idFieldOf(definition)) } : {}),
+    ...(context ? { context } : {}),
   });
 }
 
@@ -129,14 +141,82 @@ export function createDatasource({ model, channel, say, signal, timeoutMs = ANSW
   };
 }
 
+/**
+ * The Table / Chart toolbar of a server-side grid: the chart is the current page's rows, drawn
+ * again when the page or its rows change, with the chart type the user picked.
+ */
+export function mountPageChart({ api, toolbar, gridEl, chartEl, chartView, saved, model, tracker }) {
+  const rowRange = () => {
+    const count = api.getDisplayedRowCount();
+    if (!count) return null;
+    const size = api.paginationGetPageSize?.() || count;
+    const start = (api.paginationGetCurrentPage?.() ?? 0) * size;
+    return { rowStartIndex: Math.min(start, count - 1), rowEndIndex: Math.min(start + size, count) - 1 };
+  };
+  const view = createChartView({
+    api,
+    gridEl,
+    chartEl,
+    chartView,
+    saved,
+    mode: modeOf(model),
+    rowRange,
+    settings: () => chartSettingsOf(model),
+    onChange: (value) => {
+      tracker.state.chartView = value;
+      tracker.persist();
+    },
+  });
+  const buttons = {};
+  const press = () => {
+    buttons.table.setAttribute("aria-pressed", String(!view.isOpen));
+    buttons.chart.setAttribute("aria-pressed", String(view.isOpen));
+  };
+  for (const [key, label] of [["table", "Table"], ["chart", "Chart (this page)"]]) {
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = "ag-table-chart-toolbar-button";
+    button.textContent = label;
+    button.addEventListener("click", () => {
+      if (key === "chart") {
+        view.open();
+        view.rebuild();
+      } else view.close();
+      press();
+    });
+    buttons[key] = button;
+    toolbar.appendChild(button);
+  }
+  press();
+  let timer;
+  const follow = () => {
+    clearTimeout(timer);
+    timer = setTimeout(() => !api.isDestroyed() && view.rebuild(), 150);
+  };
+  api.addEventListener("paginationChanged", follow);
+  api.addEventListener("modelUpdated", follow);
+  return {
+    get isOpen() { return view.isOpen; },
+    setMode: (mode) => view.setMode(mode),
+    destroy() {
+      clearTimeout(timer);
+      if (!api.isDestroyed()) {
+        api.removeEventListener("paginationChanged", follow);
+        api.removeEventListener("modelUpdated", follow);
+      }
+      view.destroy();
+    },
+  };
+}
+
 let api = null;
 
 export default {
   initialize({ model }) {
     setLicense(model);
     return {
-      exportOptions: () => (api ? [{ id: "csv", label: "Loaded rows (CSV)", extension: "csv", mime: "text/csv" }] : []),
-      exportData: (id) => (api && id === "csv" ? rawCsv(api) : null),
+      exportOptions: () => (api ? LOADED_EXPORTS : []),
+      exportData: (id) => (api ? loadedExport(api, id) : null),
       copilotContext: () => {
         if (!api) return null;
         const loaded = visibleRowsOf(api, 500, (fn) => api.forEachNode(fn));
@@ -154,7 +234,7 @@ export default {
     };
   },
 
-  async render({ model, el, signal }) {
+  async render({ model, el, signal, experimental }) {
     el.replaceChildren();
     const definition = model.get("definition") || {};
     const root = document.createElement("div");
@@ -162,15 +242,25 @@ export default {
     const strip = document.createElement("div");
     strip.className = "ag-strip";
     strip.setAttribute("aria-live", "polite");
+    const wantsChart = definition.enableCharts !== false && (definition.enableCharts === true || Boolean(definition.chartView));
+    const body = document.createElement("div");
+    body.className = "ag-fill";
     const gridEl = document.createElement("div");
-    gridEl.className = "ag-fill";
-    root.append(strip, gridEl);
+    Object.assign(gridEl.style, { position: "absolute", inset: "0" });
+    const chartEl = document.createElement("div");
+    chartEl.className = "ag-table-chart-chart";
+    Object.assign(chartEl.style, { position: "absolute", inset: "0", visibility: "hidden" });
+    body.append(gridEl, chartEl);
+    const toolbar = wantsChart ? document.createElement("div") : null;
+    if (toolbar) toolbar.className = "ag-table-chart-toolbar";
+    root.append(strip, ...(toolbar ? [toolbar] : []), body);
     el.appendChild(root);
     const say = (text) => { strip.textContent = text; };
+    let chartView = null;
 
     const channel = createStateChannel(model);
     const saved = model.get("state") || {};
-    const tracker = createTracker(model, { grid: saved.grid ?? null });
+    const tracker = createTracker(model, { grid: saved.grid ?? null, chartView: saved.chartView ?? null, agentPrompt: null });
     let detach = () => {};
     let detachActions = () => {};
     let filterBar = null;
@@ -184,12 +274,14 @@ export default {
       const rowsOnly = !Array.isArray(data.columnDefs);
       const sample = rowsOnly ? data.rowData : [];
       const datasource = createDatasource({ model, channel, say, signal, first: rowsOnly && !saved.grid ? data : null });
-      api = createGrid(gridEl, optionsFor({ model, definition, columnDefs: compactColumnDefs(withExpressions(startColumns, sample, { cellExpressions: cellExpressionsOf(gridOptions, definition) }), sample), gridOptions, datasource, initialState: saved.grid }));
+      const context = { actions: clipboardActions({ experimental, tracker }) };
+      api = createGrid(gridEl, optionsFor({ model, definition, columnDefs: compactColumnDefs(withExpressions(startColumns, sample, { cellExpressions: cellExpressionsOf(gridOptions, definition) }), sample), gridOptions, datasource, initialState: saved.grid, context }));
       const resize = () => api && !api.isDestroyed() && api.autoSizeAllColumns();
       for (const name of ["columnRowGroupChanged", "columnValueChanged", "columnPivotChanged", "columnPivotModeChanged"]) api.addEventListener(name, () => setTimeout(resize, 0));
       detach = tracker.attach(api);
       detachActions = attachCardActions(api, model);
-      filterBar = mountFilterBar(api, root, { before: gridEl, enabled: () => (model.get("config") || {}).filterBar !== false });
+      filterBar = mountFilterBar(api, root, { before: toolbar ?? body, enabled: () => (model.get("config") || {}).filterBar !== false });
+      if (toolbar) chartView = mountPageChart({ api, toolbar, gridEl, chartEl, chartView: definition.chartView ?? {}, saved: saved.chartView, model, tracker });
       tracker.gridRestored();
       if (channel.declared) say("");
     };
@@ -199,8 +291,9 @@ export default {
     model.on("change:data", start);
 
     const onTheme = () => {
-      applyTheme(api, model, gridOptions);
+      const mode = applyTheme(api, model, gridOptions);
       filterBar?.refresh();
+      if (mode) chartView?.setMode(mode);
     };
     const onEvent = (event) => {
       if (event?.kind !== "workspace-event" || !api) return;
@@ -233,6 +326,7 @@ export default {
       detach();
       detachActions();
       filterBar?.destroy();
+      chartView?.destroy();
       api?.destroy();
       api = null;
     });

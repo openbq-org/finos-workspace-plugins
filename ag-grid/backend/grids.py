@@ -51,12 +51,15 @@ WIDGETS = {
     ),
     "aggrid_ssrm": widget(
         "Trades, server-side",
-        "aggrid-ssrm: 20,000 trades paged, sorted, filtered, grouped, aggregated and pivoted by the backend; prices change through server-side transactions",
+        "aggrid-ssrm: 20,000 trades paged, sorted, filtered, grouped, aggregated and pivoted by the backend; prices change through server-side transactions; a chart of the current page",
         "aggrid-ssrm",
         "/ag-grid/trades/ssrm",
         method="POST",
         params=[STATE_PARAM],
-        data={"aggrid-ssrm": {"pageSize": 20, "wsRowIdColumn": "id"}, "streamEndpoint": "/ag-grid/trades/updates"},
+        data={
+            "aggrid-ssrm": {"pageSize": 20, "wsRowIdColumn": "id", "chartView": {"enabled": False, "chartType": "groupedColumn", "cellRangeCols": {"groupedColumn": ["id", "notional"]}}},
+            "streamEndpoint": "/ag-grid/trades/updates",
+        },
         gridData={"w": 40, "h": 24},
     ),
     "aggrid_infinite_state": infinite(

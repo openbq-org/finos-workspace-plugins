@@ -1873,6 +1873,116 @@
                   "type": "string",
                   "maxLength": 128,
                   "description": "The row id field, which server-side transactions from data.streamEndpoint need."
+                },
+                "wsRowIdColumns": {
+                  "type": "array",
+                  "maxItems": 10,
+                  "items": {
+                    "type": "string",
+                    "maxLength": 128
+                  },
+                  "description": "Several fields that together identify a row: their values joined with - make its id. Replaces wsRowIdColumn."
+                },
+                "enableCharts": {
+                  "type": "boolean",
+                  "description": "false turns charting off; true shows the Table / Chart toolbar."
+                },
+                "chartView": {
+                  "$ref": "#/$defs/chartView",
+                  "description": "A chart view of the current page, as on the table widget."
+                }
+              },
+              "$defs": {
+                "chartView": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "enabled": {
+                      "type": "boolean"
+                    },
+                    "chartType": {
+                      "type": "string",
+                      "enum": [
+                        "column",
+                        "groupedColumn",
+                        "stackedColumn",
+                        "normalizedColumn",
+                        "bar",
+                        "groupedBar",
+                        "stackedBar",
+                        "normalizedBar",
+                        "line",
+                        "scatter",
+                        "bubble",
+                        "pie",
+                        "donut",
+                        "doughnut",
+                        "area",
+                        "stackedArea",
+                        "normalizedArea",
+                        "histogram",
+                        "radarLine",
+                        "radarArea",
+                        "nightingale",
+                        "radialColumn",
+                        "radialBar",
+                        "sunburst",
+                        "rangeBar",
+                        "rangeArea",
+                        "boxPlot",
+                        "treemap",
+                        "heatmap",
+                        "waterfall",
+                        "columnLineCombo",
+                        "areaColumnCombo",
+                        "customCombo",
+                        "stackedLine",
+                        "normalizedLine",
+                        "funnel",
+                        "coneFunnel",
+                        "pyramid"
+                      ]
+                    },
+                    "cellRangeCols": {
+                      "type": "object",
+                      "additionalProperties": {
+                        "type": "array",
+                        "maxItems": 50,
+                        "items": {
+                          "type": "string",
+                          "maxLength": 128
+                        }
+                      }
+                    },
+                    "ignoreCellRange": {
+                      "type": "boolean"
+                    },
+                    "chartNavigatorEnabled": {
+                      "type": "boolean"
+                    },
+                    "chartMiniChartEnabled": {
+                      "type": "boolean"
+                    },
+                    "xLabel": {
+                      "type": "string",
+                      "maxLength": 100,
+                      "description": "The title of the category or time axis."
+                    },
+                    "yLabel": {
+                      "type": "string",
+                      "maxLength": 100,
+                      "description": "The title of the number axis."
+                    },
+                    "dateLabels": {
+                      "type": "string",
+                      "enum": [
+                        "date",
+                        "quarter",
+                        "year"
+                      ],
+                      "description": "Dates on the category axis as dates, as quarters (Q3 2024) or as fiscal years (FY 2024)."
+                    }
+                  }
                 }
               }
             }
@@ -1886,7 +1996,9 @@
           "core:state:write",
           "core:ui:button",
           "core:ui:menu",
-          "core:export:provide"
+          "core:export:provide",
+          "core:clipboard:write",
+          "core:ui:notify"
         ],
         "model": {
           "traits": {
@@ -1979,6 +2091,21 @@
                   "1000",
                   "5000"
                 ]
+              },
+              "chartNavigator": {
+                "type": "boolean",
+                "title": "Chart navigator",
+                "description": "A range selector under cartesian charts. Unset follows the widget's chartView."
+              },
+              "chartMiniChart": {
+                "type": "boolean",
+                "title": "Chart navigator with mini chart",
+                "description": "The navigator draws a small copy of the chart. Unset follows the widget's chartView."
+              },
+              "chartDistinctColors": {
+                "type": "boolean",
+                "title": "One colour per bar",
+                "description": "Bar and column charts of one series give each category its own colour."
               }
             }
           },
@@ -2136,6 +2263,15 @@
                   "type": "string",
                   "maxLength": 128,
                   "description": "A dot path to the total row count, when it is not rowCount, lastRow, total, totalCount, count, totalRecords or @odata.count."
+                },
+                "wsRowIdColumns": {
+                  "type": "array",
+                  "maxItems": 10,
+                  "items": {
+                    "type": "string",
+                    "maxLength": 128
+                  },
+                  "description": "Several fields that together identify a row: their values joined with - make its id. Replaces wsRowIdColumn."
                 }
               },
               "$defs": {
@@ -2602,7 +2738,9 @@
           "core:state:write",
           "core:ui:button",
           "core:ui:menu",
-          "core:export:provide"
+          "core:export:provide",
+          "core:clipboard:write",
+          "core:ui:notify"
         ],
         "model": {
           "traits": {
