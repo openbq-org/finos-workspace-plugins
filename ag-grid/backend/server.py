@@ -35,6 +35,7 @@ TABLES = {
     "companies": ag_table_chart.companies,
     "trades-by-desk": ag_table_chart.trades_by_desk,
     "directory": ag_table_chart.directory,
+    "quarterly": ag_table_chart.quarterly,
 }
 
 

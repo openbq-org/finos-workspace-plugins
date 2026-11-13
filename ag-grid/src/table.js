@@ -1,4 +1,4 @@
-import { createChartView } from "./ag-table-chart/chartView.js";
+import { canChart, createChartView } from "./ag-table-chart/chartView.js";
 import { agTableChartColumnDefs, changeTrackedColumns, transpose } from "./ag-table-chart/columns.js";
 import { mountFilterBar } from "./filterBar.js";
 import { FormulasPanel, formulaColumnDefs, formulaColumnsOf, savedFormulas } from "./formulas.js";
@@ -38,6 +38,40 @@ export const CHANGE_FLASH_MS = 1500;
 export const ACTION_DOWNLOAD_CHART = "download-chart";
 export const ACTION_TRANSPOSE = "transpose";
 export const ACTION_REVERSE_COLUMNS = "reverse-columns";
+export const ACTION_ADD_CHART = "add-chart-widget";
+export const MAX_CHART_WIDGET_ROWS = 1000;
+
+function plainValue(value) {
+  if (value instanceof Date) return value.toISOString();
+  if (value === null || value === undefined) return null;
+  if (typeof value === "number") return Number.isFinite(value) ? value : null;
+  if (typeof value === "boolean") return value;
+  return String(value).slice(0, 500);
+}
+
+/**
+ * The data of a dashboard widget that shows a chart of the grid: the charted columns of the rows
+ * the grid shows (at most MAX_CHART_WIDGET_ROWS), with the chart type, as the table artifact takes it.
+ */
+export function chartWidgetData(api, chartModel) {
+  const range = chartModel?.cellRange ?? {};
+  const known = new Set((api.getColumns() ?? []).map((c) => c.getColId()));
+  const columns = (range.columns ?? []).map((c) => (typeof c === "string" ? c : c?.getColId?.())).filter((id) => known.has(id)).slice(0, 60);
+  if (!columns.length) return null;
+  const first = Math.max(0, range.rowStartIndex ?? 0);
+  const last = Math.min(api.getDisplayedRowCount() - 1, range.rowEndIndex ?? api.getDisplayedRowCount() - 1);
+  const rowData = [];
+  for (let i = first; i <= last && rowData.length < MAX_CHART_WIDGET_ROWS; i++) {
+    const node = api.getDisplayedRowAtIndex(i);
+    if (!node || node.group) continue;
+    rowData.push(Object.fromEntries(columns.map((colId) => [colId.slice(0, 100), plainValue(api.getCellValue({ rowNode: node, colKey: colId }))])));
+  }
+  const columnDefs = columns.map((colId, i) => {
+    const column = api.getColumn(colId);
+    return { field: colId.slice(0, 100), headerName: String(api.getDisplayNameForColumn(column, "header") || colId).slice(0, 100), chartDataType: i === 0 ? "category" : "series" };
+  });
+  return { data: { columnDefs, rowData, chartView: { enabled: true, chartType: chartModel.chartType } }, truncated: last - first + 1 > MAX_CHART_WIDGET_ROWS };
+}
 
 /**
  * The rules that mark a row as the one the card's parameters point at: each `cellOnClick` column
@@ -113,6 +147,13 @@ export function chartFilename(name, date = new Date()) {
 export const PAGINATE_ABOVE = 100;
 export const FORMULAS_PANEL = "formulas";
 
+/** The card's chart settings; a setting left unset leaves the definition's chartView to decide. */
+export function chartSettingsOf(model) {
+  const config = model?.get("config") || {};
+  const flag = (value) => (typeof value === "boolean" ? value : undefined);
+  return { navigator: flag(config.chartNavigator), miniChart: flag(config.chartMiniChart), distinctColors: config.chartDistinctColors === true };
+}
+
 /** The table's side bar: the Columns and Filters panels and, unless the definition turns it off, Formulas. */
 export function sideBarFor(table, formulasPanel) {
   if (table.enableAdvanced === false) return { sideBar: false };
@@ -164,7 +205,9 @@ export function cellChanges(oldRows, newRows, tracked, idField = "id", deltas = 
  * own choice from its menu, replaces the definition's `transpose` when it is a boolean.
  */
 export function normalizeData(data, definition, transposed, formulas = []) {
-  const table = definition && typeof definition === "object" ? definition : {};
+  let table = definition && typeof definition === "object" ? definition : {};
+  const answer = data && typeof data === "object" && !Array.isArray(data) ? data : null;
+  if (!table.chartView && answer?.chartView && typeof answer.chartView === "object") table = { ...table, chartView: answer.chartView };
   const transposing = typeof transposed === "boolean" ? transposed : table.transpose === true;
   const withFormulas = (defs) => (formulas.length ? [...defs, ...formulaColumnDefs(formulas, defs)] : defs);
   const formulasKey = formulas.length ? `|f${JSON.stringify(formulas)}` : "";
@@ -280,7 +323,7 @@ export function mountTable({ model, el, signal, experimental, tracker, saved = {
   body.append(gridEl, chartEl);
 
   const chartsOn = table.enableCharts !== false;
-  const wantsChartView = chartsOn && table.transpose !== true && (table.enableCharts === true || Boolean(table.chartView));
+  const wantsChartView = chartsOn && (table.enableCharts === true || Boolean(table.chartView));
   const toolbar = wantsChartView ? element("ag-table-chart-toolbar") : null;
   if (toolbar) container.appendChild(toolbar);
   container.appendChild(body);
@@ -347,6 +390,7 @@ export function mountTable({ model, el, signal, experimental, tracker, saved = {
     const setPressed = () => {
       buttons.table.setAttribute("aria-pressed", String(!chartView.isOpen));
       buttons.chart.setAttribute("aria-pressed", String(chartView.isOpen));
+      updateChartButton();
     };
     for (const [key, label] of [["table", "Table"], ["chart", "Chart"]]) {
       const button = document.createElement("button");
@@ -372,8 +416,19 @@ export function mountTable({ model, el, signal, experimental, tracker, saved = {
         tracker.state.chartView = value;
         tracker.persist();
       },
+      settings: () => chartSettingsOf(model),
+      onProblem: (text) => notify("warning", text),
     });
     setPressed();
+  }
+
+  /** The Chart button is off while no column can be charted. */
+  function updateChartButton() {
+    const button = toolbar?.querySelector(".ag-table-chart-toolbar-button:last-child");
+    if (!button || api.isDestroyed()) return;
+    const off = !chartView?.isOpen && !canChart(api, table.chartView ?? {});
+    button.disabled = off;
+    button.title = off ? "No series data to chart: the table has no number column." : "";
   }
 
   const downloadChart = async () => {
@@ -396,6 +451,28 @@ export function mountTable({ model, el, signal, experimental, tracker, saved = {
     }
     await experimental.invoke("core:download:save", { filename: chartFilename("chart"), mime: "image/png" }, { buffers: [bytes] });
   };
+  const addChartWidget = async () => {
+    let models = [];
+    try {
+      models = api.getChartModels?.() ?? [];
+    } catch {
+      models = [];
+    }
+    const chartId = chartToDownload(models.map((m) => m.chartId), chartView);
+    const chartModel = models.find((m) => m.chartId === chartId);
+    if (!chartModel || chartModel.modelType === "pivot") {
+      notify("info", chartModel ? "A pivot chart cannot be added as a widget yet; chart a range of cells instead." : "Open the chart first, or chart a range of cells, then add it as a widget.");
+      return;
+    }
+    const made = chartWidgetData(api, chartModel);
+    if (!made) {
+      notify("info", "The chart has no columns to add.");
+      return;
+    }
+    await invoke("core:dashboard:add-widget", { widget: "table", data: made.data });
+    if (made.truncated) notify("info", `The new widget holds the first ${MAX_CHART_WIDGET_ROWS.toLocaleString("en-US")} rows of the chart.`);
+  };
+
   const setTransposed = (on) => {
     transposedChoice = on;
     tracker.state.transposed = on;
@@ -411,6 +488,8 @@ export function mountTable({ model, el, signal, experimental, tracker, saved = {
       downloadChart().catch((error) => notify("warning", `The chart was not downloaded: ${error?.message ?? error}`));
     } else if (event.id === ACTION_TRANSPOSE) {
       setTransposed(!(transposedChoice ?? table.transpose === true));
+    } else if (event.id === ACTION_ADD_CHART) {
+      addChartWidget().catch((error) => notify("warning", `The chart was not added: ${error?.message ?? error}`));
     } else if (event.id === ACTION_REVERSE_COLUMNS) {
       const order = api.getAllGridColumns().map((c) => c.getColId());
       api.applyColumnState({ state: order.reverse().map((colId) => ({ colId })), applyOrder: true });
@@ -488,6 +567,7 @@ export function mountTable({ model, el, signal, experimental, tracker, saved = {
       tracker.gridRestored();
     }
     chartView?.refresh();
+    updateChartButton();
   };
 
   apply(initial, model.get("data") !== undefined && model.get("data") !== null);
@@ -498,9 +578,15 @@ export function mountTable({ model, el, signal, experimental, tracker, saved = {
     apply(normalizeData(data, model.get("definition") || {}, transposedChoice, formulas));
   };
 
+  let chartSettings = JSON.stringify(chartSettingsOf(model));
   const onThemeChange = () => {
     const nextTheme = model.get("theme") || {};
     settings = displaySettingsOf(model);
+    const nextChartSettings = JSON.stringify(chartSettingsOf(model));
+    if (nextChartSettings !== chartSettings) {
+      chartSettings = nextChartSettings;
+      chartView?.redraw();
+    }
     context.locale = nextTheme.locale;
     context.decimals = settings.decimals ?? nextTheme.decimals;
     context.abbreviate = settings.abbreviate;

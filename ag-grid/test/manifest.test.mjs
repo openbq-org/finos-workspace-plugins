@@ -51,7 +51,7 @@ test("every skill is a markdown file under src/skills, and the artifact has a cl
 });
 
 test("the grid widgets have the card's floating filters button and its two menu items, and the SQL widget creates a static table", () => {
-  const icons = new Set(["columns", "download", "filter", "refresh", "sliders", "table"]);
+  const icons = new Set(["chart", "columns", "download", "filter", "refresh", "sliders", "table"]);
   for (const widget of widgets) {
     const actions = widget.actions ?? [];
     const placed = (placement) => actions.some((a) => a.placement === placement);
@@ -71,6 +71,7 @@ test("the grid widgets have the card's floating filters button and its two menu 
       ["clear-filters", "menu", null],
       ["reset-columns", "menu", null],
       ...(["table", "streaming"].includes(id) ? [["transpose", "menu", null], ["reverse-columns", "menu", null]] : []),
+      ...(id === "table" ? [["add-chart-widget", "menu", null]] : []),
     ]);
   }
   assert.ok(widgets.find((w) => w.id === "table").permissions.includes("core:download:save"));
@@ -78,6 +79,7 @@ test("the grid widgets have the card's floating filters button and its two menu 
   const sql = widgets.find((w) => w.id === "sql");
   assert.deepEqual(sql.actions.map((a) => a.id), ["freeze"]);
   assert.ok(sql.permissions.includes("core:dashboard:add-widget"));
+  assert.ok(widgets.find((w) => w.id === "table").permissions.includes("core:dashboard:add-widget"), "the table adds its chart as a widget");
   assert.ok(widgets.find((w) => w.id === "table").artifact);
 });
 
@@ -144,7 +146,10 @@ function lintFragment(schema) {
 test("every definition and artifact schema passes Workspace's fragment rules", () => {
   for (const widget of widgets) {
     for (const handle of widget.handles) if (handle.definition) assert.deepEqual(lintFragment(handle.definition), [], `${widget.id} definition`);
-    if (widget.artifact) assert.deepEqual(lintFragment(widget.artifact.data), [], `${widget.id} artifact`);
+    if (widget.artifact) {
+      assert.deepEqual(lintFragment(widget.artifact.data), [], `${widget.id} artifact`);
+      assert.ok(widget.artifact.description.length <= 300, `${widget.id} artifact description is at most 300 characters`);
+    }
   }
 });
 

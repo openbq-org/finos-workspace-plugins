@@ -9,6 +9,7 @@ import {
   themeMaterial,
   themeQuartz,
 } from "ag-grid-enterprise";
+import { chartMenuItem } from "./ag-table-chart/chartView.js";
 import { compileExpression } from "./ag-table-chart/expression.js";
 import { fieldsOf } from "./infer.js";
 
@@ -213,6 +214,7 @@ export function baseOptions(model, gridOptions = {}, { serverSide = false } = {}
     autoGroupColumnDef: { headerName: "Group", minWidth: 160 },
     statusBar: statusBarFor(serverSide),
     getMainMenuItems: columnMenuItems,
+    getContextMenuItems: contextMenuItems,
     overlayNoRowsTemplate: '<span class="ag-overlay-no-rows-center">No rows to show</span>',
     ...(serverSide ? {} : { groupDefaultExpanded: 1 }),
   };
@@ -354,6 +356,11 @@ export function columnMenuItems(params) {
     items.push({ name: "Narrow column", action: () => params.api.setColumnWidths([{ key: column, newWidth: 150 }]) });
   }
   return items;
+}
+
+/** The context menu: AG Grid's items, with its Chart Range replaced by the plugin's Chart item. */
+export function contextMenuItems(params) {
+  return (params.defaultItems ?? []).map((item) => (item === "chartRange" ? chartMenuItem(params.api) : item));
 }
 
 /** Puts the columns back as the column definitions have them: order, widths, visibility, pinning and grouping. */

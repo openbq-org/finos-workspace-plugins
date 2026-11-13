@@ -14,7 +14,7 @@ configuration in `data["aggrid-table"]` ([ag_table_chart.py](ag_table_chart.py))
 
 | Route | Answers |
 |---|---|
-| `GET /ag-table-chart/assets`, `projects`, `time-series`, `regions`, `sparklines`, `profit-loss`, `companies`, `trades-by-desk`, `directory` | The rows of one example each. |
+| `GET /ag-table-chart/assets`, `projects`, `time-series`, `regions`, `sparklines`, `profit-loss`, `companies`, `trades-by-desk`, `directory`, `quarterly` | The rows of one example each. |
 | `GET /ag-table-chart/company?symbol=MSFT` | One company, for *Company detail*, which *Companies* sets through its `symbol` param. |
 | `GET /ag-table-chart/live` | Prices that move every five seconds, for *Live prices* (`refetchInterval: 5000`, `showCellChange`). |
 
@@ -32,6 +32,7 @@ configuration in `data["aggrid-table"]` ([ag_table_chart.py](ag_table_chart.py))
 | Companies (cell clicks) | `cellOnClick`: `groupBy` a symbol through a hidden `symbol` param, `sendToAgent`, `openUrl` |
 | Company detail | `transpose`: the company *Companies* names, one row per field |
 | Live prices | `showCellChange`, by row id (`wsRowIdColumn`), refetched every five seconds |
+| Quarterly revenue chart | `chartView` with a stacked line, `xLabel` and `yLabel`, `dateLabels: "quarter"` (Q1 2023), and a series column of money texts (`$83.4B`) charted as numbers |
 | Company directory | `formatterFn: "compact"`, `emptyValue`, link cells, a long text in its tooltip, and bar sparklines of object points (`xKey`, `yKey`) with labels and tooltips |
 | Grouped trades with a starting layout | `rowGroup` and `aggFunc` per column, a field with a dot (`eps.ttm`), Unix times read as dates, and `columnState` and `filterModel`: sorted by notional, notionals over 100,000 |
 

@@ -53,7 +53,9 @@ package serves FINOS Workspace and BQ Workspace.
   **Clear filters and sort**, and **Reset columns**, which puts the columns back as the column
   definitions have them (order, widths, visibility, pinning and grouping) and keeps the filters.
   The table and streaming widgets add **Transpose rows and columns**, saved with the card, and
-  **Reverse column order**. Workspace draws them from the widget's `actions` in `plugin.json`
+  **Reverse column order**. The table widget adds **Add chart as a widget**, which puts the chart
+  view, or else the chart opened last, on the dashboard as a new table widget that opens as that
+  chart, with the charted columns of the first 1,000 rows (`core:dashboard:add-widget`). Workspace draws them from the widget's `actions` in `plugin.json`
   (`core:ui:button`, `core:ui:menu`) and sends the widget an `action` event when the user picks
   one. Until a card's button is used, the backend's `defaultColDef.floatingFilter` decides. The
   autosize item's icon is the package's `assets/autosize.svg`.
@@ -82,6 +84,16 @@ package serves FINOS Workspace and BQ Workspace.
   (a million or more as M, B or T, with the full number in the tooltip), `pagination` (`auto`, the
   default, pages above 100 rows unless the backend's `gridOptions` say otherwise; `on` and `off`
   decide for the card) and `pageSize` (`auto` fits the rows to the card, or 50 to 1000).
+- **Charting a selection.** The context menu's **Chart** item lists the common chart types
+  (column, bar and line, stacked or not, area, pie and donut, scatter and bubble, histogram, and
+  column with line) for the selected cells, with the plugin's chart look. A type that needs more
+  number columns than the selection has is greyed out (scatter two, bubble three), and a
+  selection of more than 200,000 cells is refused.
+- **Chart settings.** The table and streaming widgets' `chartNavigator`, `chartMiniChart` (a range
+  selector under cartesian charts, with or without a small copy of the chart; unset follows the
+  widget's `chartView`) and `chartDistinctColors` (one colour per category for one series of
+  bars) redraw the chart, keeping what the user arranged. AG Grid's own chart menu keeps the chart
+  type, data and format panels and the image download.
 - **Exports.** The table and streaming widgets export the rows as CSV and as an Excel workbook,
   with raw values. The server-side and infinite widgets export the rows loaded so far as CSV.
 
@@ -214,7 +226,7 @@ whose keys or values do not fit sees the problem, with its JSON pointer, when it
 | `calculatedExpression` | The column's value as an expression over its row, as under [Expressions](#expressions). |
 | `showAll` | Default `true`: fields the rows have and `columnsDefs` does not are shown after the declared ones. `false` shows only `columnsDefs`. |
 | `transpose` | One row per column and one column per row, headed by the first column's values. Each cell keeps its column's format and colours. |
-| `enableCharts`, `chartView` (`enabled`, `chartType`, `cellRangeCols`, `ignoreCellRange`, `chartNavigatorEnabled`, `chartMiniChartEnabled`) | A *Table / Chart* toolbar and an integrated chart linked to the rows, with every chart type of OpenBQ's list. The chart a user arranges is saved with the dashboard and restored, unless `ignoreCellRange`. `enableCharts: false` turns charting off. |
+| `enableCharts`, `chartView` (`enabled`, `chartType`, `cellRangeCols`, `ignoreCellRange`, `chartNavigatorEnabled`, `chartMiniChartEnabled`, `xLabel`, `yLabel`, `dateLabels`) | A *Table / Chart* toolbar and an integrated chart linked to the rows, of any chart type of AG Grid 34, including `stackedLine`, `normalizedLine`, `funnel`, `coneFunnel` and `pyramid`. The chart a user arranges is saved with the dashboard and restored, unless `ignoreCellRange`. `xLabel` and `yLabel` title the category and number axes; `dateLabels` shows dates as `quarter` (Q3 2024) or `year` (FY 2024). Number axes show short numbers (45B), and cartesian charts zoom. In pivot mode the view is a pivot chart; a transposed table charts its rows of numbers. A line or area of a single row is drawn as columns. The Chart button is off while the table has no number column, and a `cellRangeCols` list that names no column is reported. A series column of texts such as `$1.2M`, `(300)` or `12.5%` charts, sorts and filters as numbers and shows as written. `enableCharts: false` turns charting off. |
 | `enableAdvanced` | `true` opens the Columns panel; `false` hides the side bar. |
 | `emptyValue` | The text of an empty cell, such as `-`. Empty by default. |
 | `columnState`, `filterModel` | The layout and the filters a new card opens with. `columnState` holds parts of an AG Grid grid state (`sort`, `rowGroup`, `pivot`, `aggregation`, `columnOrder`, `columnVisibility`, `columnPinning`, `columnSizing`, `columnGroup`, `filter`, `sideBar`), directly or under `default`; `filterModel` is an AG Grid filter model keyed by column. Only the parts named change: a column's own `rowGroup` stays unless `columnState` sets the row groups. Once a user changes the card, its own saved layout is used instead. |

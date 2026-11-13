@@ -1056,7 +1056,12 @@
                         "waterfall",
                         "columnLineCombo",
                         "areaColumnCombo",
-                        "customCombo"
+                        "customCombo",
+                        "stackedLine",
+                        "normalizedLine",
+                        "funnel",
+                        "coneFunnel",
+                        "pyramid"
                       ]
                     },
                     "cellRangeCols": {
@@ -1078,6 +1083,25 @@
                     },
                     "chartMiniChartEnabled": {
                       "type": "boolean"
+                    },
+                    "xLabel": {
+                      "type": "string",
+                      "maxLength": 100,
+                      "description": "The title of the category or time axis."
+                    },
+                    "yLabel": {
+                      "type": "string",
+                      "maxLength": 100,
+                      "description": "The title of the number axis."
+                    },
+                    "dateLabels": {
+                      "type": "string",
+                      "enum": [
+                        "date",
+                        "quarter",
+                        "year"
+                      ],
+                      "description": "Dates on the category axis as dates, as quarters (Q3 2024) or as fiscal years (FY 2024)."
                     }
                   }
                 },
@@ -1486,7 +1510,8 @@
           "core:ui:notify",
           "core:ui:open-link",
           "core:ui:button",
-          "core:ui:menu"
+          "core:ui:menu",
+          "core:dashboard:add-widget"
         ],
         "model": {
           "traits": {
@@ -1600,6 +1625,21 @@
                 "type": "boolean",
                 "title": "Active filters bar",
                 "description": "The filters that are on, above the grid, each with a button that removes it. On unless turned off."
+              },
+              "chartNavigator": {
+                "type": "boolean",
+                "title": "Chart navigator",
+                "description": "A range selector under cartesian charts. Unset follows the widget's chartView."
+              },
+              "chartMiniChart": {
+                "type": "boolean",
+                "title": "Chart navigator with mini chart",
+                "description": "The navigator draws a small copy of the chart. Unset follows the widget's chartView."
+              },
+              "chartDistinctColors": {
+                "type": "boolean",
+                "title": "One colour per bar",
+                "description": "Bar and column charts of one series give each category its own colour."
               }
             }
           },
@@ -1612,7 +1652,7 @@
           "minH": 8
         },
         "artifact": {
-          "description": "A table of rows in AgGrid: sortable, filterable, groupable, pivotable, selectable and exportable, with numbers right-aligned and formatted. Use it to show rows the user will want to work with, such as a list of records or the rows of a query.",
+          "description": "Rows in AgGrid: sortable, filterable, groupable, pivotable and exportable. For records or query results. With chartView { enabled: true, chartType }, it opens as a chart: the column with chartDataType category along the axis, the series columns as values.",
           "data": {
             "type": "object",
             "additionalProperties": false,
@@ -1648,6 +1688,15 @@
                       "type": "integer",
                       "minimum": 40,
                       "maximum": 800
+                    },
+                    "chartDataType": {
+                      "type": "string",
+                      "enum": [
+                        "category",
+                        "series",
+                        "time",
+                        "excluded"
+                      ]
                     }
                   }
                 }
@@ -1665,6 +1714,58 @@
                       "null"
                     ],
                     "maxLength": 500
+                  }
+                }
+              },
+              "chartView": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                  "enabled": {
+                    "type": "boolean"
+                  },
+                  "chartType": {
+                    "type": "string",
+                    "enum": [
+                      "column",
+                      "groupedColumn",
+                      "stackedColumn",
+                      "normalizedColumn",
+                      "bar",
+                      "groupedBar",
+                      "stackedBar",
+                      "normalizedBar",
+                      "line",
+                      "scatter",
+                      "bubble",
+                      "pie",
+                      "donut",
+                      "doughnut",
+                      "area",
+                      "stackedArea",
+                      "normalizedArea",
+                      "histogram",
+                      "radarLine",
+                      "radarArea",
+                      "nightingale",
+                      "radialColumn",
+                      "radialBar",
+                      "sunburst",
+                      "rangeBar",
+                      "rangeArea",
+                      "boxPlot",
+                      "treemap",
+                      "heatmap",
+                      "waterfall",
+                      "columnLineCombo",
+                      "areaColumnCombo",
+                      "customCombo",
+                      "stackedLine",
+                      "normalizedLine",
+                      "funnel",
+                      "coneFunnel",
+                      "pyramid"
+                    ]
                   }
                 }
               }
@@ -1720,6 +1821,12 @@
             "id": "reverse-columns",
             "label": "Reverse column order",
             "icon": "assets/reverse.svg",
+            "placement": "menu"
+          },
+          {
+            "id": "add-chart-widget",
+            "label": "Add chart as a widget",
+            "icon": "chart",
             "placement": "menu"
           }
         ]
@@ -3530,7 +3637,12 @@
                         "waterfall",
                         "columnLineCombo",
                         "areaColumnCombo",
-                        "customCombo"
+                        "customCombo",
+                        "stackedLine",
+                        "normalizedLine",
+                        "funnel",
+                        "coneFunnel",
+                        "pyramid"
                       ]
                     },
                     "cellRangeCols": {
@@ -3552,6 +3664,25 @@
                     },
                     "chartMiniChartEnabled": {
                       "type": "boolean"
+                    },
+                    "xLabel": {
+                      "type": "string",
+                      "maxLength": 100,
+                      "description": "The title of the category or time axis."
+                    },
+                    "yLabel": {
+                      "type": "string",
+                      "maxLength": 100,
+                      "description": "The title of the number axis."
+                    },
+                    "dateLabels": {
+                      "type": "string",
+                      "enum": [
+                        "date",
+                        "quarter",
+                        "year"
+                      ],
+                      "description": "Dates on the category axis as dates, as quarters (Q3 2024) or as fiscal years (FY 2024)."
                     }
                   }
                 },
@@ -4075,6 +4206,21 @@
                 "type": "boolean",
                 "title": "Active filters bar",
                 "description": "The filters that are on, above the grid, each with a button that removes it. On unless turned off."
+              },
+              "chartNavigator": {
+                "type": "boolean",
+                "title": "Chart navigator",
+                "description": "A range selector under cartesian charts. Unset follows the widget's chartView."
+              },
+              "chartMiniChart": {
+                "type": "boolean",
+                "title": "Chart navigator with mini chart",
+                "description": "The navigator draws a small copy of the chart. Unset follows the widget's chartView."
+              },
+              "chartDistinctColors": {
+                "type": "boolean",
+                "title": "One colour per bar",
+                "description": "Bar and column charts of one series give each category its own colour."
               }
             }
           },

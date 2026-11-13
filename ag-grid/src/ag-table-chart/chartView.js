@@ -1,24 +1,26 @@
 /*
  * OpenBQ's ChartView: the table shown as an AG Grid integrated chart, linked to the rows, which
  * the toolbar switches to and from. `chartView`: { enabled, chartType, cellRangeCols,
- * ignoreCellRange, chartNavigatorEnabled, chartMiniChartEnabled }. The chart the user arranges
- * is saved to the widget's state and restored, unless `ignoreCellRange`.
+ * ignoreCellRange, chartNavigatorEnabled, chartMiniChartEnabled, xLabel, yLabel, dateLabels }.
+ * The chart the user arranges is saved to the widget's state and restored, unless
+ * `ignoreCellRange`. In pivot mode the view is a pivot chart.
  */
 
 export const CHART_TYPES = [
   "column", "groupedColumn", "stackedColumn", "normalizedColumn",
   "bar", "groupedBar", "stackedBar", "normalizedBar",
-  "line", "scatter", "bubble",
+  "line", "stackedLine", "normalizedLine", "scatter", "bubble",
   "pie", "donut", "doughnut",
   "area", "stackedArea", "normalizedArea",
   "histogram", "radarLine", "radarArea", "nightingale", "radialColumn", "radialBar",
   "sunburst", "rangeBar", "rangeArea", "boxPlot", "treemap", "heatmap", "waterfall",
   "columnLineCombo", "areaColumnCombo", "customCombo",
+  "funnel", "coneFunnel", "pyramid",
 ];
 
 const CARTESIAN = new Set([
   "column", "groupedColumn", "stackedColumn", "normalizedColumn", "bar", "groupedBar", "stackedBar",
-  "normalizedBar", "line", "scatter", "bubble", "area", "stackedArea", "normalizedArea", "histogram",
+  "normalizedBar", "line", "stackedLine", "normalizedLine", "scatter", "bubble", "area", "stackedArea", "normalizedArea", "histogram",
   "rangeBar", "rangeArea", "boxPlot", "waterfall", "columnLineCombo", "areaColumnCombo", "customCombo",
 ]);
 
@@ -35,12 +37,165 @@ export function chartThemeName(mode) {
   return mode === "light" ? "ag-default" : "ag-default-dark";
 }
 
-export function navigatorOverrides(chartView, chartType) {
+export function navigatorOverrides(chartView, chartType, settings = {}) {
   if (!CARTESIAN.has(chartType)) return undefined;
-  const navigator = chartView?.chartNavigatorEnabled === true;
-  const mini = chartView?.chartMiniChartEnabled === true;
+  const navigator = typeof settings.navigator === "boolean" ? settings.navigator : chartView?.chartNavigatorEnabled === true;
+  const mini = typeof settings.miniChart === "boolean" ? settings.miniChart : chartView?.chartMiniChartEnabled === true;
   if (!navigator && !mini) return undefined;
   return { common: { navigator: { enabled: true, ...(mini ? { miniChart: { enabled: true } } : {}) } } };
+}
+
+/** A charted selection of more cells than this is refused: the chart would be slow and unreadable. */
+export const CHART_CELL_LIMIT = 200_000;
+const LINES = new Set(["line", "stackedLine", "normalizedLine", "area", "stackedArea", "normalizedArea"]);
+const BARS = new Set(["groupedColumn", "stackedColumn", "normalizedColumn", "groupedBar", "stackedBar", "normalizedBar"]);
+
+/** Ten colours that read on light and dark backgrounds, for one bar per category. */
+export const DISTINCT_COLORS = ["#2563eb", "#16a34a", "#ea580c", "#9333ea", "#0891b2", "#dc2626", "#ca8a04", "#db2777", "#4b5563", "#65a30d"];
+
+/** An axis number in short form: 1.5K, 45M, 2.1B, 3T; small numbers as they are. */
+export function axisNumber(value) {
+  if (typeof value !== "number" || !Number.isFinite(value)) return String(value ?? "");
+  const size = Math.abs(value);
+  for (const [at, unit] of [[1e12, "T"], [1e9, "B"], [1e6, "M"], [1e3, "K"]]) {
+    if (size >= at) return `${Number((value / at).toFixed(1))}${unit}`;
+  }
+  return String(Number(value.toFixed(2)));
+}
+
+/** A date as a fiscal period: `quarter` gives Q3 2024, `year` gives FY 2024; anything else as it is. */
+export function periodLabel(value, dateLabels) {
+  if (dateLabels !== "quarter" && dateLabels !== "year") return null;
+  const date = value instanceof Date ? value : typeof value === "string" && /^\d{4}-\d{2}-\d{2}/.test(value) ? new Date(`${value.slice(0, 10)}T00:00:00Z`) : null;
+  if (!date || Number.isNaN(date.getTime())) return null;
+  const year = date.getUTCFullYear();
+  return dateLabels === "year" ? `FY ${year}` : `Q${Math.floor(date.getUTCMonth() / 3) + 1} ${year}`;
+}
+
+function categoryFormatter(dateLabels) {
+  return ({ value }) => periodLabel(value, dateLabels) ?? (value instanceof Date ? value.toISOString().slice(0, 10) : String(value ?? ""));
+}
+
+/**
+ * The chart's look: a transparent background; the navigator and its mini chart; axis titles from
+ * `xLabel` (the category or time axis) and `yLabel` (the number axis); short numbers on number
+ * axes; zoom on cartesian charts; fiscal period labels for dates; and, for one series of bars,
+ * one colour per category. `settings` are the card's: { navigator, miniChart, distinctColors }.
+ */
+export function chartOverrides(chartView = {}, chartType, settings = {}) {
+  const common = { background: { fill: "transparent" }, ...(navigatorOverrides(chartView, chartType, settings)?.common ?? {}) };
+  if (CARTESIAN.has(chartType)) {
+    const title = (text) => (typeof text === "string" && text.trim() ? { title: { enabled: true, text: text.trim() } } : {});
+    const category = { ...title(chartView.xLabel), label: { formatter: categoryFormatter(chartView.dateLabels) } };
+    common.axes = {
+      number: { ...title(chartView.yLabel), label: { formatter: ({ value }) => axisNumber(value) } },
+      category,
+      time: { ...title(chartView.xLabel), ...(chartView.dateLabels ? { label: { formatter: categoryFormatter(chartView.dateLabels) } } : {}) },
+    };
+    common.zoom = { enabled: true };
+  }
+  const overrides = { common };
+  if (settings.distinctColors === true && BARS.has(chartType)) {
+    const order = new Map();
+    overrides.bar = {
+      series: {
+        itemStyler: ({ datum, xKey }) => {
+          const key = String(datum?.[xKey] ?? "");
+          if (!order.has(key)) order.set(key, order.size);
+          const color = DISTINCT_COLORS[order.get(key) % DISTINCT_COLORS.length];
+          return { fill: color, stroke: color };
+        },
+      },
+    };
+  }
+  return overrides;
+}
+
+function isPlain(value) {
+  return value !== null && typeof value === "object" && !Array.isArray(value);
+}
+
+/** `extra` merged into `base`, recursively for plain objects; `extra` wins. */
+export function mergeOverrides(base, extra) {
+  if (!isPlain(base)) return extra;
+  const out = { ...base };
+  for (const [key, value] of Object.entries(extra ?? {})) out[key] = isPlain(value) && isPlain(base[key]) ? mergeOverrides(base[key], value) : value;
+  return out;
+}
+
+/** A line or area of one point says nothing: a single row is drawn as columns. */
+export function typeForRows(chartType, rows) {
+  return rows === 1 && LINES.has(chartType) ? "groupedColumn" : chartType;
+}
+
+/** True when the grid has a column to chart: at least one series besides the category. */
+export function canChart(api, chartView = {}) {
+  const columns = chartColumns(columnsOf(api), chartView, chartView.chartType);
+  return columns.length >= 2;
+}
+
+/** The problem with `cellRangeCols` for a chart type, or null: a list that names no column of the grid. */
+export function cellRangeProblem(api, chartView = {}, chartType = chartView.chartType) {
+  const configured = chartView?.cellRangeCols?.[chartType] ?? chartView?.cellRangeCols?.[agChartType(chartType)];
+  if (!Array.isArray(configured) || !configured.length) return null;
+  const ids = columnsOf(api).map((c) => c.id);
+  return configured.some((id) => ids.includes(id)) ? null : `cellRangeCols for ${chartType} names no column of this table (${configured.join(", ")}); the chart uses the default columns.`;
+}
+
+/** The cells of the selected ranges. */
+export function selectedCellCount(api) {
+  return (api.getCellRanges?.() ?? []).reduce((total, range) => {
+    const rows = Math.abs((range.endRow?.rowIndex ?? 0) - (range.startRow?.rowIndex ?? 0)) + 1;
+    return total + rows * range.columns.length;
+  }, 0);
+}
+
+const CHART_MENU = [
+  ["Column", [["Grouped", "groupedColumn"], ["Stacked", "stackedColumn"], ["100% stacked", "normalizedColumn"]]],
+  ["Bar", [["Grouped", "groupedBar"], ["Stacked", "stackedBar"], ["100% stacked", "normalizedBar"]]],
+  ["Line", [["Line", "line"], ["Stacked", "stackedLine"]]],
+  ["Area", [["Area", "area"], ["Stacked", "stackedArea"]]],
+  ["Pie", [["Pie", "pie"], ["Donut", "donut"]]],
+  ["Scatter", [["Scatter", "scatter"], ["Bubble", "bubble"]]],
+  ["Histogram", "histogram"],
+  ["Column and line", "columnLineCombo"],
+];
+const MIN_SERIES = { scatter: 2, bubble: 3 };
+
+/**
+ * The context menu's Chart item: the common chart types for the selected cells, each greyed out
+ * when the selection has too few number columns for it, and the whole item when it is larger than
+ * CHART_CELL_LIMIT cells.
+ */
+export function chartMenuItem(api, overridesFor = (chartType) => chartOverrides({}, chartType)) {
+  const ranges = api.getCellRanges?.() ?? [];
+  const cells = selectedCellCount(api);
+  const numeric = new Set(ranges.flatMap((r) => r.columns).filter((c) => {
+    const def = c.getColDef();
+    return def.type === "numericColumn" || def.filter === "agNumberColumnFilter" || def.chartDataType === "series";
+  }).map((c) => c.getColId()));
+  const tooLarge = cells > CHART_CELL_LIMIT;
+  const chart = (chartType) => () => {
+    for (const range of ranges) {
+      api.createRangeChart({
+        chartType,
+        cellRange: { rowStartIndex: range.startRow?.rowIndex, rowEndIndex: range.endRow?.rowIndex, columns: range.columns.map((c) => c.getColId()) },
+        chartThemeOverrides: overridesFor(chartType),
+      });
+      break;
+    }
+  };
+  const item = (name, chartType) => {
+    const needs = MIN_SERIES[chartType] ?? 1;
+    const disabled = numeric.size < needs;
+    return { name, action: chart(chartType), disabled, ...(disabled ? { tooltip: `${name} needs ${needs} number column${needs > 1 ? "s" : ""} in the selection` } : {}) };
+  };
+  return {
+    name: "Chart",
+    disabled: !ranges.length || tooLarge,
+    ...(tooLarge ? { tooltip: `Select at most ${CHART_CELL_LIMIT.toLocaleString("en-US")} cells to chart them` } : {}),
+    subMenu: CHART_MENU.map(([name, types]) => (Array.isArray(types) ? { name, subMenu: types.map(([label, type]) => item(label, type)) } : item(name, types))),
+  };
 }
 
 /**
@@ -76,7 +231,7 @@ function columnsOf(api) {
  * Manages the chart for one grid. `onChange({ open, model })` is called when the view or the
  * chart changes, to save it.
  */
-export function createChartView({ api, gridEl, chartEl, chartView = {}, saved, mode, onChange }) {
+export function createChartView({ api, gridEl, chartEl, chartView = {}, saved, mode, onChange, settings = () => ({}), onProblem = () => {} }) {
   let ref = null;
   let open = false;
   let drawnColumns = 0;
@@ -101,7 +256,8 @@ export function createChartView({ api, gridEl, chartEl, chartView = {}, saved, m
   const create = (model, restore = chartView.ignoreCellRange !== true) => {
     if (model && restore && columnsOf(api).length && api.getDisplayedRowCount()) {
       try {
-        ref = api.restoreChart({ ...model, chartThemeName: chartThemeName(currentMode) }, chartEl);
+        const chartType = model.chartType ?? type;
+        ref = api.restoreChart({ ...model, chartThemeName: chartThemeName(currentMode), chartOptions: mergeOverrides(model.chartOptions ?? {}, chartOverrides(chartView, chartType, settings())) }, chartEl);
         drawnColumns = columnsOf(api).length;
         drawnRows = api.getDisplayedRowCount();
         if (ref) return;
@@ -109,20 +265,29 @@ export function createChartView({ api, gridEl, chartEl, chartView = {}, saved, m
         console.warn("ag-grid restoreChart:", e.message);
       }
     }
+    drawnRows = api.getDisplayedRowCount();
+    const chartType = typeForRows(type, drawnRows);
+    const chartThemeOverrides = chartOverrides(chartView, chartType, settings());
+    if (api.isPivotMode?.()) {
+      drawnColumns = columnsOf(api).length;
+      ref = drawnRows ? api.createPivotChart({ chartType, chartContainer: chartEl, chartThemeName: chartThemeName(currentMode), chartThemeOverrides }) ?? null : null;
+      return;
+    }
+    const problem = cellRangeProblem(api, chartView, chartView.chartType);
+    if (problem) onProblem(problem);
     const columns = chartColumns(columnsOf(api), chartView, chartView.chartType);
     drawnColumns = columns.length;
-    drawnRows = api.getDisplayedRowCount();
     if (!columns.length || !drawnRows) {
       ref = null;
       return;
     }
     ref = api.createRangeChart({
-      chartType: type,
+      chartType,
       cellRange: { columns },
       chartThemeName: chartThemeName(currentMode),
       chartContainer: chartEl,
       suppressChartRanges: true,
-      chartThemeOverrides: { ...navigatorOverrides(chartView, type), common: { ...navigatorOverrides(chartView, type)?.common, background: { fill: "transparent" } } },
+      chartThemeOverrides,
     }) ?? null;
   };
 
@@ -159,6 +324,10 @@ export function createChartView({ api, gridEl, chartEl, chartView = {}, saved, m
     close() {
       show(false);
       save();
+    },
+    /** Draws the chart again with the card's new settings, keeping what the user arranged. */
+    redraw() {
+      view.setMode(currentMode);
     },
     /** Draws the chart again in the site's new mode, keeping what the user arranged. */
     setMode(nextMode) {

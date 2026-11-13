@@ -249,6 +249,32 @@ export class ChangeCell {
   }
 }
 
+const SUFFIXES = { K: 1e3, M: 1e6, B: 1e9, T: 1e12 };
+
+/**
+ * A number written as text, as a report shows it: `$1,234.50`, `€12.5M`, `(1,200)`, `12.5%`,
+ * `-3.2B`. The percent sign is dropped (12.5% reads 12.5). Null when it is not a number.
+ */
+export function numberLike(value) {
+  if (typeof value === "number") return Number.isFinite(value) ? value : null;
+  if (typeof value !== "string") return null;
+  let text = value.trim().replace(/[$£€¥₹,\s]/g, "");
+  let sign = 1;
+  if (/^\(.*\)$/.test(text)) {
+    sign = -1;
+    text = text.slice(1, -1);
+  }
+  text = text.replace(/%$/, "");
+  const match = /^([+-]?(?:\d+\.?\d*|\.\d+)(?:[eE][+-]?\d+)?)([KMBT])?$/i.exec(text);
+  if (!match) return null;
+  return sign * Number(match[1]) * (match[2] ? SUFFIXES[match[2].toUpperCase()] : 1);
+}
+
+function mostlyNumberLike(rows, field) {
+  const texts = rows.slice(0, 200).map((r) => r?.[field]).filter((v) => typeof v === "string" && v.trim() !== "");
+  return texts.length > 0 && texts.filter((v) => numberLike(v) !== null).length * 2 > texts.length;
+}
+
 /** One OpenBQ column definition as an AG Grid ColDef. */
 export function toColDef(def, rows, table = {}) {
   const field = def.field;
@@ -325,6 +351,17 @@ export function toColDef(def, rows, table = {}) {
     return typeof value === "string" ? clipped(text) : text;
   };
 
+  if (def.chartDataType === "series" && type === "text" && !isDate && !hoverCard && mostlyNumberLike(rows, field)) {
+    col.valueGetter = (params) => numberLike(params.data?.[field]);
+    col.valueFormatter = (params) => {
+      const raw = params.data?.[field];
+      return raw === null || raw === undefined || raw === "" ? (emptyValue ?? params.context?.emptyValue ?? "") : String(raw);
+    };
+    col.filter = "agNumberColumnFilter";
+    col.cellDataType = "number";
+    col.type = "numericColumn";
+  }
+
   if (!hasCardOf(def, fns)) {
     col.tooltipValueGetter = (params) => tooltipTextOf(params, col);
   }
@@ -393,6 +430,16 @@ export function agTableChartColumnDefs(rows, table = {}) {
   return [...defs, ...extra.map((field) => ({ field }))].map((def) => toColDef(def, rows, table));
 }
 
+/** True when most of a row's values over `columns` are numbers: the row charts as a series once transposed. */
+function mostlyNumbers(columns, row) {
+  if (!columns.length) return false;
+  const numbers = columns.filter((source) => {
+    const value = source.valueGetter ? source.valueGetter({ data: row }) : row?.[source.field];
+    return typeof value === "number" && Number.isFinite(value);
+  }).length;
+  return numbers * 2 > columns.length;
+}
+
 /**
  * Swaps rows and columns: one row per column, one column per row, headed by the row's first
  * column. Each cell keeps the formatting and styles of the column it came from.
@@ -412,6 +459,7 @@ export function transpose(rows, colDefs) {
       colId: `__r${i}`,
       headerName: headerOf(row, i),
       cellDataType: false,
+      ...(mostlyNumbers(rest, row) ? { chartDataType: "series" } : {}),
       valueGetter: (params) => {
         const source = rest[params.data?.__col];
         return source?.valueGetter ? source.valueGetter({ ...params, data: row }) : row?.[source?.field];

@@ -348,6 +348,21 @@ WIDGETS = {
         },
         h=10,
     ),
+    "ag_table_chart_quarterly": widget(
+        "Quarterly revenue chart",
+        "chartView with a stacked line, axis titles (xLabel, yLabel), quarters as Q3 2024 (dateLabels), and a series column of money texts ($12.4B) charted as numbers",
+        "quarterly",
+        {
+            "chartView": {"enabled": True, "chartType": "stackedLine", "xLabel": "Quarter", "yLabel": "Revenue (USD)", "dateLabels": "quarter"},
+            "columnsDefs": [
+                {"field": "quarter_end", "headerName": "Quarter end", "chartDataType": "category"},
+                {"field": "products", "headerName": "Products", "chartDataType": "series", "formatterFn": "compact", "prefix": "$"},
+                {"field": "services", "headerName": "Services", "chartDataType": "series", "formatterFn": "compact", "prefix": "$"},
+                {"field": "reported", "headerName": "Reported total", "chartDataType": "series"},
+            ],
+        },
+        h=12,
+    ),
     "ag_table_chart_grouped_layout": widget(
         "Grouped trades with a starting layout",
         "rowGroup and aggFunc per column, a field with a dot in its name, Unix times read as dates, and the layout and filter a new card opens with",
@@ -488,4 +503,16 @@ def directory() -> list[dict]:
                 "notes": DIRECTORY_NOTES[c["symbol"]],
             }
         )
+    return rows
+
+
+QUARTER_ENDS = ["2023-03-31", "2023-06-30", "2023-09-30", "2023-12-31", "2024-03-31", "2024-06-30", "2024-09-30", "2024-12-31"]
+
+
+def quarterly() -> list[dict]:
+    rows = []
+    for i, end in enumerate(QUARTER_ENDS):
+        products = round(62e9 * (1 + 0.025 * i), -8)
+        services = round(21e9 * (1 + 0.04 * i), -8)
+        rows.append({"quarter_end": end, "products": products, "services": services, "reported": f"${(products + services) / 1e9:.1f}B"})
     return rows
