@@ -9,7 +9,7 @@
 // `python -m scripts.plugin_check <dir>` stays the authority; this needs no Workspace checkout.
 
 import { createHash } from "node:crypto";
-import { lstatSync, readdirSync, readFileSync } from "node:fs";
+import { readdirSync, readFileSync } from "node:fs";
 import { basename, dirname, join, relative, resolve } from "node:path";
 
 const root = process.cwd();
@@ -39,20 +39,23 @@ if (!VERSION.test(version)) errors.push(`version folder "${version}" is not X.Y.
 
 /* ---- Walk: names, symlinks, caps (discovery._walk) ---- */
 const hashes = {};
+const sizes = {};
 let total = 0;
 function walk(directory) {
-  for (const name of readdirSync(directory).sort()) {
+  for (const entry of readdirSync(directory, { withFileTypes: true }).sort((a, b) => (a.name < b.name ? -1 : a.name > b.name ? 1 : 0))) {
+    const name = entry.name;
     const path = join(directory, name);
     const rel = relative(dir, path).split("\\").join("/");
-    const info = lstatSync(path);
     if (!FILE_NAME.test(name)) errors.push(`${rel}: name not allowed`);
     if (name.startsWith(".")) errors.push(`${rel}: dotfile in the package changes its digest`);
-    if (info.isSymbolicLink()) errors.push(`${rel}: symbolic link`);
-    else if (info.isDirectory()) walk(path);
-    else if (!info.isFile()) errors.push(`${rel}: not a regular file`);
+    if (entry.isSymbolicLink()) errors.push(`${rel}: symbolic link`);
+    else if (entry.isDirectory()) walk(path);
+    else if (!entry.isFile()) errors.push(`${rel}: not a regular file`);
     else {
-      total += info.size;
-      hashes[rel] = createHash("sha256").update(readFileSync(path)).digest("hex");
+      const bytes = readFileSync(path);
+      total += bytes.length;
+      sizes[rel] = bytes.length;
+      hashes[rel] = createHash("sha256").update(bytes).digest("hex");
     }
   }
 }
@@ -71,7 +74,7 @@ function listingDigest(files) {
 /* ---- Manifest (manifest.Manifest, the parts a build writes) ---- */
 let manifest = null;
 if (!hashes["plugin.json"]) errors.push("plugin.json is missing");
-else if (lstatSync(join(dir, "plugin.json")).size > MAX_MANIFEST_BYTES) errors.push("plugin.json is over 256 KiB");
+else if (sizes["plugin.json"] > MAX_MANIFEST_BYTES) errors.push("plugin.json is over 256 KiB");
 else manifest = JSON.parse(readFileSync(join(dir, "plugin.json"), "utf8"));
 
 const { "plugin.json": _, ...packaged } = hashes;
