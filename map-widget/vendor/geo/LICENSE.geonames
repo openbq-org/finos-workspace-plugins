@@ -1,0 +1,14 @@
+places/cities.json is derived from the GeoNames geographical database
+(https://www.geonames.org), file cities15000 as of 2026-10-10, which is
+licensed under the Creative Commons Attribution 4.0 International licence
+(CC BY 4.0): https://creativecommons.org/licenses/by/4.0/
+
+Changes made: the places of 25,000 residents or more and the capitals of a
+country or of a first-level region were kept; of each, its name, its place to
+a thousandth of a degree, its residents to the thousand, and for a city of
+the United States its state. Names in English were added from Natural Earth
+5.1.1 populated places (public domain), each only where GeoNames lists the
+same name for the same city. See scripts/geo/prepare-cities.mjs.
+
+Credit, as the app gives it on a map that places a point by a city:
+"Cities are placed by their name: GeoNames, CC BY 4.0."

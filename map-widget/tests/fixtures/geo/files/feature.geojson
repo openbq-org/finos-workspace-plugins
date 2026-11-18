@@ -1,0 +1,21 @@
+{
+ "type": "Feature",
+ "geometry": {
+  "type": "LineString",
+  "coordinates": [
+   [
+    2.35,
+    48.85
+   ],
+   [
+    4.83,
+    45.76
+   ]
+  ]
+ },
+ "properties": {
+  "name": "Paris to Lyon",
+  "stroke": "#0055aa",
+  "stroke-width": 4
+ }
+}
