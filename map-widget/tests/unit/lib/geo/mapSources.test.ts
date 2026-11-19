@@ -570,10 +570,7 @@ describe("mapSourceDeclarations with hostile input", () => {
     const inherited = Object.create(ndvi);
     expect(one(inherited).sources).toEqual([]);
     const polluted = JSON.parse(
-      JSON.stringify(ndvi).replace(
-        "{",
-        '{"__proto__":{"url":"http://evil.example/{z}/{x}/{y}","role":"imagery"},"constructor":{"prototype":{"x":1}},',
-      ),
+      `{"__proto__":{"url":"http://evil.example/{z}/{x}/{y}","role":"imagery"},"constructor":{"prototype":{"x":1}},${JSON.stringify(ndvi).slice(1)}`,
     );
     const source = taken(polluted);
     expect(source).toEqual(ndvi);
