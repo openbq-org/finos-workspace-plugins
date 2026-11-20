@@ -1,0 +1,385 @@
+{
+  "widgets": {
+    "reactflow_order_flow": {
+      "name": "Order handling",
+      "description": "A process from arrival to shipping: pill start, diamond decisions, a circle end and coloured outcomes, laid out left to right",
+      "category": "React Flow examples",
+      "type": "reactflow",
+      "endpoint": "order-flow",
+      "gridData": {
+        "w": 40,
+        "h": 14
+      },
+      "source": "Invented sample data"
+    },
+    "reactflow_release_pipeline": {
+      "name": "Release pipeline",
+      "description": "A branching pipeline laid out top to bottom, with a decision that splits into a released and a blocked path",
+      "category": "React Flow examples",
+      "type": "reactflow",
+      "endpoint": "release-pipeline",
+      "gridData": {
+        "w": 20,
+        "h": 24
+      },
+      "source": "Invented sample data"
+    },
+    "reactflow_service_map": {
+      "name": "Trade capture services",
+      "description": "The services behind trade capture, with a note under each name and a node that opens a link",
+      "category": "React Flow examples",
+      "type": "reactflow",
+      "endpoint": "service-map",
+      "gridData": {
+        "w": 40,
+        "h": 14
+      },
+      "source": "Invented sample data"
+    },
+    "reactflow_escalation": {
+      "name": "Incident escalation",
+      "description": "A diagram whose nodes carry their own x and y, so the backend decides the layout instead of the plugin",
+      "category": "React Flow examples",
+      "type": "reactflow",
+      "endpoint": "escalation",
+      "gridData": {
+        "w": 20,
+        "h": 24
+      },
+      "source": "Invented sample data"
+    }
+  },
+  "flows": {
+    "order-flow": {
+      "title": "Order handling",
+      "direction": "LR",
+      "nodes": [
+        {
+          "id": "in",
+          "label": "Order received",
+          "kind": "input",
+          "shape": "pill",
+          "accent": "info"
+        },
+        {
+          "id": "fraud",
+          "label": "Fraud check",
+          "shape": "diamond",
+          "accent": "warning"
+        },
+        {
+          "id": "stock",
+          "label": "In stock?",
+          "shape": "diamond"
+        },
+        {
+          "id": "pick",
+          "label": "Pick and pack",
+          "note": "Warehouse"
+        },
+        {
+          "id": "invoice",
+          "label": "Raise invoice",
+          "note": "Finance"
+        },
+        {
+          "id": "ship",
+          "label": "Ship",
+          "kind": "output",
+          "shape": "circle",
+          "accent": "positive"
+        },
+        {
+          "id": "back",
+          "label": "Back order",
+          "kind": "output",
+          "accent": "warning"
+        },
+        {
+          "id": "reject",
+          "label": "Rejected",
+          "kind": "output",
+          "accent": "negative"
+        }
+      ],
+      "edges": [
+        {
+          "source": "in",
+          "target": "fraud"
+        },
+        {
+          "source": "fraud",
+          "target": "reject",
+          "label": "flagged",
+          "accent": "negative",
+          "dashed": true
+        },
+        {
+          "source": "fraud",
+          "target": "stock",
+          "label": "clear"
+        },
+        {
+          "source": "stock",
+          "target": "pick",
+          "label": "yes"
+        },
+        {
+          "source": "stock",
+          "target": "back",
+          "label": "no",
+          "accent": "warning",
+          "dashed": true
+        },
+        {
+          "source": "pick",
+          "target": "invoice"
+        },
+        {
+          "source": "invoice",
+          "target": "ship",
+          "animated": true,
+          "accent": "positive"
+        }
+      ]
+    },
+    "release-pipeline": {
+      "title": "Release pipeline",
+      "direction": "TB",
+      "nodes": [
+        {
+          "id": "commit",
+          "label": "Commit",
+          "kind": "input",
+          "shape": "pill"
+        },
+        {
+          "id": "build",
+          "label": "Build"
+        },
+        {
+          "id": "unit",
+          "label": "Unit tests"
+        },
+        {
+          "id": "e2e",
+          "label": "End-to-end tests",
+          "note": "Three browsers"
+        },
+        {
+          "id": "gate",
+          "label": "All green?",
+          "shape": "diamond"
+        },
+        {
+          "id": "stage",
+          "label": "Staging",
+          "accent": "info"
+        },
+        {
+          "id": "prod",
+          "label": "Production",
+          "kind": "output",
+          "accent": "positive"
+        },
+        {
+          "id": "stop",
+          "label": "Blocked",
+          "kind": "output",
+          "accent": "negative"
+        }
+      ],
+      "edges": [
+        {
+          "source": "commit",
+          "target": "build"
+        },
+        {
+          "source": "build",
+          "target": "unit"
+        },
+        {
+          "source": "build",
+          "target": "e2e"
+        },
+        {
+          "source": "unit",
+          "target": "gate"
+        },
+        {
+          "source": "e2e",
+          "target": "gate"
+        },
+        {
+          "source": "gate",
+          "target": "stage",
+          "label": "yes"
+        },
+        {
+          "source": "gate",
+          "target": "stop",
+          "label": "no",
+          "accent": "negative",
+          "dashed": true
+        },
+        {
+          "source": "stage",
+          "target": "prod",
+          "label": "sign off",
+          "animated": true,
+          "accent": "positive"
+        }
+      ]
+    },
+    "service-map": {
+      "title": "Trade capture services",
+      "direction": "LR",
+      "nodes": [
+        {
+          "id": "ui",
+          "label": "Trading UI",
+          "kind": "input",
+          "note": "React",
+          "url": "https://reactflow.dev/"
+        },
+        {
+          "id": "gateway",
+          "label": "API gateway",
+          "accent": "brand"
+        },
+        {
+          "id": "capture",
+          "label": "Trade capture",
+          "note": "Python"
+        },
+        {
+          "id": "risk",
+          "label": "Risk engine",
+          "note": "Rust",
+          "accent": "warning"
+        },
+        {
+          "id": "ledger",
+          "label": "Ledger",
+          "shape": "rectangle",
+          "note": "Postgres",
+          "accent": "info"
+        },
+        {
+          "id": "reports",
+          "label": "Reporting",
+          "kind": "output",
+          "shape": "rectangle"
+        }
+      ],
+      "edges": [
+        {
+          "source": "ui",
+          "target": "gateway",
+          "label": "https"
+        },
+        {
+          "source": "gateway",
+          "target": "capture"
+        },
+        {
+          "source": "capture",
+          "target": "risk",
+          "label": "every fill",
+          "animated": true
+        },
+        {
+          "source": "capture",
+          "target": "ledger"
+        },
+        {
+          "source": "risk",
+          "target": "ledger",
+          "dashed": true,
+          "label": "limits"
+        },
+        {
+          "source": "ledger",
+          "target": "reports",
+          "label": "nightly"
+        }
+      ]
+    },
+    "escalation": {
+      "title": "Incident escalation",
+      "nodes": [
+        {
+          "id": "alert",
+          "label": "Alert fires",
+          "kind": "input",
+          "shape": "pill",
+          "x": 0,
+          "y": 0
+        },
+        {
+          "id": "oncall",
+          "label": "On-call engineer",
+          "x": 0,
+          "y": 120
+        },
+        {
+          "id": "ack",
+          "label": "Acknowledged in 5 min?",
+          "shape": "diamond",
+          "x": -20,
+          "y": 240
+        },
+        {
+          "id": "work",
+          "label": "Work the incident",
+          "kind": "output",
+          "accent": "positive",
+          "x": -220,
+          "y": 400
+        },
+        {
+          "id": "lead",
+          "label": "Page the team lead",
+          "accent": "warning",
+          "x": 220,
+          "y": 400
+        },
+        {
+          "id": "bridge",
+          "label": "Open a bridge",
+          "kind": "output",
+          "accent": "negative",
+          "x": 220,
+          "y": 520
+        }
+      ],
+      "edges": [
+        {
+          "source": "alert",
+          "target": "oncall"
+        },
+        {
+          "source": "oncall",
+          "target": "ack"
+        },
+        {
+          "source": "ack",
+          "target": "work",
+          "label": "yes",
+          "accent": "positive"
+        },
+        {
+          "source": "ack",
+          "target": "lead",
+          "label": "no",
+          "accent": "warning",
+          "dashed": true
+        },
+        {
+          "source": "lead",
+          "target": "bridge"
+        }
+      ]
+    }
+  }
+}
