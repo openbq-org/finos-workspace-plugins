@@ -7,6 +7,9 @@ on:
   pull_request:
     paths: [react-flow/**, scripts/**, .github/workflows/react-flow.yml]
 
+permissions:
+  contents: read
+
 jobs:
   react-flow:
     name: React Flow

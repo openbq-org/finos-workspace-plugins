@@ -172,7 +172,7 @@ Output in `dist/map-widget/<version>/`:
 The build prints the checksum and the version digest. The package is about 57 MB; `WIDGET_PLUGINS_MAX_UNPACKED_BYTES` (64 MB by default) must be at least that.
 
 `scripts/fetch-basemap.mjs` fetches `world.pmtiles` from a pinned Protomaps daily build and checks its SHA-256.
-- Pinned build gone: `node scripts/fetch-basemap.mjs --build <YYYYMMDD>` prints the new SHA-256 to pin, or set `BASEMAP_MIRROR` to a copy.
+- The script writes the file only when its SHA-256 is the pinned one. Pinned build gone: `node scripts/fetch-basemap.mjs --build <YYYYMMDD>` downloads that build, prints its SHA-256 and writes nothing; pin the build and the SHA-256 in the script to use it. Or set `BASEMAP_MIRROR` to a copy of the pinned file.
 - Fetch failure skips the file unless `BASEMAP_REQUIRED=1`.
 
 `scripts/geo/` rebuilds the boundary files.

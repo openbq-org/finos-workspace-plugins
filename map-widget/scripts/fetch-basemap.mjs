@@ -33,6 +33,11 @@ export function existingFile({ digest, pinned, sha256: expected }) {
 export const basemapRequired = (value) =>
   ["1", "true", "yes"].includes(String(value ?? "").trim().toLowerCase());
 
+export function outcomeOf({ pinned, digest, sha256: expected }) {
+  if (!pinned) return "report";
+  return digest === expected ? "write" : "refuse";
+}
+
 export function afterFailure({ optional, required, existing }) {
   return {
     exitCode: optional && !required ? 0 : 1,
@@ -236,11 +241,16 @@ async function main() {
     file = new Uint8Array(await response.arrayBuffer());
   } else file = await extract(`https://build.protomaps.com/${build}.pmtiles`);
   const digest = sha256(file);
-  if (pinned && digest !== PINNED.sha256)
+  const outcome = outcomeOf({ pinned, digest, sha256: PINNED.sha256 });
+  if (outcome === "refuse")
     throw new Error(`The file has the SHA-256 ${digest}, and the pinned one is ${PINNED.sha256}. Nothing was written.`);
+  if (outcome === "report") {
+    console.log(`build ${build}, zoom 0 to ${maxZoom}: sha256 ${digest}. Nothing was written: pin this build and its SHA-256 in scripts/fetch-basemap.mjs to use it.`);
+    return;
+  }
   mkdirSync(dirname(OUT), { recursive: true });
   writeFileSync(OUT, file);
-  console.log(`src/assets/basemap/world.pmtiles: ${(file.length / 1048576).toFixed(1)} MB, sha256 ${digest}${pinned ? " (as pinned)" : " (not checked: pin it in scripts/fetch-basemap.mjs)"}`);
+  console.log(`src/assets/basemap/world.pmtiles: ${(file.length / 1048576).toFixed(1)} MB, sha256 ${digest} (as pinned)`);
 }
 
 if (process.argv[1] === fileURLToPath(import.meta.url))

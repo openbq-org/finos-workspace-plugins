@@ -728,6 +728,18 @@ describe("what the fetch of the basemap does with the file that is there, and wi
       expect(basemapRequired(off)).toBe(false);
   });
 
+  it("writes a fetched file only when its SHA-256 is the pinned one, and only reports any other build", async () => {
+    const { outcomeOf } = await script();
+    expect(outcomeOf({ pinned: true, digest: SHA, sha256: SHA })).toBe("write");
+    expect(outcomeOf({ pinned: true, digest: "d".repeat(64), sha256: SHA })).toBe(
+      "refuse",
+    );
+    expect(outcomeOf({ pinned: false, digest: SHA, sha256: SHA })).toBe("report");
+    expect(outcomeOf({ pinned: false, digest: "d".repeat(64), sha256: SHA })).toBe(
+      "report",
+    );
+  });
+
   it("keeps the fetched file out of git: the build fetches and checks it", () => {
     const ignored = readFileSync(join(process.cwd(), ".gitignore"), "utf8").split("\n");
     expect(ignored).toContain("src/assets/basemap/world.pmtiles");
