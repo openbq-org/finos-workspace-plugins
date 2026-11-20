@@ -1,0 +1,35 @@
+# Workspace plugins
+
+Widget plugins for FINOS Workspace and BQ Workspace, one folder each. Every folder builds its own
+package, `dist/<plugin id>/<version>/`, which a deployment places in its plugins directory.
+
+| Folder | Plugin | Widget types |
+|---|---|---|
+| [`map-widget/`](map-widget/README.md) | Map | `map`: points, regions, shapes and flows from a backend's rows, GeoJSON or KML, on a MapLibre GL JS map with layers, a legend, drawing and measuring |
+| [`mermaid/`](mermaid/README.md) | Mermaid | `mermaid`: flowcharts, sequence, class, state, ER, Gantt and the other Mermaid diagrams, with zoom, pan and SVG and PNG export; pies drawn as a donut |
+
+## Shared tooling
+
+| Path | What it does |
+|---|---|
+| `scripts/verify.mjs` | `npm run verify` in a plugin folder: checks the built package as Workspace's discovery does, and prints the version digest. |
+| `scripts/install.mjs` | `npm run install:workspace` in a plugin folder: copies the package into a local plugins directory. |
+| `scripts/sync-dev.mjs` | `npm run dev:workspace` in a plugin folder: replaces the files of a development version, started with Patch, Minor or Major on a `MODE=local` stack, with the build. |
+| `scripts/install-release.sh` | On a server: downloads one plugin's GitHub Release, checks it, and places it in the plugins directory. |
+| `.github/workflows/<plugin>.yml` | Tests and builds a plugin when its folder changes. |
+| `.github/workflows/release.yml` | Publishes one plugin's package for a tag `<plugin folder>-v<version>`. |
+
+## Release a plugin
+
+Raise `version` in the plugin's `package.json`, then push a tag. The release workflow runs the folder's `npm ci`, `npm test`, `npm run build` and `npm run verify`, so the folder needs those scripts.
+
+```bash
+git tag <plugin folder>-v<version> && git push origin <plugin folder>-v<version>
+```
+
+On a server:
+
+```bash
+PLUGINS_DIR=/srv/workspace-plugins GITHUB_REPO=openbq-org/finos-workspace-plugins \
+  scripts/install-release.sh <plugin id> <version>
+```
