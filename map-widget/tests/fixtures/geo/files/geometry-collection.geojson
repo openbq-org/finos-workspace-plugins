@@ -1,0 +1,81 @@
+{
+ "type": "Feature",
+ "properties": {
+  "name": "Campus"
+ },
+ "geometry": {
+  "type": "GeometryCollection",
+  "geometries": [
+   {
+    "type": "Point",
+    "coordinates": [
+     10,
+     50
+    ]
+   },
+   {
+    "type": "GeometryCollection",
+    "geometries": [
+     {
+      "type": "MultiPoint",
+      "coordinates": [
+       [
+        10.1,
+        50.1
+       ],
+       [
+        10.2,
+        50.2
+       ]
+      ]
+     }
+    ]
+   },
+   {
+    "type": "MultiPolygon",
+    "coordinates": [
+     [
+      [
+       [
+        10,
+        50
+       ],
+       [
+        11,
+        50
+       ],
+       [
+        11,
+        51
+       ],
+       [
+        10,
+        50
+       ]
+      ]
+     ],
+     [
+      [
+       [
+        12,
+        50
+       ],
+       [
+        13,
+        50
+       ],
+       [
+        13,
+        51
+       ],
+       [
+        12,
+        50
+       ]
+      ]
+     ]
+    ]
+   }
+  ]
+ }
+}

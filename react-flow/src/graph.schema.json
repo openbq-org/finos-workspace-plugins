@@ -1,0 +1,72 @@
+{
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["nodes"],
+  "description": "A flow diagram: the nodes and the edges between them. Leave x and y out and the diagram is laid out automatically.",
+  "properties": {
+    "title": { "type": "string", "maxLength": 80, "description": "A heading shown above the diagram." },
+    "direction": {
+      "enum": ["TB", "LR", "BT", "RL"],
+      "description": "The direction of the automatic layout: top to bottom, left to right, bottom to top or right to left. The default is TB."
+    },
+    "nodes": {
+      "type": "array",
+      "maxItems": 300,
+      "description": "The boxes of the diagram. An id is used once.",
+      "items": { "$ref": "#/$defs/node" }
+    },
+    "edges": {
+      "type": "array",
+      "maxItems": 600,
+      "description": "The arrows between the nodes. An edge whose source or target is not a node is dropped.",
+      "items": { "$ref": "#/$defs/edge" }
+    }
+  },
+  "$defs": {
+    "node": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "label"],
+      "properties": {
+        "id": { "type": "string", "maxLength": 64, "description": "The id that edges refer to." },
+        "label": { "type": "string", "maxLength": 200, "description": "The text in the box." },
+        "note": { "type": "string", "maxLength": 300, "description": "A second line under the label." },
+        "kind": {
+          "enum": ["default", "input", "output"],
+          "description": "Where the arrows attach: input starts a flow, output ends one, default does both. The default is default."
+        },
+        "shape": {
+          "enum": ["rectangle", "rounded", "pill", "diamond", "circle"],
+          "description": "The shape of the box. Use diamond for a decision. The default is rounded."
+        },
+        "accent": {
+          "enum": ["neutral", "brand", "positive", "negative", "warning", "info"],
+          "description": "The colour of the box, taken from the site's theme. The default is neutral."
+        },
+        "url": { "type": "string", "maxLength": 2048, "description": "An https or mailto address the box opens, after the user confirms." },
+        "x": { "type": "number", "minimum": -100000, "maximum": 100000, "description": "The horizontal position. Give x and y on every node, or on none." },
+        "y": { "type": "number", "minimum": -100000, "maximum": 100000, "description": "The vertical position. Give x and y on every node, or on none." },
+        "width": { "type": "number", "minimum": 40, "maximum": 2000, "description": "The width of the box in pixels." },
+        "height": { "type": "number", "minimum": 24, "maximum": 2000, "description": "The height of the box in pixels." }
+      }
+    },
+    "edge": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["source", "target"],
+      "properties": {
+        "id": { "type": "string", "maxLength": 64, "description": "The id of the edge. One is made when it is left out." },
+        "source": { "type": "string", "maxLength": 64, "description": "The id of the node the arrow leaves." },
+        "target": { "type": "string", "maxLength": 64, "description": "The id of the node the arrow enters." },
+        "label": { "type": "string", "maxLength": 120, "description": "The text on the arrow." },
+        "accent": {
+          "enum": ["neutral", "brand", "positive", "negative", "warning", "info"],
+          "description": "The colour of the arrow. The default is neutral."
+        },
+        "dashed": { "type": "boolean", "description": "Draws the arrow as a dashed line." },
+        "animated": { "type": "boolean", "description": "Moves the dashes along the arrow." },
+        "arrow": { "type": "boolean", "description": "Draws the arrow head. The default is true." }
+      }
+    }
+  }
+}

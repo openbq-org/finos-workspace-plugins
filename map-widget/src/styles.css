@@ -1,0 +1,77 @@
+@import "tailwindcss";
+@source ".";
+
+@theme {
+  --color-*: initial;
+  --color-white: #ffffff;
+  --color-black: #000000;
+  --color-transparent: transparent;
+  --color-current: currentColor;
+  --color-general-bg-primary: var(--general-bg-primary);
+  --color-general-bg-primary-hover: var(--general-bg-primary-hover);
+  --color-general-bg-secondary: var(--general-bg-secondary);
+  --color-general-bg-secondary-hover: var(--general-bg-secondary-hover);
+  --color-general-border-primary: var(--general-border-primary);
+  --color-general-label: var(--general-label);
+  --color-general-label-hover: var(--general-label-hover);
+  --color-general-label-disabled: var(--general-label-disabled);
+  --color-surface-divider: var(--surface-divider);
+  --color-brand-main: var(--brand-main);
+  --color-ds-text-heading: var(--text-heading);
+  --color-ds-text-body: var(--text-body);
+  --color-ds-text-caption: var(--text-caption);
+  --text-2xs: 0.625rem;
+  --shadow-light-1: 0px 2px 10px 0px rgba(0, 0, 0, 0.1);
+  --shadow-light-2: 2px 4px 15px 0px rgba(0, 0, 0, 0.1);
+  --shadow-light-3: 0px 2px 10px 0px rgba(0, 0, 0, 0.2);
+}
+
+:root {
+  --brand-main: var(--plugin-brand-main, #ed9b44);
+  color-scheme: light;
+  --general-bg-primary: #ffffff;
+  --general-bg-primary-hover: #edeae3;
+  --general-bg-secondary: #f5f3ee;
+  --general-bg-secondary-hover: #e4e0d8;
+  --general-border-primary: #e4e0d8;
+  --general-label: #223255;
+  --general-label-hover: #040a19;
+  --general-label-disabled: #8f887b;
+  --surface-divider: #edeae3;
+  --text-heading: #131e37;
+  --text-body: #485266;
+  --text-caption: color-mix(in srgb, #625e56 70%, #485266);
+}
+
+:root[data-mode="dark"] {
+  color-scheme: dark;
+  --general-bg-primary: #060f2f;
+  --general-bg-primary-hover: #1b2240;
+  --general-bg-secondary: #1b2240;
+  --general-bg-secondary-hover: #252e50;
+  --general-border-primary: #383d5b;
+  --general-label: #b4c3db;
+  --general-label-hover: #ffffff;
+  --general-label-disabled: #687ca7;
+  --surface-divider: #252e50;
+  --text-heading: #ffffff;
+  --text-body: #b4c3db;
+  --text-caption: color-mix(in srgb, #b4c3db 50%, #798fbb);
+}
+
+@layer components {
+  .ws-uppercase-small-title {
+    @apply text-2xs text-ds-text-caption tracking-wider uppercase;
+  }
+}
+
+html,
+body,
+#root {
+  height: 100%;
+  margin: 0;
+}
+
+body {
+  font-family: var(--plugin-font-family, system-ui, sans-serif);
+}

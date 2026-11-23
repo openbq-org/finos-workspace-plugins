@@ -12,7 +12,7 @@
 
 import { execFileSync } from "node:child_process";
 import { createHash } from "node:crypto";
-import { cpSync, existsSync, mkdirSync, readdirSync, readFileSync, statSync } from "node:fs";
+import { cpSync, existsSync, mkdirSync, readdirSync, readFileSync } from "node:fs";
 import { dirname, join, relative, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -39,9 +39,9 @@ execFileSync(process.execPath, [join(here, "verify.mjs"), source], { stdio: "inh
 function listing(directory) {
   const files = {};
   const walk = (dir) => {
-    for (const name of readdirSync(dir).sort()) {
-      const path = join(dir, name);
-      if (statSync(path).isDirectory()) walk(path);
+    for (const entry of readdirSync(dir, { withFileTypes: true }).sort((a, b) => (a.name < b.name ? -1 : a.name > b.name ? 1 : 0))) {
+      const path = join(dir, entry.name);
+      if (entry.isDirectory()) walk(path);
       else files[relative(directory, path)] = createHash("sha256").update(readFileSync(path)).digest("hex");
     }
   };

@@ -1,0 +1,1143 @@
+{
+  "manifestVersion": 1,
+  "id": "plotly-charts",
+  "name": "Plotly charts",
+  "description": "Renders the plotly widget type with plotly.js: any backend's Plotly figure, drawn as its author made it.",
+  "publisher": {
+    "name": "dlee-bq"
+  },
+  "icon": "assets/icon.svg",
+  "host": {
+    "api": 1,
+    "afm": "0.11"
+  },
+  "entry": {
+    "module": "entry.js",
+    "styles": [
+      "entry.css"
+    ]
+  },
+  "contributes": {
+    "widgets": [
+      {
+        "id": "chart",
+        "name": "Plotly chart",
+        "description": "A backend's Plotly figure, drawn with plotly.js",
+        "category": "Charts",
+        "handles": [
+          {
+            "type": "plotly",
+            "response": {
+              "accepts": "json",
+              "description": "A Plotly figure as JSON, {\"data\": [traces], \"layout\": {...}, \"frames\": [...]}, as plotly.py's fig.to_json() writes it. The endpoint gets theme=dark or theme=light."
+            },
+            "definition": {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "modebar": {
+                  "type": "boolean"
+                }
+              }
+            }
+          }
+        ],
+        "artifact": {
+          "description": "A chart drawn with Plotly.js from a figure you give it, as plotly.js takes one: {data: [traces], layout, frames}. Use it for a chart of any kind, from bars, lines and pies to maps, heatmaps and 3D. The user can add it to a dashboard.",
+          "data": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "data"
+            ],
+            "properties": {
+              "data": {
+                "type": "array",
+                "maxItems": 64,
+                "items": {
+                  "type": "object",
+                  "additionalProperties": {
+                    "$ref": "#/$defs/value"
+                  }
+                }
+              },
+              "layout": {
+                "type": "object",
+                "additionalProperties": {
+                  "$ref": "#/$defs/value"
+                }
+              },
+              "frames": {
+                "type": "array",
+                "maxItems": 500,
+                "items": {
+                  "type": "object",
+                  "additionalProperties": {
+                    "$ref": "#/$defs/value"
+                  }
+                }
+              }
+            },
+            "$defs": {
+              "value": {
+                "type": [
+                  "string",
+                  "number",
+                  "boolean",
+                  "null",
+                  "array",
+                  "object"
+                ],
+                "maxLength": 400000,
+                "maxItems": 20000,
+                "items": {
+                  "type": [
+                    "string",
+                    "number",
+                    "boolean",
+                    "null",
+                    "array",
+                    "object"
+                  ],
+                  "maxLength": 400000,
+                  "maxItems": 20000,
+                  "items": {
+                    "type": [
+                      "string",
+                      "number",
+                      "boolean",
+                      "null",
+                      "array",
+                      "object"
+                    ],
+                    "maxLength": 400000,
+                    "maxItems": 20000,
+                    "items": {
+                      "type": [
+                        "string",
+                        "number",
+                        "boolean",
+                        "null",
+                        "array",
+                        "object"
+                      ],
+                      "maxLength": 400000,
+                      "maxItems": 20000,
+                      "items": {
+                        "type": [
+                          "string",
+                          "number",
+                          "boolean",
+                          "null",
+                          "array",
+                          "object"
+                        ],
+                        "maxLength": 400000,
+                        "maxItems": 20000,
+                        "items": {
+                          "type": [
+                            "string",
+                            "number",
+                            "boolean",
+                            "null",
+                            "array",
+                            "object"
+                          ],
+                          "maxLength": 400000,
+                          "maxItems": 20000,
+                          "items": {
+                            "$ref": "#/$defs/value"
+                          },
+                          "additionalProperties": {
+                            "$ref": "#/$defs/value"
+                          }
+                        },
+                        "additionalProperties": {
+                          "type": [
+                            "string",
+                            "number",
+                            "boolean",
+                            "null",
+                            "array",
+                            "object"
+                          ],
+                          "maxLength": 400000,
+                          "maxItems": 20000,
+                          "items": {
+                            "$ref": "#/$defs/value"
+                          },
+                          "additionalProperties": {
+                            "$ref": "#/$defs/value"
+                          }
+                        }
+                      },
+                      "additionalProperties": {
+                        "type": [
+                          "string",
+                          "number",
+                          "boolean",
+                          "null",
+                          "array",
+                          "object"
+                        ],
+                        "maxLength": 400000,
+                        "maxItems": 20000,
+                        "items": {
+                          "type": [
+                            "string",
+                            "number",
+                            "boolean",
+                            "null",
+                            "array",
+                            "object"
+                          ],
+                          "maxLength": 400000,
+                          "maxItems": 20000,
+                          "items": {
+                            "$ref": "#/$defs/value"
+                          },
+                          "additionalProperties": {
+                            "$ref": "#/$defs/value"
+                          }
+                        },
+                        "additionalProperties": {
+                          "type": [
+                            "string",
+                            "number",
+                            "boolean",
+                            "null",
+                            "array",
+                            "object"
+                          ],
+                          "maxLength": 400000,
+                          "maxItems": 20000,
+                          "items": {
+                            "$ref": "#/$defs/value"
+                          },
+                          "additionalProperties": {
+                            "$ref": "#/$defs/value"
+                          }
+                        }
+                      }
+                    },
+                    "additionalProperties": {
+                      "type": [
+                        "string",
+                        "number",
+                        "boolean",
+                        "null",
+                        "array",
+                        "object"
+                      ],
+                      "maxLength": 400000,
+                      "maxItems": 20000,
+                      "items": {
+                        "type": [
+                          "string",
+                          "number",
+                          "boolean",
+                          "null",
+                          "array",
+                          "object"
+                        ],
+                        "maxLength": 400000,
+                        "maxItems": 20000,
+                        "items": {
+                          "type": [
+                            "string",
+                            "number",
+                            "boolean",
+                            "null",
+                            "array",
+                            "object"
+                          ],
+                          "maxLength": 400000,
+                          "maxItems": 20000,
+                          "items": {
+                            "$ref": "#/$defs/value"
+                          },
+                          "additionalProperties": {
+                            "$ref": "#/$defs/value"
+                          }
+                        },
+                        "additionalProperties": {
+                          "type": [
+                            "string",
+                            "number",
+                            "boolean",
+                            "null",
+                            "array",
+                            "object"
+                          ],
+                          "maxLength": 400000,
+                          "maxItems": 20000,
+                          "items": {
+                            "$ref": "#/$defs/value"
+                          },
+                          "additionalProperties": {
+                            "$ref": "#/$defs/value"
+                          }
+                        }
+                      },
+                      "additionalProperties": {
+                        "type": [
+                          "string",
+                          "number",
+                          "boolean",
+                          "null",
+                          "array",
+                          "object"
+                        ],
+                        "maxLength": 400000,
+                        "maxItems": 20000,
+                        "items": {
+                          "type": [
+                            "string",
+                            "number",
+                            "boolean",
+                            "null",
+                            "array",
+                            "object"
+                          ],
+                          "maxLength": 400000,
+                          "maxItems": 20000,
+                          "items": {
+                            "$ref": "#/$defs/value"
+                          },
+                          "additionalProperties": {
+                            "$ref": "#/$defs/value"
+                          }
+                        },
+                        "additionalProperties": {
+                          "type": [
+                            "string",
+                            "number",
+                            "boolean",
+                            "null",
+                            "array",
+                            "object"
+                          ],
+                          "maxLength": 400000,
+                          "maxItems": 20000,
+                          "items": {
+                            "$ref": "#/$defs/value"
+                          },
+                          "additionalProperties": {
+                            "$ref": "#/$defs/value"
+                          }
+                        }
+                      }
+                    }
+                  },
+                  "additionalProperties": {
+                    "type": [
+                      "string",
+                      "number",
+                      "boolean",
+                      "null",
+                      "array",
+                      "object"
+                    ],
+                    "maxLength": 400000,
+                    "maxItems": 20000,
+                    "items": {
+                      "type": [
+                        "string",
+                        "number",
+                        "boolean",
+                        "null",
+                        "array",
+                        "object"
+                      ],
+                      "maxLength": 400000,
+                      "maxItems": 20000,
+                      "items": {
+                        "type": [
+                          "string",
+                          "number",
+                          "boolean",
+                          "null",
+                          "array",
+                          "object"
+                        ],
+                        "maxLength": 400000,
+                        "maxItems": 20000,
+                        "items": {
+                          "type": [
+                            "string",
+                            "number",
+                            "boolean",
+                            "null",
+                            "array",
+                            "object"
+                          ],
+                          "maxLength": 400000,
+                          "maxItems": 20000,
+                          "items": {
+                            "$ref": "#/$defs/value"
+                          },
+                          "additionalProperties": {
+                            "$ref": "#/$defs/value"
+                          }
+                        },
+                        "additionalProperties": {
+                          "type": [
+                            "string",
+                            "number",
+                            "boolean",
+                            "null",
+                            "array",
+                            "object"
+                          ],
+                          "maxLength": 400000,
+                          "maxItems": 20000,
+                          "items": {
+                            "$ref": "#/$defs/value"
+                          },
+                          "additionalProperties": {
+                            "$ref": "#/$defs/value"
+                          }
+                        }
+                      },
+                      "additionalProperties": {
+                        "type": [
+                          "string",
+                          "number",
+                          "boolean",
+                          "null",
+                          "array",
+                          "object"
+                        ],
+                        "maxLength": 400000,
+                        "maxItems": 20000,
+                        "items": {
+                          "type": [
+                            "string",
+                            "number",
+                            "boolean",
+                            "null",
+                            "array",
+                            "object"
+                          ],
+                          "maxLength": 400000,
+                          "maxItems": 20000,
+                          "items": {
+                            "$ref": "#/$defs/value"
+                          },
+                          "additionalProperties": {
+                            "$ref": "#/$defs/value"
+                          }
+                        },
+                        "additionalProperties": {
+                          "type": [
+                            "string",
+                            "number",
+                            "boolean",
+                            "null",
+                            "array",
+                            "object"
+                          ],
+                          "maxLength": 400000,
+                          "maxItems": 20000,
+                          "items": {
+                            "$ref": "#/$defs/value"
+                          },
+                          "additionalProperties": {
+                            "$ref": "#/$defs/value"
+                          }
+                        }
+                      }
+                    },
+                    "additionalProperties": {
+                      "type": [
+                        "string",
+                        "number",
+                        "boolean",
+                        "null",
+                        "array",
+                        "object"
+                      ],
+                      "maxLength": 400000,
+                      "maxItems": 20000,
+                      "items": {
+                        "type": [
+                          "string",
+                          "number",
+                          "boolean",
+                          "null",
+                          "array",
+                          "object"
+                        ],
+                        "maxLength": 400000,
+                        "maxItems": 20000,
+                        "items": {
+                          "type": [
+                            "string",
+                            "number",
+                            "boolean",
+                            "null",
+                            "array",
+                            "object"
+                          ],
+                          "maxLength": 400000,
+                          "maxItems": 20000,
+                          "items": {
+                            "$ref": "#/$defs/value"
+                          },
+                          "additionalProperties": {
+                            "$ref": "#/$defs/value"
+                          }
+                        },
+                        "additionalProperties": {
+                          "type": [
+                            "string",
+                            "number",
+                            "boolean",
+                            "null",
+                            "array",
+                            "object"
+                          ],
+                          "maxLength": 400000,
+                          "maxItems": 20000,
+                          "items": {
+                            "$ref": "#/$defs/value"
+                          },
+                          "additionalProperties": {
+                            "$ref": "#/$defs/value"
+                          }
+                        }
+                      },
+                      "additionalProperties": {
+                        "type": [
+                          "string",
+                          "number",
+                          "boolean",
+                          "null",
+                          "array",
+                          "object"
+                        ],
+                        "maxLength": 400000,
+                        "maxItems": 20000,
+                        "items": {
+                          "type": [
+                            "string",
+                            "number",
+                            "boolean",
+                            "null",
+                            "array",
+                            "object"
+                          ],
+                          "maxLength": 400000,
+                          "maxItems": 20000,
+                          "items": {
+                            "$ref": "#/$defs/value"
+                          },
+                          "additionalProperties": {
+                            "$ref": "#/$defs/value"
+                          }
+                        },
+                        "additionalProperties": {
+                          "type": [
+                            "string",
+                            "number",
+                            "boolean",
+                            "null",
+                            "array",
+                            "object"
+                          ],
+                          "maxLength": 400000,
+                          "maxItems": 20000,
+                          "items": {
+                            "$ref": "#/$defs/value"
+                          },
+                          "additionalProperties": {
+                            "$ref": "#/$defs/value"
+                          }
+                        }
+                      }
+                    }
+                  }
+                },
+                "additionalProperties": {
+                  "type": [
+                    "string",
+                    "number",
+                    "boolean",
+                    "null",
+                    "array",
+                    "object"
+                  ],
+                  "maxLength": 400000,
+                  "maxItems": 20000,
+                  "items": {
+                    "type": [
+                      "string",
+                      "number",
+                      "boolean",
+                      "null",
+                      "array",
+                      "object"
+                    ],
+                    "maxLength": 400000,
+                    "maxItems": 20000,
+                    "items": {
+                      "type": [
+                        "string",
+                        "number",
+                        "boolean",
+                        "null",
+                        "array",
+                        "object"
+                      ],
+                      "maxLength": 400000,
+                      "maxItems": 20000,
+                      "items": {
+                        "type": [
+                          "string",
+                          "number",
+                          "boolean",
+                          "null",
+                          "array",
+                          "object"
+                        ],
+                        "maxLength": 400000,
+                        "maxItems": 20000,
+                        "items": {
+                          "type": [
+                            "string",
+                            "number",
+                            "boolean",
+                            "null",
+                            "array",
+                            "object"
+                          ],
+                          "maxLength": 400000,
+                          "maxItems": 20000,
+                          "items": {
+                            "$ref": "#/$defs/value"
+                          },
+                          "additionalProperties": {
+                            "$ref": "#/$defs/value"
+                          }
+                        },
+                        "additionalProperties": {
+                          "type": [
+                            "string",
+                            "number",
+                            "boolean",
+                            "null",
+                            "array",
+                            "object"
+                          ],
+                          "maxLength": 400000,
+                          "maxItems": 20000,
+                          "items": {
+                            "$ref": "#/$defs/value"
+                          },
+                          "additionalProperties": {
+                            "$ref": "#/$defs/value"
+                          }
+                        }
+                      },
+                      "additionalProperties": {
+                        "type": [
+                          "string",
+                          "number",
+                          "boolean",
+                          "null",
+                          "array",
+                          "object"
+                        ],
+                        "maxLength": 400000,
+                        "maxItems": 20000,
+                        "items": {
+                          "type": [
+                            "string",
+                            "number",
+                            "boolean",
+                            "null",
+                            "array",
+                            "object"
+                          ],
+                          "maxLength": 400000,
+                          "maxItems": 20000,
+                          "items": {
+                            "$ref": "#/$defs/value"
+                          },
+                          "additionalProperties": {
+                            "$ref": "#/$defs/value"
+                          }
+                        },
+                        "additionalProperties": {
+                          "type": [
+                            "string",
+                            "number",
+                            "boolean",
+                            "null",
+                            "array",
+                            "object"
+                          ],
+                          "maxLength": 400000,
+                          "maxItems": 20000,
+                          "items": {
+                            "$ref": "#/$defs/value"
+                          },
+                          "additionalProperties": {
+                            "$ref": "#/$defs/value"
+                          }
+                        }
+                      }
+                    },
+                    "additionalProperties": {
+                      "type": [
+                        "string",
+                        "number",
+                        "boolean",
+                        "null",
+                        "array",
+                        "object"
+                      ],
+                      "maxLength": 400000,
+                      "maxItems": 20000,
+                      "items": {
+                        "type": [
+                          "string",
+                          "number",
+                          "boolean",
+                          "null",
+                          "array",
+                          "object"
+                        ],
+                        "maxLength": 400000,
+                        "maxItems": 20000,
+                        "items": {
+                          "type": [
+                            "string",
+                            "number",
+                            "boolean",
+                            "null",
+                            "array",
+                            "object"
+                          ],
+                          "maxLength": 400000,
+                          "maxItems": 20000,
+                          "items": {
+                            "$ref": "#/$defs/value"
+                          },
+                          "additionalProperties": {
+                            "$ref": "#/$defs/value"
+                          }
+                        },
+                        "additionalProperties": {
+                          "type": [
+                            "string",
+                            "number",
+                            "boolean",
+                            "null",
+                            "array",
+                            "object"
+                          ],
+                          "maxLength": 400000,
+                          "maxItems": 20000,
+                          "items": {
+                            "$ref": "#/$defs/value"
+                          },
+                          "additionalProperties": {
+                            "$ref": "#/$defs/value"
+                          }
+                        }
+                      },
+                      "additionalProperties": {
+                        "type": [
+                          "string",
+                          "number",
+                          "boolean",
+                          "null",
+                          "array",
+                          "object"
+                        ],
+                        "maxLength": 400000,
+                        "maxItems": 20000,
+                        "items": {
+                          "type": [
+                            "string",
+                            "number",
+                            "boolean",
+                            "null",
+                            "array",
+                            "object"
+                          ],
+                          "maxLength": 400000,
+                          "maxItems": 20000,
+                          "items": {
+                            "$ref": "#/$defs/value"
+                          },
+                          "additionalProperties": {
+                            "$ref": "#/$defs/value"
+                          }
+                        },
+                        "additionalProperties": {
+                          "type": [
+                            "string",
+                            "number",
+                            "boolean",
+                            "null",
+                            "array",
+                            "object"
+                          ],
+                          "maxLength": 400000,
+                          "maxItems": 20000,
+                          "items": {
+                            "$ref": "#/$defs/value"
+                          },
+                          "additionalProperties": {
+                            "$ref": "#/$defs/value"
+                          }
+                        }
+                      }
+                    }
+                  },
+                  "additionalProperties": {
+                    "type": [
+                      "string",
+                      "number",
+                      "boolean",
+                      "null",
+                      "array",
+                      "object"
+                    ],
+                    "maxLength": 400000,
+                    "maxItems": 20000,
+                    "items": {
+                      "type": [
+                        "string",
+                        "number",
+                        "boolean",
+                        "null",
+                        "array",
+                        "object"
+                      ],
+                      "maxLength": 400000,
+                      "maxItems": 20000,
+                      "items": {
+                        "type": [
+                          "string",
+                          "number",
+                          "boolean",
+                          "null",
+                          "array",
+                          "object"
+                        ],
+                        "maxLength": 400000,
+                        "maxItems": 20000,
+                        "items": {
+                          "type": [
+                            "string",
+                            "number",
+                            "boolean",
+                            "null",
+                            "array",
+                            "object"
+                          ],
+                          "maxLength": 400000,
+                          "maxItems": 20000,
+                          "items": {
+                            "$ref": "#/$defs/value"
+                          },
+                          "additionalProperties": {
+                            "$ref": "#/$defs/value"
+                          }
+                        },
+                        "additionalProperties": {
+                          "type": [
+                            "string",
+                            "number",
+                            "boolean",
+                            "null",
+                            "array",
+                            "object"
+                          ],
+                          "maxLength": 400000,
+                          "maxItems": 20000,
+                          "items": {
+                            "$ref": "#/$defs/value"
+                          },
+                          "additionalProperties": {
+                            "$ref": "#/$defs/value"
+                          }
+                        }
+                      },
+                      "additionalProperties": {
+                        "type": [
+                          "string",
+                          "number",
+                          "boolean",
+                          "null",
+                          "array",
+                          "object"
+                        ],
+                        "maxLength": 400000,
+                        "maxItems": 20000,
+                        "items": {
+                          "type": [
+                            "string",
+                            "number",
+                            "boolean",
+                            "null",
+                            "array",
+                            "object"
+                          ],
+                          "maxLength": 400000,
+                          "maxItems": 20000,
+                          "items": {
+                            "$ref": "#/$defs/value"
+                          },
+                          "additionalProperties": {
+                            "$ref": "#/$defs/value"
+                          }
+                        },
+                        "additionalProperties": {
+                          "type": [
+                            "string",
+                            "number",
+                            "boolean",
+                            "null",
+                            "array",
+                            "object"
+                          ],
+                          "maxLength": 400000,
+                          "maxItems": 20000,
+                          "items": {
+                            "$ref": "#/$defs/value"
+                          },
+                          "additionalProperties": {
+                            "$ref": "#/$defs/value"
+                          }
+                        }
+                      }
+                    },
+                    "additionalProperties": {
+                      "type": [
+                        "string",
+                        "number",
+                        "boolean",
+                        "null",
+                        "array",
+                        "object"
+                      ],
+                      "maxLength": 400000,
+                      "maxItems": 20000,
+                      "items": {
+                        "type": [
+                          "string",
+                          "number",
+                          "boolean",
+                          "null",
+                          "array",
+                          "object"
+                        ],
+                        "maxLength": 400000,
+                        "maxItems": 20000,
+                        "items": {
+                          "type": [
+                            "string",
+                            "number",
+                            "boolean",
+                            "null",
+                            "array",
+                            "object"
+                          ],
+                          "maxLength": 400000,
+                          "maxItems": 20000,
+                          "items": {
+                            "$ref": "#/$defs/value"
+                          },
+                          "additionalProperties": {
+                            "$ref": "#/$defs/value"
+                          }
+                        },
+                        "additionalProperties": {
+                          "type": [
+                            "string",
+                            "number",
+                            "boolean",
+                            "null",
+                            "array",
+                            "object"
+                          ],
+                          "maxLength": 400000,
+                          "maxItems": 20000,
+                          "items": {
+                            "$ref": "#/$defs/value"
+                          },
+                          "additionalProperties": {
+                            "$ref": "#/$defs/value"
+                          }
+                        }
+                      },
+                      "additionalProperties": {
+                        "type": [
+                          "string",
+                          "number",
+                          "boolean",
+                          "null",
+                          "array",
+                          "object"
+                        ],
+                        "maxLength": 400000,
+                        "maxItems": 20000,
+                        "items": {
+                          "type": [
+                            "string",
+                            "number",
+                            "boolean",
+                            "null",
+                            "array",
+                            "object"
+                          ],
+                          "maxLength": 400000,
+                          "maxItems": 20000,
+                          "items": {
+                            "$ref": "#/$defs/value"
+                          },
+                          "additionalProperties": {
+                            "$ref": "#/$defs/value"
+                          }
+                        },
+                        "additionalProperties": {
+                          "type": [
+                            "string",
+                            "number",
+                            "boolean",
+                            "null",
+                            "array",
+                            "object"
+                          ],
+                          "maxLength": 400000,
+                          "maxItems": 20000,
+                          "items": {
+                            "$ref": "#/$defs/value"
+                          },
+                          "additionalProperties": {
+                            "$ref": "#/$defs/value"
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "permissions": [
+          "core:data:read",
+          "core:export:provide",
+          "core:copilot:context",
+          "core:state:write",
+          "core:config:write",
+          "core:clipboard:write",
+          "core:ui:notify",
+          "core:ui:button",
+          "core:ui:menu",
+          "core:dashboard:add-widget"
+        ],
+        "model": {
+          "traits": {
+            "data": {
+              "bind": "data",
+              "access": "read"
+            },
+            "config": {
+              "bind": "config",
+              "access": "readwrite"
+            },
+            "theme": {
+              "bind": "theme",
+              "access": "read"
+            },
+            "state": {
+              "bind": "state",
+              "access": "readwrite"
+            },
+            "definition": {
+              "bind": "definition",
+              "access": "read"
+            }
+          }
+        },
+        "settings": {
+          "schema": {
+            "type": "object",
+            "properties": {
+              "dataTable": {
+                "type": "boolean",
+                "title": "Data table",
+                "description": "Show the plotted points as a table instead of the chart."
+              },
+              "modebar": {
+                "type": "boolean",
+                "title": "Modebar",
+                "description": "Show Plotly's toolbar on the chart. A widget's data.plotly.modebar in widgets.json sets it for a new card."
+              }
+            }
+          },
+          "defaults": {}
+        },
+        "grid": {
+          "w": 20,
+          "h": 12,
+          "minW": 8,
+          "minH": 6
+        },
+        "actions": [
+          {
+            "id": "data-table",
+            "label": "Data table",
+            "icon": "table",
+            "placement": "navbar",
+            "toggles": "dataTable"
+          },
+          {
+            "id": "modebar",
+            "label": "Modebar",
+            "icon": "sliders",
+            "placement": "navbar",
+            "toggles": "modebar"
+          },
+          {
+            "id": "static",
+            "label": "Create static chart",
+            "icon": "assets/static-chart.svg",
+            "placement": "navbar"
+          },
+          {
+            "id": "reset-view",
+            "label": "Reset view",
+            "icon": "zoom-out",
+            "placement": "menu"
+          },
+          {
+            "id": "show-all",
+            "label": "Show all series",
+            "icon": "assets/show-all.svg",
+            "placement": "menu"
+          },
+          {
+            "id": "copy-figure",
+            "label": "Copy figure JSON",
+            "icon": "copy",
+            "placement": "menu"
+          }
+        ]
+      }
+    ],
+    "skills": [
+      {
+        "slug": "plotly-charts",
+        "description": "How to show a chart with the Plotly charts component: which trace fits the question, the data it takes, and its limits.",
+        "file": "skills/plotly-charts.md"
+      }
+    ]
+  }
+}

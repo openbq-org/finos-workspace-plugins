@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<gpx version="1.1" creator="fixture" xmlns="http://www.topografix.com/GPX/1/1">
+  <metadata><name>Morning ride</name><link href="https://attacker.example/ride"><text>Ride</text></link></metadata>
+  <wpt lat="46.5197" lon="6.6323">
+    <ele>495.5</ele><time>2024-06-01T07:00:00Z</time><name>Start</name><desc>Meet &lt;b&gt;here&lt;/b&gt;</desc><sym>Flag</sym>
+  </wpt>
+  <wpt lat="46.4312" lon="6.9107"><name>Finish</name></wpt>
+  <rte>
+    <name>Plan</name>
+    <rtept lat="46.5197" lon="6.6323"/><rtept lat="46.4628" lon="6.8419"/><rtept lat="46.4312" lon="6.9107"/>
+  </rte>
+  <trk>
+    <name>Recorded</name><type>cycling</type>
+    <trkseg>
+      <trkpt lat="46.5197" lon="6.6323"><ele>495</ele><time>2024-06-01T07:00:00Z</time></trkpt>
+      <trkpt lat="46.5000" lon="6.7000"><ele>520</ele><time>2024-06-01T07:20:00Z</time></trkpt>
+    </trkseg>
+    <trkseg>
+      <trkpt lat="46.4628" lon="6.8419"><ele>380</ele><time>2024-06-01T08:00:00Z</time></trkpt>
+      <trkpt lat="46.4312" lon="6.9107"><ele>372</ele><time>2024-06-01T08:30:00Z</time></trkpt>
+    </trkseg>
+  </trk>
+</gpx>

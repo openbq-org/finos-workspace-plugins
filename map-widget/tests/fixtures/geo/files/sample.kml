@@ -1,0 +1,90 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<kml xmlns="http://www.opengis.net/kml/2.2" xmlns:gx="http://www.google.com/kml/ext/2.2">
+<Document>
+  <name>Field survey</name>
+  <Schema name="Site" id="SiteId">
+    <SimpleField type="string" name="code"><displayName>Code</displayName></SimpleField>
+    <SimpleField type="int" name="visits"/>
+    <SimpleField type="double" name="score"/>
+    <SimpleField type="bool" name="open"/>
+  </Schema>
+  <Style id="red"><IconStyle><color>ff0000ff</color><Icon><href>https://attacker.example/pin.png</href></Icon></IconStyle></Style>
+  <Style id="trail"><LineStyle><color>ff00aa00</color><width>3</width></LineStyle></Style>
+  <Style id="zone"><LineStyle><color>ffff0000</color><width>2</width></LineStyle><PolyStyle><color>800000ff</color></PolyStyle></Style>
+  <Style id="zoneHover"><LineStyle><color>ffffffff</color><width>9</width></LineStyle></Style>
+  <StyleMap id="zoneMap">
+    <Pair><key>highlight</key><styleUrl>#zoneHover</styleUrl></Pair>
+    <Pair><key>normal</key><styleUrl>#zone</styleUrl></Pair>
+  </StyleMap>
+  <Folder>
+    <name>Sites</name>
+    <Placemark>
+      <name>Depot &amp; yard</name>
+      <description><![CDATA[<p>Open <b>daily</b>.</p><img src="https://attacker.example/beacon.png"><script>fetch("https://attacker.example")</script> See <a href="https://attacker.example/go">the site</a>]]></description>
+      <styleUrl>#red</styleUrl>
+      <TimeStamp><when>2024-05-01T09:30:00Z</when></TimeStamp>
+      <ExtendedData>
+        <Data name="rate"><value>4.1</value></Data>
+        <Data name="postcode"><value>02134</value></Data>
+        <Data name="site"><value>https://attacker.example/data</value></Data>
+        <SchemaData schemaUrl="#SiteId">
+          <SimpleData name="code">0042</SimpleData>
+          <SimpleData name="visits">17</SimpleData>
+          <SimpleData name="score">8.5</SimpleData>
+          <SimpleData name="open">1</SimpleData>
+        </SchemaData>
+      </ExtendedData>
+      <Point><coordinates>-77.0459,38.8929,12</coordinates></Point>
+    </Placemark>
+    <Folder>
+      <name>Routes</name>
+      <Placemark>
+        <name>Trail</name>
+        <styleUrl>#trail</styleUrl>
+        <TimeSpan><begin>2024-05-01</begin><end>2024-05-03</end></TimeSpan>
+        <LineString><coordinates>-77.05,38.89,0 -77.04,38.9,0 -77.03,38.905,0</coordinates></LineString>
+      </Placemark>
+      <Placemark>
+        <name>Drive</name>
+        <gx:Track>
+          <when>2024-05-02T10:00:00Z</when><when>2024-05-02T10:05:00Z</when><when>2024-05-02T10:10:00Z</when>
+          <gx:coord>-77.06 38.88 5</gx:coord><gx:coord>-77.055 38.885 6</gx:coord><gx:coord>-77.05 38.89 7</gx:coord>
+        </gx:Track>
+      </Placemark>
+    </Folder>
+  </Folder>
+  <Folder>
+    <name>Zones</name>
+    <Placemark>
+      <name>Zone A</name>
+      <styleUrl>#zoneMap</styleUrl>
+      <Polygon>
+        <innerBoundaryIs><LinearRing><coordinates>-77.04,38.9 -77.03,38.9 -77.03,38.91 -77.04,38.9</coordinates></LinearRing></innerBoundaryIs>
+        <outerBoundaryIs><LinearRing><coordinates>-77.06,38.88 -77.02,38.88 -77.02,38.92 -77.06,38.92 -77.06,38.88</coordinates></LinearRing></outerBoundaryIs>
+      </Polygon>
+    </Placemark>
+    <Placemark>
+      <name>Mixed</name>
+      <Style><LineStyle><color>ff112233</color></LineStyle></Style>
+      <MultiGeometry>
+        <Point><coordinates>-77.1,38.8</coordinates></Point>
+        <Point><coordinates>-77.2,38.7</coordinates></Point>
+        <LineString><coordinates>-77.1,38.8 -77.2,38.7</coordinates></LineString>
+        <MultiGeometry><Polygon><outerBoundaryIs><LinearRing><coordinates>-77.3,38.6 -77.2,38.6 -77.2,38.7 -77.3,38.6</coordinates></LinearRing></outerBoundaryIs></Polygon></MultiGeometry>
+      </MultiGeometry>
+    </Placemark>
+  </Folder>
+  <GroundOverlay>
+    <name>Survey photo</name>
+    <Icon><href>files/photo.png</href></Icon>
+    <LatLonBox><north>38.92</north><south>38.88</south><east>-77.02</east><west>-77.06</west><rotation>30</rotation></LatLonBox>
+  </GroundOverlay>
+  <GroundOverlay>
+    <name>Remote photo</name>
+    <Icon><href>https://attacker.example/overlay.png</href></Icon>
+    <LatLonBox><north>39</north><south>38</south><east>-77</east><west>-78</west></LatLonBox>
+  </GroundOverlay>
+  <NetworkLink><name>More</name><Link><href>https://attacker.example/more.kml</href></Link></NetworkLink>
+  <ScreenOverlay><name>Logo</name><Icon><href>https://attacker.example/logo.png</href></Icon></ScreenOverlay>
+</Document>
+</kml>

@@ -1,0 +1,49 @@
+{
+  "manifestVersion": 1,
+  "id": "mermaid",
+  "name": "Mermaid",
+  "description": "Renders the mermaid widget type with Mermaid: flowcharts, sequence, class, state, ER, Gantt and more, from the diagram text that any backend returns.",
+  "publisher": { "name": "dlee-bq" },
+  "icon": "assets/icon.svg",
+  "host": { "api": 1, "afm": "0.11" },
+  "entry": { "module": "entry.js", "styles": ["entry.css"] },
+  "contributes": {
+    "widgets": [
+      {
+        "id": "diagram",
+        "name": "Mermaid diagram",
+        "description": "A diagram drawn by Mermaid from text, with zoom and pan",
+        "category": "Diagrams",
+        "handles": [
+          {
+            "type": "mermaid",
+            "response": {
+              "accepts": "json",
+              "description": "The Mermaid diagram text as a JSON string, or as {\"diagram\": \"<text>\"}. The endpoint gets theme=dark or theme=light."
+            }
+          }
+        ],
+        "artifact": {
+          "description": "A diagram drawn from Mermaid text: a flowchart, sequence, class, state, entity-relationship, Gantt, pie, mindmap, timeline or git graph. Use it when a process, structure or schedule reads better as a picture.",
+          "data": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["diagram"],
+            "properties": {
+              "diagram": { "type": "string", "maxLength": 20000 }
+            }
+          }
+        },
+        "permissions": ["core:data:read", "core:export:provide", "core:copilot:context", "core:ui:open-link"],
+        "grid": { "w": 20, "h": 14, "minW": 8, "minH": 6 }
+      }
+    ],
+    "skills": [
+      {
+        "slug": "mermaid",
+        "description": "How to show a diagram with the Mermaid component: which diagram type fits, the syntax that draws reliably, and its limits.",
+        "file": "skills/mermaid.md"
+      }
+    ]
+  }
+}

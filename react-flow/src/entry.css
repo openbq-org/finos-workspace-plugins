@@ -1,0 +1,343 @@
+@import "@xyflow/react/dist/style.css";
+
+html,
+body,
+#root {
+  height: 100%;
+  margin: 0;
+}
+
+.flow-stage {
+  position: absolute;
+  inset: 0;
+  background: var(--flow-background);
+  color: var(--flow-foreground);
+  font-family: var(--flow-font);
+  font-size: 13px;
+}
+
+.flow-message {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  margin: 0;
+  padding: 16px;
+  text-align: center;
+  font-family: var(--flow-font);
+  font-size: 12px;
+  color: CanvasText;
+  opacity: 0.7;
+}
+
+.flow-node {
+  position: relative;
+  box-sizing: border-box;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 6px 12px;
+  border: 1.5px solid var(--flow-node-accent, var(--flow-accent-neutral));
+  background: var(--flow-card);
+  color: var(--flow-foreground);
+  font-family: var(--flow-font);
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 1.25;
+  text-align: center;
+}
+
+.flow-node.is-selected {
+  box-shadow: 0 0 0 2px var(--flow-node-accent, var(--flow-accent-brand));
+}
+
+.flow-accent-neutral {
+  --flow-node-accent: var(--flow-accent-neutral);
+}
+.flow-accent-brand {
+  --flow-node-accent: var(--flow-accent-brand);
+  --flow-handle: var(--flow-accent-brand);
+}
+.flow-accent-positive {
+  --flow-node-accent: var(--flow-accent-positive);
+  --flow-handle: var(--flow-accent-positive);
+}
+.flow-accent-negative {
+  --flow-node-accent: var(--flow-accent-negative);
+  --flow-handle: var(--flow-accent-negative);
+}
+.flow-accent-warning {
+  --flow-node-accent: var(--flow-accent-warning);
+  --flow-handle: var(--flow-accent-warning);
+}
+.flow-accent-info {
+  --flow-node-accent: var(--flow-accent-info);
+  --flow-handle: var(--flow-accent-info);
+}
+
+.flow-shape-rectangle {
+  border-radius: 0;
+}
+.flow-shape-rounded {
+  border-radius: 8px;
+}
+.flow-shape-pill {
+  border-radius: 999px;
+}
+.flow-shape-circle {
+  border-radius: 50%;
+}
+.flow-shape-diamond {
+  border: none;
+  border-radius: 0;
+  background: transparent;
+  padding: 6px 24px;
+}
+
+.flow-shape-diamond.is-selected {
+  box-shadow: none;
+}
+
+.flow-shape-diamond::before,
+.flow-shape-diamond::after {
+  content: "";
+  position: absolute;
+  clip-path: polygon(50% 0%, 100% 50%, 50% 100%, 0% 50%);
+}
+
+.flow-shape-diamond::before {
+  inset: 0;
+  background: var(--flow-node-accent, var(--flow-accent-neutral));
+}
+
+.flow-shape-diamond.is-selected::before {
+  background: var(--flow-accent-brand);
+}
+
+.flow-shape-diamond::after {
+  inset: 2px;
+  background: var(--flow-card);
+}
+
+.flow-node-body {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  max-width: 100%;
+  overflow: hidden;
+}
+
+.flow-node-label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  line-clamp: 3;
+}
+
+.flow-node-note {
+  font-size: 11px;
+  opacity: 0.75;
+}
+
+.flow-node-input {
+  width: 100%;
+  box-sizing: border-box;
+  border: 1px solid var(--flow-accent-brand);
+  border-radius: 4px;
+  background: var(--flow-background);
+  color: var(--flow-foreground);
+  font: inherit;
+  text-align: center;
+}
+
+.flow-node-link {
+  position: absolute;
+  z-index: 2;
+  top: 2px;
+  right: 4px;
+  border: none;
+  background: none;
+  color: var(--flow-accent-brand);
+  font: inherit;
+  font-size: 11px;
+  line-height: 1;
+  padding: 2px;
+  cursor: pointer;
+}
+
+.flow-handle {
+  z-index: 2;
+  width: 9px;
+  height: 9px;
+  border: 1px solid var(--flow-background);
+  background: var(--flow-handle, var(--flow-foreground));
+}
+
+.flow-handle::after {
+  content: "";
+  position: absolute;
+  inset: -9px;
+}
+
+.react-flow .flow-edge .react-flow__edge-path {
+  stroke: var(--flow-edge-accent, var(--flow-accent-neutral));
+  stroke-width: 1.5;
+}
+
+.react-flow .flow-edge-dashed .react-flow__edge-path {
+  stroke-dasharray: 6 4;
+}
+
+.react-flow .flow-edge .react-flow__edge-text {
+  fill: var(--flow-foreground);
+  font-size: 11px;
+}
+
+.react-flow .flow-edge .react-flow__edge-textbg {
+  fill: var(--flow-background);
+}
+
+.react-flow .flow-accent-neutral {
+  --flow-edge-accent: var(--flow-accent-neutral);
+}
+.react-flow .flow-accent-brand {
+  --flow-edge-accent: var(--flow-accent-brand);
+}
+.react-flow .flow-accent-positive {
+  --flow-edge-accent: var(--flow-accent-positive);
+}
+.react-flow .flow-accent-negative {
+  --flow-edge-accent: var(--flow-accent-negative);
+}
+.react-flow .flow-accent-warning {
+  --flow-edge-accent: var(--flow-accent-warning);
+}
+.react-flow .flow-accent-info {
+  --flow-edge-accent: var(--flow-accent-info);
+}
+
+.react-flow__attribution {
+  font-size: 9px;
+}
+
+.flow-bar {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  box-sizing: border-box;
+  width: max-content;
+  max-width: calc(100% - 24px);
+  margin: 0 0 12px;
+  padding: 8px;
+  border: 1px solid var(--flow-border);
+  border-radius: 10px;
+  background: var(--flow-card);
+  color: var(--flow-foreground);
+  font-family: var(--flow-font);
+  font-size: 13px;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.35);
+}
+
+.flow-bar-fields {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+}
+
+.flow-bar-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+}
+
+.flow-bar-group {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.flow-field {
+  display: flex;
+  flex: 1 1 130px;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 110px;
+}
+
+.flow-field span {
+  font-size: 11px;
+  opacity: 0.7;
+}
+
+.flow-field input {
+  box-sizing: border-box;
+  width: 100%;
+  height: 28px;
+  padding: 0 8px;
+  border: 1px solid var(--flow-border);
+  border-radius: 6px;
+  background: var(--flow-background);
+  color: var(--flow-foreground);
+  font: inherit;
+}
+
+.flow-field input:focus {
+  outline: none;
+  border-color: var(--flow-accent-brand);
+}
+
+.flow-bar-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 28px;
+  min-width: 28px;
+  padding: 0 6px;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--flow-foreground);
+  font: inherit;
+  cursor: pointer;
+}
+
+.flow-bar-button:hover {
+  border-color: var(--flow-border);
+}
+
+.flow-bar-button[aria-pressed="true"] {
+  border-color: var(--flow-accent-brand);
+  background: color-mix(in srgb, var(--flow-accent-brand) 22%, transparent);
+}
+
+.flow-bar-text {
+  padding: 0 10px;
+}
+
+.flow-swatch span {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--flow-foreground) 35%, transparent);
+}
+
+.flow-bar-delete {
+  margin-top: 19px;
+  flex: none;
+}
+
+.flow-bar-delete:hover {
+  border-color: var(--flow-accent-negative);
+  color: var(--flow-accent-negative);
+}

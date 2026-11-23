@@ -1,0 +1,66 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<kml xmlns="http://www.opengis.net/kml/2.2">
+  <Document>
+    <name>Federal Reserve sample</name>
+    <Style id="board">
+      <IconStyle><color>ffb4771f</color></IconStyle>
+    </Style>
+    <Style id="bank">
+      <IconStyle><color>ff2827d6</color></IconStyle>
+      <LineStyle><color>ff2827d6</color><width>2</width></LineStyle>
+      <PolyStyle><color>662827d6</color></PolyStyle>
+    </Style>
+    <StyleMap id="bank-map">
+      <Pair><key>normal</key><styleUrl>#bank</styleUrl></Pair>
+      <Pair><key>highlight</key><styleUrl>#board</styleUrl></Pair>
+    </StyleMap>
+    <Folder>
+      <name>Offices</name>
+      <Placemark>
+        <name>Board of Governors</name>
+        <description><![CDATA[<p>Washington, D.C.</p> The Board sets policy.]]></description>
+        <styleUrl>#board</styleUrl>
+        <ExtendedData>
+          <Data name="district"><value>Board</value></Data>
+          <Data name="rate"><value>4.1</value></Data>
+        </ExtendedData>
+        <Point><coordinates>-77.0459,38.8929,0</coordinates></Point>
+      </Placemark>
+      <Placemark>
+        <name>Federal Reserve Bank of New York</name>
+        <styleUrl>#bank-map</styleUrl>
+        <ExtendedData>
+          <SchemaData schemaUrl="#banks"><SimpleData name="district">2</SimpleData></SchemaData>
+        </ExtendedData>
+        <Point><coordinates>-74.0087,40.7084</coordinates></Point>
+      </Placemark>
+      <Placemark>
+        <name>Federal Reserve Bank of Chicago</name>
+        <Point><coordinates>-87.6321,41.8786</coordinates></Point>
+      </Placemark>
+      <Placemark>
+        <name>Federal Reserve Bank of San Francisco</name>
+        <Point><coordinates>-122.3959,37.7933</coordinates></Point>
+      </Placemark>
+    </Folder>
+    <Placemark>
+      <name>Washington to New York</name>
+      <Style><LineStyle><color>ff2ca02c</color><width>3</width></LineStyle></Style>
+      <LineString>
+        <coordinates>
+          -77.0459,38.8929,0
+          -75.1652,39.9526,0
+          -74.0087,40.7084,0
+        </coordinates>
+      </LineString>
+    </Placemark>
+    <Placemark>
+      <name>Second District (sketch)</name>
+      <styleUrl>#bank-map</styleUrl>
+      <Polygon>
+        <innerBoundaryIs><LinearRing><coordinates>-75,42.5 -74.5,42.5 -74.5,43 -75,42.5</coordinates></LinearRing></innerBoundaryIs>
+        <outerBoundaryIs><LinearRing><coordinates>-79.8,42 -73.3,40.5 -71.8,41.3 -73.3,45 -79.8,42</coordinates></LinearRing></outerBoundaryIs>
+      </Polygon>
+    </Placemark>
+  </Document>
+</kml>
