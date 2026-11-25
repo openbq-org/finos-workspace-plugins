@@ -263,7 +263,7 @@ test("messages that are not understood change nothing", () => {
 
 test("the text of an item is its text, or the text of its HTML", () => {
   assert.equal(itemText({ text: "a" }, () => "x"), "a");
-  assert.equal(itemText({ html: "<b>b</b>" }, (html) => html.replace(/<[^>]+>/g, "")), "b");
+  assert.equal(itemText({ html: "<b>b</b>" }, (html) => `plain(${html})`), "plain(<b>b</b>)");
   assert.equal(itemText({}, () => "x"), "");
 });
 

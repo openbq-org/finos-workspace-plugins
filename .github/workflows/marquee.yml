@@ -7,6 +7,9 @@ on:
   pull_request:
     paths: [marquee/**, scripts/**, .github/workflows/marquee.yml]
 
+permissions:
+  contents: read
+
 jobs:
   marquee:
     name: Marquee
