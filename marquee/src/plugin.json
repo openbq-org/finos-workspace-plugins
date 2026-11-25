@@ -1,0 +1,203 @@
+{
+  "manifestVersion": 1,
+  "id": "marquee",
+  "name": "Marquee",
+  "description": "Renders the marquee widget type: a scrolling ticker for news, prices and announcements, in four directions and four behaviors, that updates live from a WebSocket stream, a refreshed endpoint or the AI agent.",
+  "publisher": {
+    "name": "dlee-bq"
+  },
+  "icon": "assets/icon.svg",
+  "host": {
+    "api": 1,
+    "afm": "0.11"
+  },
+  "entry": {
+    "module": "entry.js",
+    "styles": [
+      "entry.css"
+    ]
+  },
+  "contributes": {
+    "widgets": [
+      {
+        "id": "marquee",
+        "name": "Marquee",
+        "description": "A scrolling ticker of quotes, headlines or text, as a strip or a column, that updates live",
+        "category": "Tickers",
+        "handles": [
+          {
+            "type": "marquee",
+            "response": {
+              "accepts": "json",
+              "description": "Text, a list of items (strings, or objects with ticker, label, value, change, spark, text, html, tone, style, url, clickValue), or an object with text or items and the options speed, direction, behavior, gap and more. The endpoint gets theme=dark or theme=light."
+            }
+          }
+        ],
+        "artifact": {
+          "description": "A marquee: a strip of text, headlines or quotes (a name, a price, a change and a small chart) that scrolls across the card, or a column of them. Use it for a short message, a few headlines or a few figures that read better as a moving strip than as a list.",
+          "data": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "text": {
+                "type": "string",
+                "maxLength": 20000
+              },
+              "items": {
+                "type": "array",
+                "maxItems": 200,
+                "items": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "ticker": {
+                      "type": "string",
+                      "maxLength": 64
+                    },
+                    "label": {
+                      "type": "string",
+                      "maxLength": 80
+                    },
+                    "value": {
+                      "type": "string",
+                      "maxLength": 40
+                    },
+                    "change": {
+                      "type": "string",
+                      "maxLength": 60
+                    },
+                    "spark": {
+                      "type": "array",
+                      "maxItems": 120,
+                      "items": {
+                        "type": "number"
+                      }
+                    },
+                    "text": {
+                      "type": "string",
+                      "maxLength": 2000
+                    },
+                    "html": {
+                      "type": "string",
+                      "maxLength": 2000
+                    },
+                    "tone": {
+                      "type": "string",
+                      "enum": [
+                        "up",
+                        "down",
+                        "neutral"
+                      ]
+                    },
+                    "style": {
+                      "type": "string",
+                      "maxLength": 300
+                    },
+                    "url": {
+                      "type": "string",
+                      "maxLength": 500
+                    },
+                    "clickValue": {
+                      "type": "string",
+                      "maxLength": 500
+                    }
+                  }
+                }
+              },
+              "separator": {
+                "type": "string",
+                "maxLength": 40
+              },
+              "speed": {
+                "type": "number",
+                "minimum": 1,
+                "maximum": 300
+              },
+              "direction": {
+                "type": "string",
+                "enum": [
+                  "left",
+                  "right",
+                  "up",
+                  "down"
+                ]
+              },
+              "behavior": {
+                "type": "string",
+                "enum": [
+                  "scroll",
+                  "alternate",
+                  "slide",
+                  "static"
+                ]
+              },
+              "pauseOnHover": {
+                "type": "boolean"
+              },
+              "gap": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 500
+              },
+              "clickable": {
+                "type": "boolean"
+              },
+              "clickParam": {
+                "type": "string",
+                "maxLength": 64
+              },
+              "disabled": {
+                "type": "boolean"
+              },
+              "paused": {
+                "type": "boolean"
+              },
+              "label": {
+                "type": "string",
+                "maxLength": 40
+              },
+              "description": {
+                "type": "string",
+                "maxLength": 200
+              },
+              "style": {
+                "type": "string",
+                "maxLength": 400
+              }
+            }
+          }
+        },
+        "permissions": [
+          "core:data:read",
+          "core:data:stream",
+          "core:params:write",
+          "core:export:provide",
+          "core:copilot:context",
+          "core:ui:open-link",
+          "core:ui:button"
+        ],
+        "actions": [
+          {
+            "id": "pause",
+            "label": "Pause",
+            "icon": "assets/pause.svg",
+            "placement": "navbar"
+          }
+        ],
+        "grid": {
+          "w": 40,
+          "h": 4,
+          "minW": 8,
+          "minH": 3
+        }
+      }
+    ],
+    "skills": [
+      {
+        "slug": "marquee",
+        "description": "How to show a marquee: a scrolling ticker of text, headlines or prices, its items and options, and how a stream, an endpoint or the chat updates it.",
+        "file": "skills/marquee.md"
+      }
+    ]
+  }
+}
