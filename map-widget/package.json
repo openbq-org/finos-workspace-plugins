@@ -1,6 +1,6 @@
 {
   "name": "workspace-plugin-map",
-  "version": "1.0.0",
+  "version": "0.1.0",
   "private": true,
   "description": "A FINOS Workspace widget plugin that draws the map widget type with MapLibre GL JS",
   "author": "dlee-bq",
