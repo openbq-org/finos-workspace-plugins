@@ -197,7 +197,7 @@ DOMPurify's `MPL-2.0 OR Apache-2.0`), or no licence file.
 The package Workspace consumes is the folder `dist/mermaid/<version>/`:
 
 ```
-dist/mermaid/1.0.0/
+dist/mermaid/0.1.0/
   plugin.json                      manifest; version and checksum written by the build
   entry.js                         the AFM module (entry.module)
   entry.css                        the styles (entry.styles)

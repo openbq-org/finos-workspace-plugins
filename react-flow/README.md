@@ -176,7 +176,7 @@ not cleared (MIT, ISC, BSD-2-Clause, BSD-3-Clause, Apache-2.0 and 0BSD), or no l
 The package Workspace consumes is the folder `dist/react-flow/<version>/`:
 
 ```
-dist/react-flow/1.1.1/
+dist/react-flow/0.1.0/
   plugin.json                      manifest; version, checksum and the graph schema written by the build
   entry.js                         the AFM module (entry.module)
   entry.css                        the styles (entry.styles)
